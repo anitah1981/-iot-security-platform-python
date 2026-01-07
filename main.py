@@ -70,3 +70,7 @@ app.include_router(auth_router, prefix="/api/auth", tags=["Authentication"])
 # Include device routes
 from routes.devices import router as devices_router
 app.include_router(devices_router, prefix="/api/devices", tags=["Devices"])
+
+# Include alert routes
+from routes.alerts import router as alerts_router
+app.include_router(alerts_router, prefix="/api/alerts", tags=["Alerts"])
