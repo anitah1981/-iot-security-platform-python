@@ -20,13 +20,13 @@ async def init_db(mongo_uri: str):
         
         # Test connection
         await database.command('ping')
-        print(f"✅ Connected to MongoDB: {db_name}")
+        print(f"Connected to MongoDB: {db_name}")
         
         # Create indexes
         await create_indexes()
         
     except Exception as e:
-        print(f"❌ MongoDB connection error: {e}")
+        print(f"MongoDB connection error: {e}")
         raise
 
 async def close_db():
@@ -34,7 +34,7 @@ async def close_db():
     global mongodb_client
     if mongodb_client:
         mongodb_client.close()
-        print("✅ MongoDB connection closed")
+        print("MongoDB connection closed")
 
 async def get_database():
     """Get database instance"""
@@ -51,7 +51,7 @@ async def create_indexes():
     # Devices collection
     # NOTE: device documents use camelCase keys (deviceId, ipAddress, lastSeen)
     await database.devices.create_index("deviceId", unique=True)
-    await database.devices.create_index("ipAddress", unique=True)
+    await database.devices.create_index("ipAddress")
     await database.devices.create_index("status")
     await database.devices.create_index("lastSeen")
     
@@ -59,4 +59,4 @@ async def create_indexes():
     await database.alerts.create_index("deviceId")
     await database.alerts.create_index("createdAt")
     
-    print("✅ Database indexes created")
+    print("Database indexes created")

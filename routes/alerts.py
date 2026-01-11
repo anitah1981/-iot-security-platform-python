@@ -1,5 +1,5 @@
 # routes/alerts.py - Alert Management Routes
-from fastapi import APIRouter, HTTPException, status, Query
+from fastapi import APIRouter, HTTPException, status, Query, BackgroundTasks
 from typing import Optional
 from bson import ObjectId
 from datetime import datetime, timedelta
@@ -9,8 +9,63 @@ from database import get_database
 
 router = APIRouter()
 
+async def send_alert_notifications(alert_id: str, device_id: str, alert_message: str, alert_severity: str):
+    """Background task to send notifications for an alert"""
+    try:
+        from services.notification_service import send_alert_notification
+        
+        db = await get_database()
+        
+        # Get device info
+        device = await db.devices.find_one({"_id": ObjectId(device_id)})
+        if not device:
+            print(f"Device {device_id} not found for alert {alert_id}")
+            return
+        
+        device_name = device.get("name", "Unknown Device")
+        
+        # For MVP: Send notifications to all users (since devices aren't user-linked yet)
+        # In production, you'd link devices to users
+        users = await db.users.find().to_list(length=100)
+        
+        for user in users:
+            user_id = str(user["_id"])
+            
+            # Get user's notification preferences
+            prefs = await db.notification_preferences.find_one({"userId": ObjectId(user_id)})
+            
+            if not prefs:
+                # Use default preferences
+                prefs = {
+                    "emailEnabled": True,
+                    "smsEnabled": False,
+                    "whatsappEnabled": False,
+                    "voiceEnabled": False,
+                    "emailSeverities": ["low", "medium", "high", "critical"],
+                    "smsSeverities": ["high", "critical"],
+                    "whatsappSeverities": ["medium", "high", "critical"],
+                    "voiceSeverities": ["critical"],
+                }
+            
+            # Send notifications
+            results = await send_alert_notification(
+                user_email=user.get("email", ""),
+                user_name=user.get("name", "User"),
+                device_name=device_name,
+                alert_message=alert_message,
+                alert_severity=alert_severity,
+                notification_prefs=prefs
+            )
+            
+            # Log results
+            for result in results:
+                print(f"Notification {result.channel} to {user.get('email')}: {result.detail}")
+                
+    except Exception as e:
+        print(f"Error sending alert notifications: {e}")
+
 @router.post("/", response_model=AlertResponse, status_code=status.HTTP_201_CREATED)
-async def create_alert(alert: AlertCreate):
+async def create_alert(alert: AlertCreate, background_tasks: BackgroundTasks):
     """
     Create an alert (manual or auto from monitoring)
     
@@ -84,9 +139,19 @@ async def create_alert(alert: AlertCreate):
     }
     
     result = await db.alerts.insert_one(alert_doc)
+    alert_id = str(result.inserted_id)
+    
+    # Queue background notification task
+    background_tasks.add_task(
+        send_alert_notifications,
+        alert_id=alert_id,
+        device_id=alert.device_id,
+        alert_message=alert.message,
+        alert_severity=alert.severity
+    )
     
     return AlertResponse(
-        id=str(result.inserted_id),
+        id=alert_id,
         device_id=alert.device_id,
         message=alert.message,
         severity=alert.severity,

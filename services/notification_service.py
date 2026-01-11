@@ -15,6 +15,7 @@ from __future__ import annotations
 import os
 from dataclasses import dataclass
 from typing import Optional
+from datetime import datetime
 
 
 @dataclass(frozen=True)
@@ -106,3 +107,100 @@ class NotificationService:
         except Exception as e:
             return NotificationResult(False, "voice", f"Call failed: {e}")
 
+
+# Singleton instance
+_notification_service = NotificationService()
+
+
+def get_notification_service() -> NotificationService:
+    """Get the global notification service instance"""
+    return _notification_service
+
+
+async def send_alert_notification(
+    user_email: str,
+    user_name: str,
+    device_name: str,
+    alert_message: str,
+    alert_severity: str,
+    notification_prefs: dict
+) -> list[NotificationResult]:
+    """
+    Send notifications based on user preferences and alert severity
+    
+    Args:
+        user_email: User's email address
+        user_name: User's name
+        device_name: Name of the device that triggered the alert
+        alert_message: The alert message
+        alert_severity: Alert severity (low, medium, high, critical)
+        notification_prefs: User's notification preferences from DB
+    
+    Returns:
+        List of notification results
+    """
+    service = get_notification_service()
+    results = []
+    
+    # Format the alert message
+    subject = f"[{alert_severity.upper()}] IoT Security Alert"
+    content = f"""
+Hello {user_name},
+
+You have a new {alert_severity} severity alert from your IoT Security Platform.
+
+Device: {device_name}
+Message: {alert_message}
+Time: {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S UTC')}
+
+Please log into your dashboard to review and resolve this alert.
+
+Best regards,
+IoT Security Platform
+"""
+    
+    # Check if in quiet hours
+    if notification_prefs.get("quietHoursEnabled", False):
+        from datetime import datetime
+        now = datetime.utcnow()
+        # TODO: Implement quiet hours check
+        # For now, skip quiet hours for critical alerts
+        if alert_severity != "critical":
+            # Would check time here
+            pass
+    
+    # Email notification
+    if notification_prefs.get("emailEnabled", True):
+        email_severities = notification_prefs.get("emailSeverities", ["low", "medium", "high", "critical"])
+        if alert_severity in email_severities:
+            result = service.send_email(user_email, subject, content)
+            results.append(result)
+    
+    # SMS notification
+    if notification_prefs.get("smsEnabled", False):
+        sms_severities = notification_prefs.get("smsSeverities", ["high", "critical"])
+        phone_number = notification_prefs.get("phoneNumber")
+        if alert_severity in sms_severities and phone_number:
+            sms_body = f"[{alert_severity.upper()}] {device_name}: {alert_message}"
+            result = service.send_sms(phone_number, sms_body)
+            results.append(result)
+    
+    # WhatsApp notification
+    if notification_prefs.get("whatsappEnabled", False):
+        whatsapp_severities = notification_prefs.get("whatsappSeverities", ["medium", "high", "critical"])
+        whatsapp_number = notification_prefs.get("whatsappNumber")
+        if alert_severity in whatsapp_severities and whatsapp_number:
+            wa_body = f"🚨 [{alert_severity.upper()}] Alert\n\nDevice: {device_name}\n{alert_message}"
+            result = service.send_whatsapp(whatsapp_number, wa_body)
+            results.append(result)
+    
+    # Voice call for critical
+    if notification_prefs.get("voiceEnabled", False):
+        voice_severities = notification_prefs.get("voiceSeverities", ["critical"])
+        phone_number = notification_prefs.get("phoneNumber")
+        if alert_severity in voice_severities and phone_number:
+            twiml = f"<Response><Say>Critical alert from I o T Security Platform. {device_name} {alert_message}. Please check your dashboard immediately.</Say></Response>"
+            result = service.make_voice_call(phone_number, twiml)
+            results.append(result)
+    
+    return results

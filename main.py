@@ -36,23 +36,23 @@ def _parse_cors_origins(raw: str | None) -> list[str]:
 async def lifespan(app: FastAPI):
     """Handle startup and shutdown"""
     # Startup
-    print("🚀 Starting IoT Security Backend...")
+    print("Starting IoT Security Backend...")
     await init_db(MONGO_URI)
     # Start background monitoring tasks (best-effort)
     try:
         from services.heartbeat_sweep import start_background_sweep
         start_background_sweep()
-        print("✅ Heartbeat sweep started")
+        print("Heartbeat sweep started")
     except Exception as e:
-        print(f"⚠️ Could not start heartbeat sweep: {e}")
-    print("✅ Backend ready")
+        print(f"Could not start heartbeat sweep: {e}")
+    print("Backend ready")
     
     yield
     
     # Shutdown
-    print("🛑 Shutting down...")
+    print("Shutting down...")
     await close_db()
-    print("✅ Shutdown complete")
+    print("Shutdown complete")
 
 # Create FastAPI app
 app = FastAPI(
@@ -116,3 +116,7 @@ app.include_router(alerts_router, prefix="/api/alerts", tags=["Alerts"])
 # Include heartbeat routes
 from routes.heartbeat import router as heartbeat_router
 app.include_router(heartbeat_router, prefix="/api/heartbeat", tags=["Heartbeat"])
+
+# Include notification preferences routes
+from routes.notification_preferences import router as notification_prefs_router
+app.include_router(notification_prefs_router, prefix="/api/notification-preferences", tags=["Notification Preferences"])

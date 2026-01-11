@@ -67,8 +67,8 @@ async function loadDashboard(){
 
   try{
     const [devices, alerts] = await Promise.all([
-      api("/api/devices?limit=25&page=1", { auth:false }), // current API has no auth on devices yet
-      api("/api/alerts?limit=25&page=1", { auth:false }),
+      api("/api/devices?limit=25&page=1"),
+      api("/api/alerts?limit=25&page=1"),
     ]);
 
     renderDevices(devices.devices || []);
@@ -77,6 +77,31 @@ async function loadDashboard(){
     msg.textContent = "";
   }catch(e){
     msg.textContent = e.message;
+  }
+}
+
+// Auto-refresh dashboard every 10 seconds
+let refreshInterval = null;
+function startAutoRefresh(){
+  if(refreshInterval) return;
+  refreshInterval = setInterval(async () => {
+    try{
+      const [devices, alerts] = await Promise.all([
+        api("/api/devices?limit=25&page=1"),
+        api("/api/alerts?limit=25&page=1"),
+      ]);
+      renderDevices(devices.devices || []);
+      renderAlerts(alerts.alerts || []);
+    }catch(e){
+      console.error("Auto-refresh error:", e);
+    }
+  }, 10000); // 10 seconds
+}
+
+function stopAutoRefresh(){
+  if(refreshInterval){
+    clearInterval(refreshInterval);
+    refreshInterval = null;
   }
 }
 
@@ -116,18 +141,38 @@ function renderAlerts(alerts){
   const tbody = qs("#alerts");
   if(!tbody) return;
   if(!alerts.length){
-    tbody.innerHTML = `<tr><td colspan="5" class="hint">No alerts yet.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="6" class="hint">No alerts yet.</td></tr>`;
     return;
   }
   tbody.innerHTML = alerts.map(a => `
-    <tr>
+    <tr class="${a.resolved ? 'resolved-alert' : ''}">
       <td><span class="${badgeForSeverity(a.severity)}">${esc(a.severity)}</span></td>
       <td>${esc(a.type)}</td>
       <td>${esc(a.message)}</td>
       <td>${a.device?.name ? esc(a.device.name) : esc(a.device_id)}</td>
       <td>${esc((a.created_at || "").toString().slice(0,19).replace("T"," "))}</td>
+      <td>
+        ${!a.resolved ? `<button class="btn-sm" onclick="resolveAlert('${a.id}')">Resolve</button>` : '<span class="badge b-ok">Resolved</span>'}
+      </td>
     </tr>
   `).join("");
+}
+
+async function resolveAlert(alertId){
+  const msg = qs("#dashmsg");
+  try{
+    msg.textContent = "Resolving alert...";
+    await api(`/api/alerts/${alertId}/resolve`, { method: "POST" });
+    msg.className = "msg ok";
+    msg.textContent = "Alert resolved!";
+    setTimeout(() => { msg.textContent = ""; msg.className = "msg"; }, 2000);
+    // Reload alerts
+    const alerts = await api("/api/alerts?limit=25&page=1");
+    renderAlerts(alerts.alerts || []);
+  }catch(e){
+    msg.className = "msg bad";
+    msg.textContent = e.message;
+  }
 }
 
 function logout(){
@@ -145,6 +190,11 @@ window.addEventListener("DOMContentLoaded", () => {
   }
   if(qs("#dashboardRoot")){
     loadDashboard();
+    startAutoRefresh();
   }
 });
 
+// Clean up on page unload
+window.addEventListener("beforeunload", () => {
+  stopAutoRefresh();
+});

@@ -134,6 +134,22 @@ input:focus{ border-color: rgba(47,107,255,.55); box-shadow: 0 0 0 4px rgba(47,1
 table{ width:100%; border-collapse: collapse; }
 th,td{ text-align:left; padding:10px 8px; border-bottom: 1px solid rgba(255,255,255,.07); font-size: 13px; }
 th{ color: var(--muted); font-weight: 600; }
+.resolved-alert{ opacity: 0.5; }
+.btn-sm{
+  padding: 5px 12px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: linear-gradient(145deg, rgba(47,107,255,.14), rgba(20,184,166,.09));
+  color: var(--text);
+  cursor: pointer;
+  font-size: 12px;
+  transition: all 150ms ease;
+}
+.btn-sm:hover{
+  background: linear-gradient(145deg, rgba(47,107,255,.25), rgba(20,184,166,.15));
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0,0,0,.2);
+}
 .badge{
   display:inline-flex; align-items:center; gap:8px;
   padding: 6px 10px; border-radius: 999px;

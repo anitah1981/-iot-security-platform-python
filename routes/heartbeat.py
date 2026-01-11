@@ -76,6 +76,30 @@ async def receive_heartbeat(payload: HeartbeatData) -> HeartbeatResponse:
     if payload.ip_address and payload.ip_address != device.get("ipAddress"):
         update_set["ipAddress"] = payload.ip_address
         update_ops["$push"] = {"ipAddressHistory": payload.ip_address}
+        
+        # Check for suspicious IP change
+        from services.security_monitor import get_security_monitor
+        security_monitor = get_security_monitor()
+        anomaly = await security_monitor.check_ip_change_anomaly(
+            db,
+            str(device["_id"]),
+            payload.ip_address,
+            device.get("ipAddress", "")
+        )
+        
+        if anomaly and device.get("alertsEnabled", True):
+            alert_doc = {
+                "deviceId": device["_id"],
+                "message": anomaly["reason"],
+                "severity": anomaly["severity"],
+                "type": "security",
+                "context": anomaly,
+                "resolved": False,
+                "resolvedAt": None,
+                "createdAt": now,
+                "updatedAt": now,
+            }
+            await db.alerts.insert_one(alert_doc)
 
     await db.devices.update_one({"_id": device["_id"]}, update_ops)
 

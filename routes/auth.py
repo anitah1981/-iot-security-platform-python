@@ -1,11 +1,11 @@
 # routes/auth.py - Authentication Routes
 from fastapi import APIRouter, HTTPException, status, Depends
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from passlib.context import CryptContext
 from jose import jwt, JWTError
 from datetime import datetime, timedelta
 from typing import Optional
 import os
+import bcrypt as bcrypt_lib
 
 from models import UserCreate, UserLogin, UserResponse, TokenResponse
 from database import get_database
@@ -13,21 +13,25 @@ from database import get_database
 router = APIRouter()
 security = HTTPBearer()
 
-# Password hashing
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+# Password hashing - use bcrypt directly with proper byte handling
+def hash_password(password: str) -> str:
+    """Hash a password using bcrypt"""
+    # bcrypt has a 72 byte limit
+    password_bytes = password.encode('utf-8')[:72]
+    salt = bcrypt_lib.gensalt()
+    hashed = bcrypt_lib.hashpw(password_bytes, salt)
+    return hashed.decode('utf-8')
+
+def verify_password(plain_password: str, hashed_password: str) -> bool:
+    """Verify password against hash"""
+    password_bytes = plain_password.encode('utf-8')[:72]
+    hashed_bytes = hashed_password.encode('utf-8')
+    return bcrypt_lib.checkpw(password_bytes, hashed_bytes)
 
 # JWT Configuration
 JWT_SECRET = os.getenv("JWT_SECRET", "your-super-secret-key-change-in-production")
 JWT_ALGORITHM = "HS256"
 JWT_EXPIRES_DAYS = 7
-
-def hash_password(password: str) -> str:
-    """Hash a password"""
-    return pwd_context.hash(password)
-
-def verify_password(plain_password: str, hashed_password: str) -> bool:
-    """Verify password against hash"""
-    return pwd_context.verify(plain_password, hashed_password)
 
 def create_access_token(user_id: str, role: str) -> str:
     """Create JWT access token"""

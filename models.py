@@ -164,3 +164,45 @@ class AlertFilters(PaginationParams):
     type: Optional[str] = None
     since: Optional[datetime] = None
     organization: Optional[str] = None
+
+# ============================================================
+# NOTIFICATION PREFERENCES MODELS
+# ============================================================
+
+class NotificationChannel(BaseModel):
+    """Configuration for a notification channel"""
+    enabled: bool = True
+    email: Optional[str] = None
+    phone: Optional[str] = None  # For SMS
+    whatsapp: Optional[str] = None  # WhatsApp number
+
+class NotificationPreferences(BaseModel):
+    """User notification preferences"""
+    email_enabled: bool = True
+    sms_enabled: bool = False
+    whatsapp_enabled: bool = False
+    voice_enabled: bool = False
+    
+    # Severity thresholds - which severities trigger which channels
+    email_severities: List[Literal["low", "medium", "high", "critical"]] = ["low", "medium", "high", "critical"]
+    sms_severities: List[Literal["low", "medium", "high", "critical"]] = ["high", "critical"]
+    whatsapp_severities: List[Literal["low", "medium", "high", "critical"]] = ["medium", "high", "critical"]
+    voice_severities: List[Literal["low", "medium", "high", "critical"]] = ["critical"]
+    
+    # Contact details
+    phone_number: Optional[str] = None
+    whatsapp_number: Optional[str] = None
+    
+    # Quiet hours (24h format)
+    quiet_hours_enabled: bool = False
+    quiet_hours_start: Optional[str] = None  # e.g., "22:00"
+    quiet_hours_end: Optional[str] = None    # e.g., "07:00"
+    
+    # Escalation settings
+    escalation_enabled: bool = True
+    escalation_delay_minutes: int = 15  # Wait time before escalating
+
+class NotificationPreferencesResponse(NotificationPreferences):
+    """Response model with user ID"""
+    user_id: str
+    updated_at: datetime
