@@ -21,6 +21,13 @@ async def lifespan(app: FastAPI):
     # Startup
     print("🚀 Starting IoT Security Backend...")
     await init_db(MONGO_URI)
+    # Start background monitoring tasks (best-effort)
+    try:
+        from services.heartbeat_sweep import start_background_sweep
+        start_background_sweep()
+        print("✅ Heartbeat sweep started")
+    except Exception as e:
+        print(f"⚠️ Could not start heartbeat sweep: {e}")
     print("✅ Backend ready")
     
     yield
@@ -74,3 +81,7 @@ app.include_router(devices_router, prefix="/api/devices", tags=["Devices"])
 # Include alert routes
 from routes.alerts import router as alerts_router
 app.include_router(alerts_router, prefix="/api/alerts", tags=["Alerts"])
+
+# Include heartbeat routes
+from routes.heartbeat import router as heartbeat_router
+app.include_router(heartbeat_router, prefix="/api/heartbeat", tags=["Heartbeat"])

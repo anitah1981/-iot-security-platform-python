@@ -49,12 +49,14 @@ async def create_indexes():
     await database.users.create_index("email", unique=True)	
     
     # Devices collection
-    await database.devices.create_index("device_id", unique=True)
+    # NOTE: device documents use camelCase keys (deviceId, ipAddress, lastSeen)
+    await database.devices.create_index("deviceId", unique=True)
+    await database.devices.create_index("ipAddress", unique=True)
     await database.devices.create_index("status")
-    await database.devices.create_index("last_seen")
+    await database.devices.create_index("lastSeen")
     
     # Alerts collection
-    await database.alerts.create_index("device_id")
-    await database.alerts.create_index("created_at")
+    await database.alerts.create_index("deviceId")
+    await database.alerts.create_index("createdAt")
     
     print("✅ Database indexes created")
