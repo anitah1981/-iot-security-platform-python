@@ -1,8 +1,11 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 from contextlib import asynccontextmanager
 from datetime import datetime
 import os
+from pathlib import Path
 from dotenv import load_dotenv
 
 from database import init_db, close_db
@@ -13,6 +16,20 @@ load_dotenv()
 # Configuration
 MONGO_URI = os.getenv("MONGO_URI", "mongodb://localhost:27017/iot_security")
 PORT = int(os.getenv("PORT", 8000))
+WEB_DIR = Path(__file__).parent / "web"
+
+def _parse_cors_origins(raw: str | None) -> list[str]:
+    """
+    CORS_ORIGINS:
+    - "*" (dev) OR
+    - comma-separated list of origins: "https://app.example.com,https://example.com"
+    """
+    if not raw:
+        return ["*"]
+    raw = raw.strip()
+    if raw == "*":
+        return ["*"]
+    return [o.strip() for o in raw.split(",") if o.strip()]
 
 # Lifespan - runs on startup and shutdown
 @asynccontextmanager
@@ -44,10 +61,15 @@ app = FastAPI(
     lifespan=lifespan
 )
 
-# CORS - Allow frontend to connect
+# Static web UI
+if WEB_DIR.exists():
+    app.mount("/assets", StaticFiles(directory=str(WEB_DIR / "assets")), name="assets")
+
+# CORS - Allow frontend to connect (set CORS_ORIGINS in prod)
+cors_origins = _parse_cors_origins(os.getenv("CORS_ORIGINS"))
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=cors_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -55,11 +77,20 @@ app.add_middleware(
 
 @app.get("/")
 def root():
-    return {
-        "message": "IoT Security Platform API",
-        "version": "2.0.0",
-        "status": "running"
-    }
+    index = WEB_DIR / "index.html"
+    if index.exists():
+        return FileResponse(str(index))
+    return {"message": "IoT Security Platform API", "version": "2.0.0", "status": "running"}
+
+@app.get("/login")
+def login_page():
+    f = WEB_DIR / "login.html"
+    return FileResponse(str(f))
+
+@app.get("/dashboard")
+def dashboard_page():
+    f = WEB_DIR / "dashboard.html"
+    return FileResponse(str(f))
 
 @app.get("/api/health")
 def health():

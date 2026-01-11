@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <title>IoT Security Platform</title>
+    <link rel="stylesheet" href="/assets/app.css"/>
+  </head>
+  <body>
+    <div class="wrap">
+      <div class="nav">
+        <div class="brand">
+          <div class="logo" aria-hidden="true"></div>
+          <div>
+            <h1>IoT Security Platform</h1>
+            <p>Monitor devices • Detect threats • Escalate alerts</p>
+          </div>
+        </div>
+        <div class="row">
+          <a class="btn" href="/docs" title="API docs">API Docs</a>
+          <a class="btn primary" href="/login">Sign in</a>
+        </div>
+      </div>
+
+      <div class="hero" style="margin-top:18px;">
+        <h2>Security that feels calm, clear, and in-control.</h2>
+        <p class="sub">
+          A lightweight security monitoring backend (FastAPI + MongoDB) with device heartbeats,
+          alerts, and multi-channel notification scaffolding.
+        </p>
+        <div class="pillrow">
+          <span class="pill"><span class="dot"></span> Real-time heartbeats</span>
+          <span class="pill"><span class="dot"></span> Offline detection</span>
+          <span class="pill"><span class="dot"></span> Severity-based alerts</span>
+          <span class="pill"><span class="dot"></span> Email/SMS/WhatsApp/Voice (scaffold)</span>
+        </div>
+        <div style="margin-top:14px; display:flex; gap:10px; flex-wrap:wrap;">
+          <a class="btn primary" href="/dashboard">Open dashboard</a>
+          <a class="btn" href="/login">Login</a>
+        </div>
+        <div class="footer">Tip: Keep your UI consistent with the “trusted blue + teal verification” accents for security products.</div>
+      </div>
+
+      <div class="grid">
+        <div class="card">
+          <h2>What you can do now</h2>
+          <p class="sub">Once you’ve created an account, you can add devices, receive alerts, and post device heartbeats.</p>
+          <ul style="margin:0; padding-left: 18px; color: var(--muted); line-height:1.7;">
+            <li>Create a user: <code>/api/auth/signup</code></li>
+            <li>Login: <code>/api/auth/login</code></li>
+            <li>Create a device: <code>/api/devices</code></li>
+            <li>Heartbeat: <code>/api/heartbeat</code></li>
+            <li>View alerts: <code>/api/alerts</code></li>
+          </ul>
+        </div>
+        <div class="card">
+          <h2>Launch checklist (next)</h2>
+          <p class="sub">We’ll finalize these to be “ready to launch”.</p>
+          <ul style="margin:0; padding-left: 18px; color: var(--muted); line-height:1.7;">
+            <li>Set production CORS origins</li>
+            <li>Set JWT secret</li>
+            <li>Docker deploy (API + Mongo)</li>
+            <li>Wire alerts → notifications + escalation</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>
+

@@ -19,11 +19,13 @@ pip install -r requirements.txt
 ```
 
 ### 2) Configure environment
-Create a `.env` file (do not commit it). Minimal:
+Copy `.env.example` to `.env` (do not commit it). Minimal:
 ```bash
 MONGO_URI=mongodb://localhost:27017/iot_security
 JWT_SECRET=change-me
 ```
+
+For production, set `CORS_ORIGINS` to your real site origins (comma-separated). Avoid `*` in production.
 
 Optional (notifications):
 ```bash
@@ -40,6 +42,14 @@ uvicorn main:app --reload --port 8000
 ```
 
 Health check: `GET /api/health`
+
+## Run with Docker (recommended for launch)
+```bash
+cp .env.example .env
+docker compose up --build
+```
+
+Open the web UI at `/` and API docs at `/docs`.
 
 ## Project context
 See `docs/claude-context.md` for the full project vision and feature roadmap.

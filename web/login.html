@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <title>Sign in • IoT Security Platform</title>
+    <link rel="stylesheet" href="/assets/app.css"/>
+    <script defer src="/assets/app.js"></script>
+  </head>
+  <body>
+    <div class="wrap">
+      <div class="nav">
+        <div class="brand">
+          <div class="logo" aria-hidden="true"></div>
+          <div>
+            <h1>IoT Security Platform</h1>
+            <p>Sign in</p>
+          </div>
+        </div>
+        <div class="row">
+          <a class="btn" href="/">Home</a>
+          <a class="btn" href="/dashboard">Dashboard</a>
+        </div>
+      </div>
+
+      <div class="grid" style="margin-top:18px;">
+        <div class="card">
+          <h2>Welcome back</h2>
+          <p class="sub">Use your email + password. JWT is stored locally in your browser.</p>
+          <form id="loginForm">
+            <div class="field">
+              <label for="email">Email</label>
+              <input id="email" type="email" autocomplete="email" placeholder="you@example.com" required/>
+            </div>
+            <div class="field">
+              <label for="password">Password</label>
+              <input id="password" type="password" autocomplete="current-password" placeholder="••••••••" required/>
+            </div>
+            <div class="row" style="margin-top:14px;">
+              <button class="btn primary" type="submit">Sign in</button>
+              <span class="hint">Need an account? Use the API `POST /api/auth/signup` for now.</span>
+            </div>
+            <div id="msg" class="msg"></div>
+          </form>
+        </div>
+
+        <div class="card">
+          <h2>Security note</h2>
+          <p class="sub">
+            For launch, we’ll add secure cookie-based sessions or refresh tokens, plus rate limiting.
+            This UI is the starting dashboard for consumers.
+          </p>
+          <div class="pillrow">
+            <span class="pill"><span class="dot"></span> Trusted blue</span>
+            <span class="pill"><span class="dot"></span> Teal verification</span>
+            <span class="pill"><span class="dot"></span> High contrast</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>
+

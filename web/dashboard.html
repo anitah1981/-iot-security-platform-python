@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <title>Dashboard • IoT Security Platform</title>
+    <link rel="stylesheet" href="/assets/app.css"/>
+    <script defer src="/assets/app.js"></script>
+  </head>
+  <body>
+    <div class="wrap" id="dashboardRoot">
+      <div class="nav">
+        <div class="brand">
+          <div class="logo" aria-hidden="true"></div>
+          <div>
+            <h1>Security Dashboard</h1>
+            <p><span id="who">Loading profile…</span></p>
+          </div>
+        </div>
+        <div class="row">
+          <a class="btn" href="/">Home</a>
+          <a class="btn" href="/docs">API Docs</a>
+          <button class="btn danger" id="logoutBtn" type="button">Logout</button>
+        </div>
+      </div>
+
+      <div class="grid">
+        <div class="card">
+          <h2>Devices</h2>
+          <p class="sub">Latest devices (first 25). This will become a full device inventory UI.</p>
+          <div class="hint" id="dashmsg"></div>
+          <div style="overflow:auto; margin-top:10px;">
+            <table>
+              <thead>
+                <tr>
+                  <th>Device ID</th>
+                  <th>Name</th>
+                  <th>Type</th>
+                  <th>IP</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody id="devices"></tbody>
+            </table>
+          </div>
+        </div>
+        <div class="card">
+          <h2>Recent alerts</h2>
+          <p class="sub">Latest alerts (first 25). Next: acknowledgement + escalation timeline.</p>
+          <div style="overflow:auto; margin-top:10px;">
+            <table>
+              <thead>
+                <tr>
+                  <th>Severity</th>
+                  <th>Type</th>
+                  <th>Message</th>
+                  <th>Device</th>
+                  <th>When</th>
+                </tr>
+              </thead>
+              <tbody id="alerts"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <div class="footer">
+        Built for trust: calm dark surfaces, clear status badges, and consistent “security blue + verification teal”.
+      </div>
+    </div>
+  </body>
+</html>
+

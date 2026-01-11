@@ -1,0 +1,30 @@
+version: "3.9"
+
+services:
+  mongo:
+    image: mongo:7
+    container_name: iot_mongo
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+
+  api:
+    build: .
+    container_name: iot_api
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      # Default to talking to the dockerized mongo service
+      - MONGO_URI=mongodb://mongo:27017/iot_security
+      - PORT=8000
+    ports:
+      - "8000:8000"
+    depends_on:
+      - mongo
+
+volumes:
+  mongo_data:
+
