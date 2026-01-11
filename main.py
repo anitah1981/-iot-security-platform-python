@@ -77,6 +77,9 @@ app.add_middleware(
 
 @app.get("/")
 def root():
+    landing = WEB_DIR / "landing.html"
+    if landing.exists():
+        return FileResponse(str(landing))
     index = WEB_DIR / "index.html"
     if index.exists():
         return FileResponse(str(index))
