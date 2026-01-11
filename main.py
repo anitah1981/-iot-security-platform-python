@@ -87,6 +87,11 @@ def login_page():
     f = WEB_DIR / "login.html"
     return FileResponse(str(f))
 
+@app.get("/signup")
+def signup_page():
+    f = WEB_DIR / "signup.html"
+    return FileResponse(str(f))
+
 @app.get("/dashboard")
 def dashboard_page():
     f = WEB_DIR / "dashboard.html"

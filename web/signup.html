@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <title>Sign Up • IoT Security Platform</title>
+    <link rel="stylesheet" href="/assets/app.css"/>
+    <link rel="stylesheet" href="/assets/landing.css"/>
+    <script defer src="/assets/app.js"></script>
+    <script defer src="/assets/signup.js"></script>
+  </head>
+  <body>
+    <div class="wrap">
+      <div class="nav">
+        <div class="brand">
+          <div class="logo" aria-hidden="true"></div>
+          <div>
+            <h1>Create Your Account</h1>
+            <p>Start your 14-day free trial</p>
+          </div>
+        </div>
+        <div class="row">
+          <a class="btn" href="/">Home</a>
+          <a class="btn" href="/login">Login</a>
+        </div>
+      </div>
+
+      <div class="signup-container">
+        <!-- Plan Selection (if not already chosen) -->
+        <div id="planSelection" class="plan-select-section">
+          <h2>Choose Your Plan</h2>
+          <div class="plan-options">
+            <div class="plan-option" data-plan="free">
+              <input type="radio" name="plan" value="free" id="plan-free">
+              <label for="plan-free">
+                <div class="plan-name">Free</div>
+                <div class="plan-price">£0/month</div>
+                <div class="plan-features-mini">
+                  <span>3 devices</span>
+                  <span>Email alerts</span>
+                </div>
+              </label>
+            </div>
+
+            <div class="plan-option featured" data-plan="home_plus">
+              <input type="radio" name="plan" value="home_plus" id="plan-home" checked>
+              <label for="plan-home">
+                <div class="popular-mini">Most Popular</div>
+                <div class="plan-name">Home Plus</div>
+                <div class="plan-price">£4.99/month</div>
+                <div class="plan-features-mini">
+                  <span>Unlimited devices</span>
+                  <span>All alert channels</span>
+                  <span>Full history</span>
+                </div>
+              </label>
+            </div>
+
+            <div class="plan-option" data-plan="business">
+              <input type="radio" name="plan" value="business" id="plan-business">
+              <label for="plan-business">
+                <div class="plan-name">Business Monitor</div>
+                <div class="plan-price">£9.99/month</div>
+                <div class="plan-features-mini">
+                  <span>Multi-user</span>
+                  <span>Exports & audit</span>
+                  <span>Priority support</span>
+                </div>
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <!-- Signup Form -->
+        <div class="signup-form-section">
+          <div class="card" style="max-width: 500px; margin: 0 auto;">
+            <h2>Create Account</h2>
+            <p class="sub">Fill in your details below</p>
+            
+            <form id="signupForm">
+              <div class="field">
+                <label for="name">Full Name</label>
+                <input type="text" id="name" name="name" required placeholder="John Smith"/>
+              </div>
+
+              <div class="field">
+                <label for="email">Email Address</label>
+                <input type="email" id="email" name="email" required placeholder="john@example.com"/>
+              </div>
+
+              <div class="field">
+                <label for="password">Password</label>
+                <input type="password" id="password" name="password" required placeholder="Min. 8 characters"/>
+                <div class="hint">Use at least 8 characters with a mix of letters and numbers</div>
+              </div>
+
+              <div class="field">
+                <label for="confirm-password">Confirm Password</label>
+                <input type="password" id="confirm-password" name="confirm-password" required placeholder="Re-enter password"/>
+              </div>
+
+              <input type="hidden" id="selected-plan" name="plan" value="home_plus"/>
+
+              <div class="field" style="margin-top: 24px;">
+                <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                  <input type="checkbox" id="terms" required/>
+                  <span style="color: var(--muted); font-size: 13px;">
+                    I agree to the <a href="/terms" style="color: var(--primary);">Terms of Service</a> and 
+                    <a href="/privacy" style="color: var(--primary);">Privacy Policy</a>
+                  </span>
+                </label>
+              </div>
+
+              <div id="signupMsg" class="msg"></div>
+
+              <button type="submit" class="btn primary" style="width: 100%; margin-top: 16px; padding: 14px;">
+                Start Free Trial
+              </button>
+            </form>
+
+            <div class="trial-info">
+              <p style="text-align: center; margin-top: 24px; color: var(--muted); font-size: 13px;">
+                ✓ 14-day free trial • ✓ No credit card required • ✓ Cancel anytime
+              </p>
+            </div>
+
+            <div style="text-align: center; margin-top: 24px; padding-top: 24px; border-top: 1px solid var(--border);">
+              <p style="color: var(--muted); font-size: 14px;">
+                Already have an account? <a href="/login" style="color: var(--primary);">Login</a>
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>
