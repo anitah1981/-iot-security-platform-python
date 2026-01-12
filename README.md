@@ -25,7 +25,7 @@ A comprehensive IoT security monitoring platform with real-time device tracking,
 - **Backend**: FastAPI (Python)
 - **Database**: MongoDB (with Motor async driver)
 - **Frontend**: Modern vanilla JavaScript with real-time updates
-- **Notifications**: Twilio (SMS/WhatsApp/Voice) + SendGrid (Email)
+- **Notifications**: Twilio (SMS/WhatsApp/Voice) + Gmail SMTP (Email)
 
 ## 🚀 Quick Start
 
@@ -145,13 +145,16 @@ MONGO_URI=mongodb://localhost:27017/iot_security
 
 ### Notification Services
 
-#### SendGrid (Email)
-1. Sign up at [sendgrid.com](https://sendgrid.com)
-2. Create API key
+#### Gmail SMTP (Email) - Recommended!
+1. Enable 2-Factor Authentication on your Gmail
+2. Create App Password: https://myaccount.google.com/apppasswords
 3. Add to `.env`:
 ```env
-SENDGRID_API_KEY=SG.xxxxx
-FROM_EMAIL=alerts@yourdomain.com
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USER=your@gmail.com
+SMTP_PASSWORD=your-16-char-app-password
+FROM_EMAIL=your@gmail.com
 ```
 
 #### Twilio (SMS/WhatsApp/Voice)

@@ -2,10 +2,10 @@
 
 Complete this guide to enable full notification capabilities in your IoT Security Platform.
 
-## 🔑 Required API Keys
+## 🔑 Required Setup
 
 ### 1. **Twilio** (SMS, WhatsApp, Voice Calls)
-### 2. **SendGrid** (Email Notifications)
+### 2. **Gmail SMTP** (Email Notifications - FREE & Easy!)
 
 ---
 
@@ -52,44 +52,44 @@ curl -X POST http://localhost:8000/api/test/sms \
 
 ---
 
-## 📧 SendGrid Setup (Email)
+## 📧 Gmail SMTP Setup (Email) - FREE & Easy!
 
-### Step 1: Create SendGrid Account
-1. Go to https://signup.sendgrid.com/
-2. Sign up (free tier: 100 emails/day)
-3. Verify your email address
+### Step 1: Enable 2-Factor Authentication
+1. Go to: https://myaccount.google.com/security
+2. Find **"2-Step Verification"**
+3. Click **"Get Started"**
+4. Follow the steps (they'll text you a code)
+5. Complete the setup
 
-### Step 2: Create API Key
-1. Go to [Settings → API Keys](https://app.sendgrid.com/settings/api_keys)
-2. Click **Create API Key**
-3. Name it: "IoT Security Platform"
-4. Choose **Full Access** or **Restricted Access** (Mail Send only)
-5. Click **Create & View**
-6. **IMPORTANT**: Copy the API key NOW (you can't see it again!)
+### Step 2: Create App Password
+1. Go to: https://myaccount.google.com/apppasswords
+2. In "Select app" dropdown: Choose **"Mail"**
+3. In "Select device" dropdown: Choose **"Other"**
+4. Type: "IoT Security Platform"
+5. Click **"Generate"**
+6. **COPY THE 16-CHARACTER PASSWORD** (looks like: `abcd efgh ijkl mnop`)
+   - You won't be able to see it again!
 
-### Step 3: Verify Sender Identity
-1. Go to **Settings** → **Sender Authentication**
-2. Click **Verify a Single Sender**
-3. Fill in your details:
-   - From Name: IoT Security Platform
-   - From Email: alerts@yourdomain.com (or your email)
-   - Reply To: (same as above)
-4. Click **Create**
-5. Check your email and verify
-
-### Step 4: Add to `.env` File
+### Step 3: Add to `.env` File
 ```env
-SENDGRID_API_KEY=SG.your_api_key_here
-FROM_EMAIL=alerts@yourdomain.com
+# Gmail SMTP
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USER=your.email@gmail.com
+SMTP_PASSWORD=abcd efgh ijkl mnop
+FROM_EMAIL=your.email@gmail.com
 ```
 
-### Test It
-```bash
-# Test email
-curl -X POST http://localhost:8000/api/test/email \
-  -H "Content-Type: application/json" \
-  -d '{"to":"your@email.com","subject":"Test","body":"Test from IoT Security"}'
-```
+**Replace:**
+- `your.email@gmail.com` with YOUR Gmail address
+- `abcd efgh ijkl mnop` with your app password from Step 2
+
+### Why Gmail Instead of SendGrid?
+✅ **FREE** - No daily limits for personal use  
+✅ **No verification needed** - Just enable 2FA and get app password  
+✅ **5 minutes setup** - vs 20+ minutes for SendGrid  
+✅ **Familiar** - You already have Gmail  
+✅ **Reliable** - Google's infrastructure
 
 ---
 
