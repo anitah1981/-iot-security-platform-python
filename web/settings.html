@@ -1,0 +1,235 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <title>Settings • IoT Security Platform</title>
+    <link rel="stylesheet" href="/assets/app.css"/>
+    <script defer src="/assets/app.js"></script>
+  </head>
+  <body>
+    <div class="wrap" id="settingsRoot">
+      <div class="nav">
+        <div class="brand">
+          <div class="logo" aria-hidden="true"></div>
+          <div>
+            <h1>Account Settings</h1>
+            <p><span id="who">Loading profile…</span></p>
+          </div>
+        </div>
+        <div class="row">
+          <a class="btn" href="/dashboard">Dashboard</a>
+          <a class="btn" href="/">Home</a>
+          <button class="btn danger" id="logoutBtn" type="button">Logout</button>
+        </div>
+      </div>
+
+      <div class="grid">
+        <!-- Change Password Card -->
+        <div class="card">
+          <h2>🔐 Change Password</h2>
+          <p class="sub">Update your password. Must be at least 12 characters with uppercase, lowercase, numbers, and special characters.</p>
+          
+          <div class="hint" id="settingsmsg" style="margin: 16px 0;"></div>
+
+          <form id="changePasswordForm" style="max-width: 500px; margin-top: 20px;">
+            <div style="margin-bottom: 16px;">
+              <label style="display: block; margin-bottom: 6px; font-size: 14px; font-weight: 500;">Current Password</label>
+              <input 
+                type="password" 
+                id="currentPassword" 
+                required
+                style="width: 100%; padding: 10px 14px; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-size: 14px;"
+                placeholder="Enter your current password"
+              />
+            </div>
+
+            <div style="margin-bottom: 16px;">
+              <label style="display: block; margin-bottom: 6px; font-size: 14px; font-weight: 500;">New Password</label>
+              <input 
+                type="password" 
+                id="newPassword" 
+                required
+                minlength="12"
+                style="width: 100%; padding: 10px 14px; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-size: 14px;"
+                placeholder="Enter your new password (min 12 characters)"
+              />
+            </div>
+
+            <div style="margin-bottom: 20px;">
+              <label style="display: block; margin-bottom: 6px; font-size: 14px; font-weight: 500;">Confirm New Password</label>
+              <input 
+                type="password" 
+                id="confirmPassword" 
+                required
+                minlength="12"
+                style="width: 100%; padding: 10px 14px; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-size: 14px;"
+                placeholder="Confirm your new password"
+              />
+            </div>
+
+            <div style="background: rgba(47,107,255,.08); border: 1px solid rgba(47,107,255,.2); border-radius: 8px; padding: 14px; margin-bottom: 20px;">
+              <p style="margin: 0 0 8px; font-size: 13px; font-weight: 600; color: var(--primary);">Password Requirements:</p>
+              <ul style="margin: 0; padding-left: 20px; font-size: 12px; color: var(--muted); line-height: 1.6;">
+                <li>Minimum 12 characters</li>
+                <li>At least one uppercase letter (A-Z)</li>
+                <li>At least one lowercase letter (a-z)</li>
+                <li>At least one number (0-9)</li>
+                <li>At least one special character (!@#$%^&*()_+-=[]{}|;:,.<>?)</li>
+              </ul>
+            </div>
+
+            <button 
+              type="submit" 
+              class="btn" 
+              style="background: var(--primary); color: white; padding: 12px 24px; font-weight: 600;"
+            >
+              Change Password
+            </button>
+          </form>
+        </div>
+
+        <!-- Account Information Card -->
+        <div class="card">
+          <h2>👤 Account Information</h2>
+          <p class="sub">Your account details</p>
+
+          <div style="margin-top: 20px;">
+            <div style="margin-bottom: 16px;">
+              <label style="display: block; margin-bottom: 6px; font-size: 12px; color: var(--muted);">Email</label>
+              <div id="userEmail" style="font-size: 15px; font-weight: 500;">Loading...</div>
+            </div>
+
+            <div style="margin-bottom: 16px;">
+              <label style="display: block; margin-bottom: 6px; font-size: 12px; color: var(--muted);">Name</label>
+              <div id="userName" style="font-size: 15px; font-weight: 500;">Loading...</div>
+            </div>
+
+            <div style="margin-bottom: 16px;">
+              <label style="display: block; margin-bottom: 6px; font-size: 12px; color: var(--muted);">Role</label>
+              <div id="userRole" style="font-size: 15px; font-weight: 500;">Loading...</div>
+            </div>
+
+            <div style="margin-top: 24px; padding-top: 16px; border-top: 1px solid var(--border);">
+              <p style="font-size: 12px; color: var(--muted); margin: 0;">
+                🔒 Your account is secured with enterprise-grade encryption
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="footer">
+        Built for trust: calm dark surfaces, clear status badges, and consistent "security blue + verification teal".
+      </div>
+    </div>
+
+    <script>
+      // Load user info
+      async function loadSettings() {
+        const msg = document.querySelector("#settingsmsg");
+        const who = document.querySelector("#who");
+
+        try {
+          const me = await api("/api/auth/me");
+          who.textContent = `${me.name} (${me.email})`;
+          
+          // Fill account info
+          document.querySelector("#userEmail").textContent = me.email;
+          document.querySelector("#userName").textContent = me.name;
+          document.querySelector("#userRole").textContent = me.role;
+        } catch(e) {
+          // Not logged in
+          setToken(null);
+          window.location.href = "/login";
+          return;
+        }
+      }
+
+      // Change password handler
+      document.addEventListener("DOMContentLoaded", () => {
+        if(document.querySelector("#logoutBtn")){
+          document.querySelector("#logoutBtn").addEventListener("click", logout);
+        }
+
+        if(document.querySelector("#settingsRoot")){
+          loadSettings();
+        }
+
+        if(document.querySelector("#changePasswordForm")){
+          document.querySelector("#changePasswordForm").addEventListener("submit", async (e) => {
+            e.preventDefault();
+            
+            const currentPassword = document.querySelector("#currentPassword").value;
+            const newPassword = document.querySelector("#newPassword").value;
+            const confirmPassword = document.querySelector("#confirmPassword").value;
+            const msg = document.querySelector("#settingsmsg");
+            
+            // Reset message
+            msg.className = "msg";
+            msg.textContent = "";
+
+            // Validate passwords match
+            if(newPassword !== confirmPassword){
+              msg.className = "msg bad";
+              msg.textContent = "❌ New passwords do not match";
+              return;
+            }
+
+            // Validate password length
+            if(newPassword.length < 12){
+              msg.className = "msg bad";
+              msg.textContent = "❌ Password must be at least 12 characters long";
+              return;
+            }
+
+            msg.className = "msg";
+            msg.textContent = "🔄 Changing password...";
+
+            try {
+              const response = await api("/api/auth/change-password", {
+                method: "POST",
+                body: {
+                  current_password: currentPassword,
+                  new_password: newPassword
+                }
+              });
+
+              msg.className = "msg ok";
+              msg.textContent = "✅ Password changed successfully! You can now use your new password.";
+              
+              // Clear form
+              document.querySelector("#changePasswordForm").reset();
+              
+              // Auto-hide success message after 5 seconds
+              setTimeout(() => {
+                msg.textContent = "";
+                msg.className = "msg";
+              }, 5000);
+              
+            } catch(e) {
+              msg.className = "msg bad";
+              
+              // Handle detailed error messages
+              if(e.message.includes("{")){
+                try {
+                  const errorData = JSON.parse(e.message);
+                  if(errorData.errors && Array.isArray(errorData.errors)){
+                    msg.innerHTML = `<strong>❌ Password Error:</strong><br/>` + 
+                                   errorData.errors.map(err => `• ${err}`).join("<br/>");
+                  } else {
+                    msg.textContent = `❌ ${errorData.message || e.message}`;
+                  }
+                } catch {
+                  msg.textContent = `❌ ${e.message}`;
+                }
+              } else {
+                msg.textContent = `❌ ${e.message}`;
+              }
+            }
+          });
+        }
+      });
+    </script>
+  </body>
+</html>

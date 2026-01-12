@@ -7,8 +7,12 @@ from typing import Optional
 import os
 import bcrypt as bcrypt_lib
 
-from models import UserCreate, UserLogin, UserResponse, TokenResponse
+from models import UserCreate, UserLogin, UserResponse, TokenResponse, PasswordChange
 from database import get_database
+try:
+    from utils.password_validator import password_validator
+except ImportError:
+    password_validator = None
 
 router = APIRouter()
 security = HTTPBearer()
@@ -80,13 +84,33 @@ async def signup(user_data: UserCreate):
     """
     Register a new user
     - Creates new user account
-    - Hashes password securely
+    - Hashes password securely with strong requirements
     - Returns JWT token for immediate login
+    
+    Password Requirements:
+    - Minimum 12 characters
+    - At least one uppercase letter
+    - At least one lowercase letter
+    - At least one number
+    - At least one special character
     """
     db = await get_database()
     
     # Normalize email
     email = user_data.email.lower()
+    
+    # Validate password strength
+    if password_validator:
+        is_valid, errors = password_validator.validate(user_data.password)
+        if not is_valid:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail={
+                    "message": "Password does not meet security requirements",
+                    "errors": errors,
+                    "requirements": password_validator.get_requirements_text()
+                }
+            )
     
     # Check if user already exists
     existing_user = await db.users.find_one({"email": email})
@@ -226,3 +250,66 @@ async def get_current_user_info(current_user = Depends(get_current_user)):
         organization_role=current_user.get("organizationRole"),
         created_at=current_user.get("createdAt", datetime.utcnow())
     )
+@router.post("/change-password")
+async def change_password(password_data: PasswordChange, user: dict = Depends(get_current_user)):
+    '''
+    Change user password
+    - Validates current password
+    - Enforces strong password requirements
+    - Updates password securely
+    '''
+    db = await get_database()
+    
+    # Verify current password
+    if not verify_password(password_data.current_password, user['password']):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail='Current password is incorrect'
+        )
+    
+    # Validate new password strength
+    if password_validator:
+        is_valid, errors = password_validator.validate(password_data.new_password)
+        if not is_valid:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail={
+                    'message': 'New password does not meet security requirements',
+                    'errors': errors,
+                    'requirements': password_validator.get_requirements_text()
+                }
+            )
+    
+    # Check that new password is different from current
+    if verify_password(password_data.new_password, user['password']):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail='New password must be different from current password'
+        )
+    
+    # Hash new password
+    new_hashed_password = hash_password(password_data.new_password)
+    
+    # Update password in database
+    result = await db.users.update_one(
+        {'_id': user['_id']},
+        {
+            '$set': {
+                'password': new_hashed_password,
+                'updatedAt': datetime.utcnow(),
+                'lastPasswordChange': datetime.utcnow()
+            }
+        }
+    )
+    
+    if result.modified_count == 0:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail='Failed to update password'
+        )
+    
+    return {
+        'message': 'Password changed successfully',
+        'timestamp': datetime.utcnow().isoformat()
+    }
+

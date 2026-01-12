@@ -1,4 +1,4 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
@@ -7,8 +7,16 @@ from datetime import datetime
 import os
 from pathlib import Path
 from dotenv import load_dotenv
+import socketio
 
 from database import init_db, close_db
+# from services.websocket_service import sio, socket_app
+# from middleware.security import (
+#     SecurityHeadersMiddleware,
+#     RequestLoggingMiddleware,
+#     InputSanitizationMiddleware,
+#     setup_rate_limiting
+# )
 
 # Load environment variables
 load_dotenv()
@@ -65,6 +73,14 @@ app = FastAPI(
 if WEB_DIR.exists():
     app.mount("/assets", StaticFiles(directory=str(WEB_DIR / "assets")), name="assets")
 
+# Security Middleware - Temporarily disabled for debugging
+# app.add_middleware(SecurityHeadersMiddleware)
+# app.add_middleware(RequestLoggingMiddleware)
+# app.add_middleware(InputSanitizationMiddleware)
+
+# Rate Limiting - Temporarily disabled
+# limiter = setup_rate_limiting(app)
+
 # CORS - Allow frontend to connect (set CORS_ORIGINS in prod)
 cors_origins = _parse_cors_origins(os.getenv("CORS_ORIGINS"))
 app.add_middleware(
@@ -100,6 +116,11 @@ def dashboard_page():
     f = WEB_DIR / "dashboard.html"
     return FileResponse(str(f))
 
+@app.get("/settings")
+def settings_page():
+    f = WEB_DIR / "settings.html"
+    return FileResponse(str(f))
+
 @app.get("/api/health")
 def health():
     return {
@@ -128,3 +149,6 @@ app.include_router(heartbeat_router, prefix="/api/heartbeat", tags=["Heartbeat"]
 # Include notification preferences routes
 from routes.notification_preferences import router as notification_prefs_router
 app.include_router(notification_prefs_router, prefix="/api/notification-preferences", tags=["Notification Preferences"])
+
+# Mount Socket.IO for real-time updates - Temporarily disabled
+# app.mount("/socket.io", socket_app)

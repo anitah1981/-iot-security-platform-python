@@ -13,12 +13,16 @@ class UserBase(BaseModel):
     email: EmailStr
 
 class UserCreate(UserBase):
-    password: str = Field(..., min_length=8)
+    password: str = Field(..., min_length=12, description="Password must be at least 12 characters with uppercase, lowercase, numbers, and special characters")
     role: Literal["consumer", "business", "admin", "user"] = "consumer"
 
 class UserLogin(BaseModel):
     email: EmailStr
     password: str
+
+class PasswordChange(BaseModel):
+    current_password: str
+    new_password: str = Field(..., min_length=12)
 
 class UserResponse(UserBase):
     id: str

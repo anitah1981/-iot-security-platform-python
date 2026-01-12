@@ -3,9 +3,14 @@
   <head>
     <meta charset="utf-8"/>
     <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"/>
+    <meta http-equiv="Pragma" content="no-cache"/>
+    <meta http-equiv="Expires" content="0"/>
     <title>Dashboard • IoT Security Platform</title>
-    <link rel="stylesheet" href="/assets/app.css"/>
-    <script defer src="/assets/app.js"></script>
+    <link rel="stylesheet" href="/assets/app.css?v=2"/>
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+    <script defer src="/assets/app.js?v=2"></script>
+    <script defer src="/assets/websocket-client.js?v=2"></script>
   </head>
   <body>
     <div class="wrap" id="dashboardRoot">
@@ -14,11 +19,12 @@
           <div class="logo" aria-hidden="true"></div>
           <div>
             <h1>Security Dashboard</h1>
-            <p><span id="who">Loading profile…</span></p>
+            <p><span id="who">Loading profile…</span> • <span id="wsStatus" class="ws-status">Connecting...</span></p>
           </div>
         </div>
         <div class="row">
           <a class="btn" href="/">Home</a>
+          <a class="btn" href="/settings">Settings</a>
           <a class="btn" href="/docs">API Docs</a>
           <button class="btn danger" id="logoutBtn" type="button">Logout</button>
         </div>
@@ -26,8 +32,21 @@
 
       <div class="grid">
         <div class="card">
-          <h2>Devices</h2>
-          <p class="sub">Latest devices (first 25). This will become a full device inventory UI.</p>
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <div>
+              <h2>Devices</h2>
+              <p class="sub">Latest devices (first 25). This will become a full device inventory UI.</p>
+            </div>
+            <div style="text-align: right; display: flex; align-items: center; gap: 12px;">
+              <button class="btn-sm" onclick="manualRefresh()" style="background: var(--primary); color: white; border: none; cursor: pointer;">
+                <span style="display: inline-block; margin-right: 6px;">🔄</span>Refresh
+              </button>
+              <div>
+                <div style="font-size: 12px; color: var(--muted);">Last updated</div>
+                <div id="lastUpdate" style="font-size: 14px; font-weight: 500; color: var(--text);">Just now</div>
+              </div>
+            </div>
+          </div>
           <div class="hint" id="dashmsg"></div>
           <div style="overflow:auto; margin-top:10px;">
             <table>

@@ -44,6 +44,72 @@ class NotificationService:
     def _twilio_ready(self) -> bool:
         return bool(self.twilio_account_sid and self.twilio_auth_token and self.twilio_phone_number)
 
+    async def _send_email(
+        self,
+        to_email: str,
+        subject: str,
+        message: str,
+        severity: str,
+        alert_id: str
+    ) -> bool:
+        """Send email notification via Gmail SMTP with HTML formatting"""
+        
+        if not self.smtp_user or not self.smtp_password:
+            print("⚠️  Gmail SMTP not configured - skipping email")
+            return False
+        
+        try:
+            import smtplib
+            from email.mime.text import MIMEText
+            from email.mime.multipart import MIMEMultipart
+            
+            # Create HTML email body
+            html_content = f"""
+            <html>
+                <body style="font-family: Arial, sans-serif; padding: 20px;">
+                    <div style="background: {'#dc2626' if severity == 'critical' else '#f59e0b' if severity == 'high' else '#3b82f6'}; 
+                                color: white; padding: 15px; border-radius: 5px; margin-bottom: 20px;">
+                        <h2 style="margin: 0;">🚨 IoT Security Alert</h2>
+                    </div>
+                    
+                    <div style="background: #f3f4f6; padding: 20px; border-radius: 5px; margin-bottom: 20px;">
+                        <p style="font-size: 18px; margin: 0;"><strong>{message}</strong></p>
+                    </div>
+                    
+                    <p><strong>Severity:</strong> {severity.upper()}</p>
+                    <p><strong>Time:</strong> {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S UTC')}</p>
+                    
+                    <hr style="margin: 30px 0; border: none; border-top: 1px solid #e5e7eb;">
+                    
+                    <p style="color: #6b7280; font-size: 12px;">
+                        You're receiving this because you have IoT Security Platform monitoring enabled.
+                    </p>
+                </body>
+            </html>
+            """
+            
+            # Create message
+            msg = MIMEMultipart('alternative')
+            msg['Subject'] = subject
+            msg['From'] = self.from_email
+            msg['To'] = to_email
+            
+            html_part = MIMEText(html_content, 'html')
+            msg.attach(html_part)
+            
+            # Send via Gmail SMTP
+            with smtplib.SMTP(self.smtp_host, self.smtp_port) as server:
+                server.starttls()
+                server.login(self.smtp_user, self.smtp_password)
+                server.send_message(msg)
+            
+            print(f"✅ Email sent to {to_email}")
+            return True
+        
+        except Exception as e:
+            print(f"❌ Email error: {e}")
+            return False
+
     def send_email(self, to_email: str, subject: str, content: str) -> NotificationResult:
         if not self._smtp_ready():
             return NotificationResult(False, "email", "Gmail SMTP not configured (SMTP_USER/SMTP_PASSWORD/FROM_EMAIL)")
@@ -133,7 +199,8 @@ async def send_alert_notification(
     device_name: str,
     alert_message: str,
     alert_severity: str,
-    notification_prefs: dict
+    notification_prefs: dict,
+    alert_id: str = "unknown"
 ) -> list[NotificationResult]:
     """
     Send notifications based on user preferences and alert severity
@@ -145,6 +212,7 @@ async def send_alert_notification(
         alert_message: The alert message
         alert_severity: Alert severity (low, medium, high, critical)
         notification_prefs: User's notification preferences from DB
+        alert_id: ID of the alert (optional)
     
     Returns:
         List of notification results
@@ -152,22 +220,9 @@ async def send_alert_notification(
     service = get_notification_service()
     results = []
     
-    # Format the alert message
-    subject = f"[{alert_severity.upper()}] IoT Security Alert"
-    content = f"""
-Hello {user_name},
-
-You have a new {alert_severity} severity alert from your IoT Security Platform.
-
-Device: {device_name}
-Message: {alert_message}
-Time: {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S UTC')}
-
-Please log into your dashboard to review and resolve this alert.
-
-Best regards,
-IoT Security Platform
-"""
+    # Format the alert message for email
+    subject = f"[{alert_severity.upper()}] IoT Security Alert - {device_name}"
+    email_message = f"Device: {device_name}\n\n{alert_message}"
     
     # Check if in quiet hours
     if notification_prefs.get("quietHoursEnabled", False):
@@ -179,12 +234,18 @@ IoT Security Platform
             # Would check time here
             pass
     
-    # Email notification
+    # Email notification - using new HTML email
     if notification_prefs.get("emailEnabled", True):
         email_severities = notification_prefs.get("emailSeverities", ["low", "medium", "high", "critical"])
         if alert_severity in email_severities:
-            result = service.send_email(user_email, subject, content)
-            results.append(result)
+            success = await service._send_email(
+                to_email=user_email,
+                subject=subject,
+                message=email_message,
+                severity=alert_severity,
+                alert_id=alert_id
+            )
+            results.append(NotificationResult(success, "email", "Sent" if success else "Failed"))
     
     # SMS notification
     if notification_prefs.get("smsEnabled", False):

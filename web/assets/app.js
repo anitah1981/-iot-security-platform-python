@@ -73,10 +73,21 @@ async function loadDashboard(){
 
     renderDevices(devices.devices || []);
     renderAlerts(alerts.alerts || []);
+    updateLastRefreshTime();
 
     msg.textContent = "";
   }catch(e){
     msg.textContent = e.message;
+  }
+}
+
+function updateLastRefreshTime(){
+  const elem = qs("#lastUpdate");
+  if(elem){
+    const now = new Date();
+    elem.textContent = now.toLocaleTimeString();
+    elem.style.color = "var(--ok)";
+    setTimeout(() => { elem.style.color = "var(--text)"; }, 1000);
   }
 }
 
@@ -92,6 +103,7 @@ function startAutoRefresh(){
       ]);
       renderDevices(devices.devices || []);
       renderAlerts(alerts.alerts || []);
+      updateLastRefreshTime();
     }catch(e){
       console.error("Auto-refresh error:", e);
     }
@@ -127,12 +139,12 @@ function renderDevices(devs){
     return;
   }
   tbody.innerHTML = devs.map(d => `
-    <tr>
+    <tr data-device-id="${d.id || d._id}">
       <td>${esc(d.device_id)}</td>
       <td>${esc(d.name)}</td>
       <td>${esc(d.type)}</td>
       <td>${esc(d.ip_address)}</td>
-      <td>${badgeForStatus(d.status)}</td>
+      <td class="device-status">${badgeForStatus(d.status)}</td>
     </tr>
   `).join("");
 }
@@ -145,13 +157,13 @@ function renderAlerts(alerts){
     return;
   }
   tbody.innerHTML = alerts.map(a => `
-    <tr class="${a.resolved ? 'resolved-alert' : ''}">
+    <tr class="${a.resolved ? 'resolved-alert' : ''}" data-alert-id="${a.id || a._id}">
       <td><span class="${badgeForSeverity(a.severity)}">${esc(a.severity)}</span></td>
       <td>${esc(a.type)}</td>
       <td>${esc(a.message)}</td>
       <td>${a.device?.name ? esc(a.device.name) : esc(a.device_id)}</td>
       <td>${esc((a.created_at || "").toString().slice(0,19).replace("T"," "))}</td>
-      <td>
+      <td class="alert-action">
         ${!a.resolved ? `<button class="btn-sm" onclick="resolveAlert('${a.id}')">Resolve</button>` : '<span class="badge b-ok">Resolved</span>'}
       </td>
     </tr>
@@ -180,6 +192,41 @@ function logout(){
   window.location.href = "/";
 }
 
+async function manualRefresh(){
+  const msg = qs("#dashmsg");
+  const btn = event.target.closest('button');
+  
+  // Disable button and show loading
+  if(btn){
+    btn.disabled = true;
+    btn.innerHTML = '<span style="display: inline-block; margin-right: 6px;">⏳</span>Refreshing...';
+  }
+  
+  try{
+    msg.textContent = "Refreshing...";
+    const [devices, alerts] = await Promise.all([
+      api("/api/devices?limit=25&page=1"),
+      api("/api/alerts?limit=25&page=1"),
+    ]);
+    
+    renderDevices(devices.devices || []);
+    renderAlerts(alerts.alerts || []);
+    updateLastRefreshTime();
+    
+    msg.textContent = "✅ Refreshed successfully!";
+    setTimeout(() => { msg.textContent = ""; }, 2000);
+  }catch(e){
+    msg.className = "msg bad";
+    msg.textContent = "❌ Refresh failed: " + e.message;
+  }finally{
+    // Re-enable button
+    if(btn){
+      btn.disabled = false;
+      btn.innerHTML = '<span style="display: inline-block; margin-right: 6px;">🔄</span>Refresh';
+    }
+  }
+}
+
 // Page wiring
 window.addEventListener("DOMContentLoaded", () => {
   if(qs("#loginForm")){
@@ -190,11 +237,23 @@ window.addEventListener("DOMContentLoaded", () => {
   }
   if(qs("#dashboardRoot")){
     loadDashboard();
+    // Always start auto-refresh as backup
     startAutoRefresh();
+    // Initialize WebSocket for real-time updates (if available)
+    if(typeof initializeWebSocket === 'function'){
+      initializeWebSocket();
+      // Request browser notification permission
+      if(typeof requestNotificationPermission === 'function'){
+        requestNotificationPermission();
+      }
+    }
   }
 });
 
 // Clean up on page unload
 window.addEventListener("beforeunload", () => {
   stopAutoRefresh();
+  if(typeof disconnectWebSocket === 'function'){
+    disconnectWebSocket();
+  }
 });
