@@ -1,16 +1,18 @@
 # routes/alerts.py - Alert Management Routes
-from fastapi import APIRouter, HTTPException, status, Query
+from fastapi import APIRouter, HTTPException, status, Query, Depends
 from typing import Optional
 from bson import ObjectId
 from datetime import datetime, timedelta
 
 from models import AlertCreate, AlertResponse, AlertListResponse
 from database import get_database
+from routes.auth import get_current_user
+from services.alert_notifier import notify_alert
 
 router = APIRouter()
 
 @router.post("/", response_model=AlertResponse, status_code=status.HTTP_201_CREATED)
-async def create_alert(alert: AlertCreate):
+async def create_alert(alert: AlertCreate, current_user=Depends(get_current_user)):
     """
     Create an alert (manual or auto from monitoring)
     
@@ -84,6 +86,12 @@ async def create_alert(alert: AlertCreate):
     }
     
     result = await db.alerts.insert_one(alert_doc)
+    # Fire-and-forget notification delivery (best-effort)
+    try:
+        import asyncio
+        asyncio.create_task(notify_alert(result.inserted_id))
+    except Exception as e:
+        print(f"⚠️ notify_alert failed to start: {e}")
     
     return AlertResponse(
         id=str(result.inserted_id),
@@ -105,6 +113,8 @@ async def get_alerts(
     since: Optional[datetime] = Query(None, description="Only alerts after this timestamp"),
     page: int = Query(1, ge=1, description="Page number"),
     limit: int = Query(10, ge=1, le=100, description="Items per page")
+    ,
+    current_user=Depends(get_current_user),
 ):
     """
     Get alerts with filters and pagination
@@ -175,7 +185,7 @@ async def get_alerts(
     )
 
 @router.delete("/cleanup")
-async def cleanup_old_alerts(days: int = Query(..., description="Delete alerts older than this many days")):
+async def cleanup_old_alerts(days: int = Query(..., description="Delete alerts older than this many days"), current_user=Depends(get_current_user)):
     """
     Delete old alerts for housekeeping
     
@@ -193,7 +203,7 @@ async def cleanup_old_alerts(days: int = Query(..., description="Delete alerts o
     }
 
 @router.patch("/{alert_id}/resolve")
-async def resolve_alert(alert_id: str):
+async def resolve_alert(alert_id: str, current_user=Depends(get_current_user)):
     """
     Mark an alert as resolved
     """

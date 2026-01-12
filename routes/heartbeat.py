@@ -15,6 +15,7 @@ from fastapi import APIRouter, HTTPException, status
 
 from database import get_database
 from models import HeartbeatData, HeartbeatResponse
+from services.alert_notifier import notify_alert
 
 
 router = APIRouter()
@@ -92,7 +93,13 @@ async def receive_heartbeat(payload: HeartbeatData) -> HeartbeatResponse:
             "createdAt": now,
             "updatedAt": now,
         }
-        await db.alerts.insert_one(alert_doc)
+        result = await db.alerts.insert_one(alert_doc)
+        # Notify (best-effort)
+        try:
+            import asyncio
+            asyncio.create_task(notify_alert(result.inserted_id))
+        except Exception as e:
+            print(f"⚠️ notify_alert failed to start (heartbeat): {e}")
 
     return HeartbeatResponse(
         success=True,

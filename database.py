@@ -58,5 +58,12 @@ async def create_indexes():
     # Alerts collection
     await database.alerts.create_index("deviceId")
     await database.alerts.create_index("createdAt")
+
+    # Notification preferences
+    await database.notification_preferences.create_index("userId", unique=True)
+
+    # Notification logs
+    await database.notification_logs.create_index("alertId")
+    await database.notification_logs.create_index("createdAt")
     
     print("✅ Database indexes created")

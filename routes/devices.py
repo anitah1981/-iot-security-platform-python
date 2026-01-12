@@ -1,11 +1,12 @@
 # routes/devices.py - Device Management Routes
-from fastapi import APIRouter, HTTPException, status, Query
+from fastapi import APIRouter, HTTPException, status, Query, Depends
 from typing import Optional
 from bson import ObjectId
 from datetime import datetime
 
 from models import DeviceCreate, DeviceUpdate, DeviceResponse, DeviceListResponse
 from database import get_database
+from routes.auth import get_current_user
 
 router = APIRouter()
 
@@ -16,6 +17,8 @@ async def get_devices(
     name: Optional[str] = Query(None, description="Filter by name (partial match)"),
     page: int = Query(1, ge=1, description="Page number"),
     limit: int = Query(10, ge=1, le=100, description="Items per page")
+    ,
+    current_user=Depends(get_current_user),
 ):
     """
     Get all devices with optional filters and pagination
@@ -75,7 +78,7 @@ async def get_devices(
     )
 
 @router.get("/{device_id}/status")
-async def get_device_status(device_id: str):
+async def get_device_status(device_id: str, current_user=Depends(get_current_user)):
     """
     Get live status/details for a single device
     
@@ -107,7 +110,7 @@ async def get_device_status(device_id: str):
     }
 
 @router.post("/", response_model=DeviceResponse, status_code=status.HTTP_201_CREATED)
-async def create_device(device: DeviceCreate):
+async def create_device(device: DeviceCreate, current_user=Depends(get_current_user)):
     """
     Register a new device
     """
@@ -166,7 +169,7 @@ async def create_device(device: DeviceCreate):
     )
 
 @router.patch("/{device_id}", response_model=DeviceResponse)
-async def update_device(device_id: str, updates: DeviceUpdate):
+async def update_device(device_id: str, updates: DeviceUpdate, current_user=Depends(get_current_user)):
     """
     Update device information
     """
@@ -224,7 +227,7 @@ async def update_device(device_id: str, updates: DeviceUpdate):
     )
 
 @router.delete("/{device_id}")
-async def delete_device(device_id: str):
+async def delete_device(device_id: str, current_user=Depends(get_current_user)):
     """
     Delete a device
     """

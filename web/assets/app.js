@@ -67,8 +67,8 @@ async function loadDashboard(){
 
   try{
     const [devices, alerts] = await Promise.all([
-      api("/api/devices?limit=25&page=1", { auth:false }), // current API has no auth on devices yet
-      api("/api/alerts?limit=25&page=1", { auth:false }),
+      api("/api/devices?limit=25&page=1"),
+      api("/api/alerts?limit=25&page=1"),
     ]);
 
     renderDevices(devices.devices || []);

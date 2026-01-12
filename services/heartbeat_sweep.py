@@ -15,6 +15,7 @@ from typing import Optional
 from bson import ObjectId
 
 from database import get_database
+from services.alert_notifier import notify_alert
 
 
 DEFAULT_SWEEP_INTERVAL_SECONDS = 30
@@ -38,7 +39,7 @@ async def _create_connectivity_alert_if_needed(device_mongo_id: ObjectId, messag
     if existing:
         return
 
-    await db.alerts.insert_one(
+    result = await db.alerts.insert_one(
         {
             "deviceId": device_mongo_id,
             "message": message,
@@ -51,6 +52,11 @@ async def _create_connectivity_alert_if_needed(device_mongo_id: ObjectId, messag
             "updatedAt": now,
         }
     )
+    # Notify (best-effort)
+    try:
+        asyncio.create_task(notify_alert(result.inserted_id))
+    except Exception as e:
+        print(f"⚠️ notify_alert failed to start (sweep): {e}")
 
 
 async def sweep_once() -> None:

@@ -33,6 +33,42 @@ class TokenResponse(BaseModel):
     message: str = "Authentication successful"
 
 # ============================================================
+# NOTIFICATION PREFERENCES MODELS
+# ============================================================
+
+class QuietHours(BaseModel):
+    enabled: bool = False
+    start: str = Field("22:00", description="Local time HH:MM")
+    end: str = Field("07:00", description="Local time HH:MM")
+    timezone: str = Field("UTC", description="IANA timezone, e.g. Europe/London")
+
+
+class NotificationPreferences(BaseModel):
+    """
+    Stored per-user. For MVP, the platform will notify the user(s) associated with the device/org.
+    """
+
+    email_enabled: bool = True
+    sms_enabled: bool = False
+    whatsapp_enabled: bool = False
+    voice_enabled: bool = False
+
+    escalation_enabled: bool = True
+
+    # Destinations
+    email: Optional[EmailStr] = None
+    phone_number: Optional[str] = Field(None, description="E.164 format preferred, e.g. +447700900123")
+    whatsapp_number: Optional[str] = Field(None, description="E.164 format preferred, e.g. +447700900123")
+    voice_number: Optional[str] = Field(None, description="E.164 format preferred, e.g. +447700900123")
+
+    quiet_hours: QuietHours = QuietHours()
+
+
+class NotificationPreferencesResponse(NotificationPreferences):
+    user_id: str
+    updated_at: datetime
+
+# ============================================================
 # DEVICE MODELS
 # ============================================================
 

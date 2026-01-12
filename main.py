@@ -116,3 +116,7 @@ app.include_router(alerts_router, prefix="/api/alerts", tags=["Alerts"])
 # Include heartbeat routes
 from routes.heartbeat import router as heartbeat_router
 app.include_router(heartbeat_router, prefix="/api/heartbeat", tags=["Heartbeat"])
+
+# Include notification preferences routes
+from routes.notifications import router as notifications_router
+app.include_router(notifications_router, prefix="/api/notifications", tags=["Notifications"])
