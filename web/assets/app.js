@@ -25,6 +25,13 @@ async function api(path, { method="GET", body, auth=true } = {}){
   let data = null;
   try{ data = await res.json(); } catch {}
   if(!res.ok){
+    // Handle both string and object error details
+    if(data?.detail && typeof data.detail === 'object'){
+      // If detail is an object (like password validation errors), throw the whole object
+      const error = new Error(data.detail.message || `Request failed (${res.status})`);
+      error.detail = data.detail.errors || data.detail;
+      throw error;
+    }
     const msg = data?.detail || data?.message || `Request failed (${res.status})`;
     throw new Error(msg);
   }

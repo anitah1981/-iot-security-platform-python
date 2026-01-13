@@ -29,6 +29,10 @@ class UserResponse(UserBase):
     role: str
     organization: Optional[Dict[str, Any]] = None
     organization_role: Optional[str] = None
+    plan: str = "free"  # free, pro, business
+    subscription_id: Optional[str] = None
+    subscription_status: Optional[str] = None  # active, cancelled, past_due, etc.
+    stripe_customer_id: Optional[str] = None
     created_at: datetime
 
 class TokenResponse(BaseModel):

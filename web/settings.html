@@ -119,6 +119,35 @@
         </div>
       </div>
 
+      <!-- Subscription & Usage Section -->
+      <div class="grid" style="margin-top: 24px;">
+        <!-- Subscription Card -->
+        <div class="card">
+          <h2>💳 Subscription</h2>
+          <p class="sub">Manage your subscription plan</p>
+
+          <div id="subscriptionInfo" style="margin-top: 20px;">
+            <div style="text-align: center; padding: 40px 20px;">
+              <div style="font-size: 48px; margin-bottom: 16px;">⏳</div>
+              <p style="color: var(--muted);">Loading subscription...</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Usage Card -->
+        <div class="card">
+          <h2>📊 Usage</h2>
+          <p class="sub">Your current usage against plan limits</p>
+
+          <div id="usageInfo" style="margin-top: 20px;">
+            <div style="text-align: center; padding: 40px 20px;">
+              <div style="font-size: 48px; margin-bottom: 16px;">⏳</div>
+              <p style="color: var(--muted);">Loading usage...</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <div class="footer">
         Built for trust: calm dark surfaces, clear status badges, and consistent "security blue + verification teal".
       </div>
@@ -138,11 +167,184 @@
           document.querySelector("#userEmail").textContent = me.email;
           document.querySelector("#userName").textContent = me.name;
           document.querySelector("#userRole").textContent = me.role;
+          
+          // Load subscription and usage
+          await loadSubscription();
+          await loadUsage();
         } catch(e) {
           // Not logged in
           setToken(null);
           window.location.href = "/login";
           return;
+        }
+      }
+
+      // Load subscription info
+      async function loadSubscription() {
+        const container = document.querySelector("#subscriptionInfo");
+        
+        try {
+          const subscription = await api("/api/payments/subscription");
+          const plan = subscription.plan || "free";
+          const status = subscription.status || "none";
+          
+          let planDisplay = plan.charAt(0).toUpperCase() + plan.slice(1);
+          let statusBadge = "";
+          let actions = "";
+          
+          if (plan === "free") {
+            statusBadge = `<span class="badge" style="background: var(--muted);">Free Plan</span>`;
+            actions = `
+              <a href="/pricing" class="btn" style="background: var(--primary); color: white; text-decoration: none; display: inline-block; margin-top: 16px;">
+                Upgrade Your Plan
+              </a>
+            `;
+          } else {
+            if (status === "active") {
+              statusBadge = `<span class="badge" style="background: var(--ok);">Active</span>`;
+              
+              if (subscription.cancel_at_period_end) {
+                const endDate = new Date(subscription.current_period_end * 1000).toLocaleDateString();
+                actions = `
+                  <p style="color: var(--warning); margin: 16px 0;">Your subscription will end on ${endDate}</p>
+                  <button onclick="reactivateSubscription()" class="btn" style="background: var(--primary); color: white;">
+                    Reactivate Subscription
+                  </button>
+                `;
+              } else {
+                const renewDate = new Date(subscription.current_period_end * 1000).toLocaleDateString();
+                actions = `
+                  <p style="color: var(--muted); margin: 16px 0;">Renews on ${renewDate}</p>
+                  <button onclick="manageSubscription()" class="btn" style="background: var(--primary); color: white; margin-right: 8px;">
+                    Manage Billing
+                  </button>
+                  <button onclick="cancelSubscription()" class="btn" style="background: var(--danger); color: white;">
+                    Cancel Subscription
+                  </button>
+                `;
+              }
+            } else {
+              statusBadge = `<span class="badge" style="background: var(--warning);">${status}</span>`;
+            }
+          }
+          
+          container.innerHTML = `
+            <div style="text-align: center; padding: 20px;">
+              <div style="font-size: 36px; font-weight: 700; color: var(--primary); margin-bottom: 8px;">
+                ${planDisplay} Plan
+              </div>
+              <div style="margin-bottom: 16px;">
+                ${statusBadge}
+              </div>
+              ${actions}
+            </div>
+          `;
+        } catch(e) {
+          container.innerHTML = `
+            <div style="text-align: center; padding: 20px;">
+              <p style="color: var(--danger);">Failed to load subscription</p>
+            </div>
+          `;
+        }
+      }
+
+      // Load usage info
+      async function loadUsage() {
+        const container = document.querySelector("#usageInfo");
+        
+        try {
+          const usage = await api("/api/payments/usage");
+          const devices = usage.usage.devices;
+          const alerts = usage.usage.alerts;
+          
+          const devicePercentage = devices.percentage || 0;
+          const deviceLimit = devices.limit === "unlimited" ? "∞" : devices.limit;
+          
+          container.innerHTML = `
+            <div style="padding: 20px;">
+              <!-- Devices Usage -->
+              <div style="margin-bottom: 24px;">
+                <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                  <span style="font-weight: 500;">Devices</span>
+                  <span style="color: var(--muted);">${devices.current} / ${deviceLimit}</span>
+                </div>
+                <div style="background: var(--surface-alt); height: 8px; border-radius: 4px; overflow: hidden;">
+                  <div style="background: var(--primary); height: 100%; width: ${Math.min(devicePercentage, 100)}%; transition: width 0.3s ease;"></div>
+                </div>
+              </div>
+
+              <!-- Alert History -->
+              <div style="margin-bottom: 24px;">
+                <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                  <span style="font-weight: 500;">Alert History</span>
+                  <span style="color: var(--muted);">${alerts.retention_days} days</span>
+                </div>
+                <p style="font-size: 12px; color: var(--muted); margin: 0;">
+                  ${alerts.current} alerts in retention period
+                </p>
+              </div>
+
+              <!-- Features -->
+              <div style="padding-top: 16px; border-top: 1px solid var(--border);">
+                <p style="font-weight: 500; margin-bottom: 12px;">Plan Features:</p>
+                <ul style="margin: 0; padding-left: 20px; font-size: 13px; color: var(--muted); line-height: 1.8;">
+                  ${usage.features.map(f => `<li>${f}</li>`).join('')}
+                </ul>
+              </div>
+
+              ${devicePercentage > 80 ? `
+                <div style="margin-top: 16px; padding: 12px; background: rgba(251, 191, 36, 0.1); border: 1px solid rgba(251, 191, 36, 0.3); border-radius: 8px;">
+                  <p style="margin: 0; font-size: 13px; color: var(--warning);">
+                    ⚠️ You're approaching your device limit. Consider upgrading your plan.
+                  </p>
+                </div>
+              ` : ''}
+            </div>
+          `;
+        } catch(e) {
+          container.innerHTML = `
+            <div style="text-align: center; padding: 20px;">
+              <p style="color: var(--danger);">Failed to load usage</p>
+            </div>
+          `;
+        }
+      }
+
+      // Cancel subscription
+      async function cancelSubscription() {
+        if (!confirm("Are you sure you want to cancel your subscription? You'll still have access until the end of your billing period.")) {
+          return;
+        }
+        
+        try {
+          await api("/api/payments/cancel-subscription", { method: "POST" });
+          alert("Subscription cancelled. You'll have access until the end of your billing period.");
+          await loadSubscription();
+        } catch(e) {
+          alert(`Failed to cancel subscription: ${e.message}`);
+        }
+      }
+
+      // Reactivate subscription
+      async function reactivateSubscription() {
+        try {
+          await api("/api/payments/reactivate-subscription", { method: "POST" });
+          alert("Subscription reactivated successfully!");
+          await loadSubscription();
+        } catch(e) {
+          alert(`Failed to reactivate subscription: ${e.message}`);
+        }
+      }
+
+      // Manage subscription via Stripe portal
+      async function manageSubscription() {
+        try {
+          const response = await api("/api/payments/customer-portal", { method: "POST" });
+          if (response.url) {
+            window.location.href = response.url;
+          }
+        } catch(e) {
+          alert(`Failed to open billing portal: ${e.message}`);
         }
       }
 
@@ -211,20 +413,14 @@
               msg.className = "msg bad";
               
               // Handle detailed error messages
-              if(e.message.includes("{")){
-                try {
-                  const errorData = JSON.parse(e.message);
-                  if(errorData.errors && Array.isArray(errorData.errors)){
-                    msg.innerHTML = `<strong>❌ Password Error:</strong><br/>` + 
-                                   errorData.errors.map(err => `• ${err}`).join("<br/>");
-                  } else {
-                    msg.textContent = `❌ ${errorData.message || e.message}`;
-                  }
-                } catch {
-                  msg.textContent = `❌ ${e.message}`;
-                }
-              } else {
+              if(e.detail && Array.isArray(e.detail)){
+                // Password validation errors
+                msg.innerHTML = `<strong>❌ Password Requirements Not Met:</strong><br/>` + 
+                               e.detail.map(err => `• ${err}`).join("<br/>");
+              } else if(e.message){
                 msg.textContent = `❌ ${e.message}`;
+              } else {
+                msg.textContent = `❌ Failed to change password`;
               }
             }
           });

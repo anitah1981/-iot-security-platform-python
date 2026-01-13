@@ -131,6 +131,10 @@ async def signup(user_data: UserCreate):
         "role": user_data.role,
         "organization": None,
         "organizationRole": "member",
+        "plan": "free",  # All new users start on free plan
+        "subscription_id": None,
+        "subscription_status": None,
+        "stripe_customer_id": None,
         "createdAt": datetime.utcnow(),
         "updatedAt": datetime.utcnow()
     }
@@ -147,6 +151,10 @@ async def signup(user_data: UserCreate):
         role=user_doc["role"],
         organization=user_doc.get("organization"),
         organization_role=user_doc.get("organizationRole"),
+        plan=user_doc.get("plan", "free"),
+        subscription_id=user_doc.get("subscription_id"),
+        subscription_status=user_doc.get("subscription_status"),
+        stripe_customer_id=user_doc.get("stripe_customer_id"),
         created_at=user_doc["createdAt"]
     )
     
@@ -207,6 +215,10 @@ async def login(credentials: UserLogin):
         role=user["role"],
         organization=org,
         organization_role=user.get("organizationRole"),
+        plan=user.get("plan", "free"),
+        subscription_id=user.get("subscription_id"),
+        subscription_status=user.get("subscription_status"),
+        stripe_customer_id=user.get("stripe_customer_id"),
         created_at=user.get("createdAt", datetime.utcnow())
     )
     

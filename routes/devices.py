@@ -1,11 +1,13 @@
 # routes/devices.py - Device Management Routes
-from fastapi import APIRouter, HTTPException, status, Query
+from fastapi import APIRouter, HTTPException, status, Query, Depends
 from typing import Optional
 from bson import ObjectId
 from datetime import datetime
 
 from models import DeviceCreate, DeviceUpdate, DeviceResponse, DeviceListResponse
 from database import get_database
+from routes.auth import get_current_user
+from middleware.plan_limits import PlanLimits
 
 router = APIRouter()
 
@@ -107,22 +109,35 @@ async def get_device_status(device_id: str):
     }
 
 @router.post("/", response_model=DeviceResponse, status_code=status.HTTP_201_CREATED)
-async def create_device(device: DeviceCreate):
+async def create_device(device: DeviceCreate, user: dict = Depends(get_current_user)):
     """
     Register a new device
+    
+    - Checks plan device limits
+    - Validates device doesn't already exist
+    - Associates device with user
     """
     db = await get_database()
     
-    # Check if device_id already exists
-    existing = await db.devices.find_one({"deviceId": device.device_id})
+    # Check plan device limit
+    await PlanLimits.check_device_limit(user)
+    
+    # Check if device_id already exists for this user
+    existing = await db.devices.find_one({
+        "deviceId": device.device_id,
+        "userId": user["_id"]
+    })
     if existing:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail=f"Device with ID '{device.device_id}' already exists"
         )
     
-    # Check if IP already exists
-    existing_ip = await db.devices.find_one({"ipAddress": device.ip_address})
+    # Check if IP already exists for this user
+    existing_ip = await db.devices.find_one({
+        "ipAddress": device.ip_address,
+        "userId": user["_id"]
+    })
     if existing_ip:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
@@ -131,6 +146,7 @@ async def create_device(device: DeviceCreate):
     
     # Create device document
     device_doc = {
+        "userId": user["_id"],  # Associate device with user
         "deviceId": device.device_id,
         "name": device.name,
         "type": device.type,

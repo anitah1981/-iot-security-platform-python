@@ -1,0 +1,274 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"/>
+    <meta http-equiv="Pragma" content="no-cache"/>
+    <meta http-equiv="Expires" content="0"/>
+    <title>Pricing • IoT Security Platform</title>
+    <link rel="stylesheet" href="/assets/app.css?v=2"/>
+    <link rel="stylesheet" href="/assets/pricing.css?v=1"/>
+    <script defer src="/assets/app.js?v=2"></script>
+  </head>
+  <body>
+    <div class="wrap">
+      <div class="nav">
+        <div class="brand">
+          <div class="logo" aria-hidden="true"></div>
+          <div>
+            <h1>Choose Your Plan</h1>
+            <p>Secure your IoT devices with confidence</p>
+          </div>
+        </div>
+        <div class="row">
+          <a class="btn" href="/dashboard">Dashboard</a>
+          <a class="btn" href="/">Home</a>
+          <button class="btn danger" id="logoutBtn" type="button" style="display:none;">Logout</button>
+          <a class="btn" href="/login" id="loginBtn">Login</a>
+        </div>
+      </div>
+
+      <div class="hint" id="pricingmsg" style="margin: 20px 0;"></div>
+
+      <div class="pricing-grid">
+        <!-- Free Plan -->
+        <div class="pricing-card">
+          <div class="plan-header">
+            <h2>Free</h2>
+            <div class="price">
+              <span class="amount">£0</span>
+              <span class="period">/month</span>
+            </div>
+            <p class="plan-description">Perfect for getting started</p>
+          </div>
+          
+          <ul class="features-list">
+            <li>✓ Up to 5 devices</li>
+            <li>✓ 30-day alert history</li>
+            <li>✓ Email notifications</li>
+            <li>✓ Basic dashboard</li>
+            <li>✓ Community support</li>
+          </ul>
+          
+          <button class="btn-plan current" disabled>Current Plan</button>
+        </div>
+
+        <!-- Pro Plan -->
+        <div class="pricing-card featured">
+          <div class="badge">Most Popular</div>
+          <div class="plan-header">
+            <h2>Pro</h2>
+            <div class="price">
+              <span class="amount">£4.99</span>
+              <span class="period">/month</span>
+            </div>
+            <p class="plan-description">For serious IoT security</p>
+          </div>
+          
+          <ul class="features-list">
+            <li>✓ Up to 25 devices</li>
+            <li>✓ 90-day alert history</li>
+            <li>✓ Email + SMS + WhatsApp</li>
+            <li>✓ Advanced dashboard with charts</li>
+            <li>✓ Alert exports (PDF/CSV)</li>
+            <li>✓ Priority email support</li>
+            <li>✓ Custom device grouping</li>
+          </ul>
+          
+          <button class="btn-plan" data-plan="pro">Upgrade to Pro</button>
+        </div>
+
+        <!-- Business Plan -->
+        <div class="pricing-card">
+          <div class="plan-header">
+            <h2>Business</h2>
+            <div class="price">
+              <span class="amount">£9.99</span>
+              <span class="period">/month</span>
+            </div>
+            <p class="plan-description">For teams and enterprises</p>
+          </div>
+          
+          <ul class="features-list">
+            <li>✓ Unlimited devices</li>
+            <li>✓ 1-year alert history</li>
+            <li>✓ All notification channels</li>
+            <li>✓ Advanced analytics & insights</li>
+            <li>✓ Scheduled alert exports</li>
+            <li>✓ Multi-user teams & RBAC</li>
+            <li>✓ Audit logs & compliance</li>
+            <li>✓ Incident timeline & playbooks</li>
+            <li>✓ API access</li>
+            <li>✓ Priority phone support</li>
+            <li>✓ SLA guarantee</li>
+          </ul>
+          
+          <button class="btn-plan" data-plan="business">Upgrade to Business</button>
+        </div>
+      </div>
+
+      <div class="faq-section">
+        <h2>Frequently Asked Questions</h2>
+        
+        <div class="faq-item">
+          <h3>Can I change plans anytime?</h3>
+          <p>Yes! You can upgrade or downgrade your plan at any time. Changes take effect immediately, and we'll prorate your billing.</p>
+        </div>
+        
+        <div class="faq-item">
+          <h3>What payment methods do you accept?</h3>
+          <p>We accept all major credit and debit cards through Stripe's secure payment processing.</p>
+        </div>
+        
+        <div class="faq-item">
+          <h3>Is there a long-term contract?</h3>
+          <p>No contracts! All plans are month-to-month. Cancel anytime with no penalties.</p>
+        </div>
+        
+        <div class="faq-item">
+          <h3>What happens if I exceed my device limit?</h3>
+          <p>We'll notify you when you're approaching your limit. You can upgrade your plan or remove devices to stay within your limit.</p>
+        </div>
+        
+        <div class="faq-item">
+          <h3>Do you offer refunds?</h3>
+          <p>Yes! We offer a 30-day money-back guarantee. If you're not satisfied, contact us for a full refund.</p>
+        </div>
+      </div>
+
+      <div class="footer">
+        Built for trust: calm dark surfaces, clear status badges, and consistent "security blue + verification teal".
+      </div>
+    </div>
+
+    <script>
+      // Check if user is logged in
+      async function checkAuth() {
+        try {
+          const user = await api("/api/auth/me");
+          document.querySelector("#loginBtn").style.display = "none";
+          document.querySelector("#logoutBtn").style.display = "block";
+          
+          // Update buttons based on current plan
+          updatePlanButtons(user.plan || "free");
+          
+          return user;
+        } catch(e) {
+          // Not logged in
+          document.querySelector("#loginBtn").style.display = "block";
+          document.querySelector("#logoutBtn").style.display = "none";
+          
+          // Disable upgrade buttons if not logged in
+          document.querySelectorAll(".btn-plan[data-plan]").forEach(btn => {
+            btn.textContent = "Sign Up to Get Started";
+            btn.onclick = () => window.location.href = "/signup";
+          });
+          
+          return null;
+        }
+      }
+
+      function updatePlanButtons(currentPlan) {
+        const plans = ["free", "pro", "business"];
+        const currentIndex = plans.indexOf(currentPlan.toLowerCase());
+        
+        document.querySelectorAll(".btn-plan").forEach(btn => {
+          const btnPlan = btn.getAttribute("data-plan");
+          
+          if (!btnPlan) {
+            // Free plan button
+            if (currentPlan.toLowerCase() === "free") {
+              btn.textContent = "Current Plan";
+              btn.classList.add("current");
+              btn.disabled = true;
+            } else {
+              btn.textContent = "Downgrade to Free";
+              btn.classList.remove("current");
+              btn.disabled = false;
+              btn.onclick = () => downgradePlan();
+            }
+          } else {
+            const btnIndex = plans.indexOf(btnPlan);
+            
+            if (btnPlan === currentPlan.toLowerCase()) {
+              btn.textContent = "Current Plan";
+              btn.classList.add("current");
+              btn.disabled = true;
+            } else if (btnIndex > currentIndex) {
+              btn.textContent = `Upgrade to ${btnPlan.charAt(0).toUpperCase() + btnPlan.slice(1)}`;
+              btn.classList.remove("current");
+              btn.disabled = false;
+              btn.onclick = () => upgradePlan(btnPlan);
+            } else {
+              btn.textContent = `Downgrade to ${btnPlan.charAt(0).toUpperCase() + btnPlan.slice(1)}`;
+              btn.classList.remove("current");
+              btn.disabled = false;
+              btn.onclick = () => downgradePlan();
+            }
+          }
+        });
+      }
+
+      async function upgradePlan(plan) {
+        const msg = document.querySelector("#pricingmsg");
+        msg.className = "msg";
+        msg.textContent = "🔄 Creating checkout session...";
+        
+        try {
+          const response = await api("/api/payments/create-checkout-session", {
+            method: "POST",
+            body: { plan }
+          });
+          
+          // Redirect to Stripe Checkout
+          if (response.url) {
+            window.location.href = response.url;
+          } else {
+            throw new Error("No checkout URL received");
+          }
+        } catch(e) {
+          msg.className = "msg bad";
+          msg.textContent = `❌ ${e.message}`;
+        }
+      }
+
+      async function downgradePlan() {
+        const msg = document.querySelector("#pricingmsg");
+        msg.className = "msg";
+        msg.textContent = "To downgrade or cancel your subscription, please visit your account settings.";
+        
+        setTimeout(() => {
+          window.location.href = "/settings";
+        }, 2000);
+      }
+
+      // Handle payment success/cancel from URL params
+      const urlParams = new URLSearchParams(window.location.search);
+      const paymentStatus = urlParams.get("payment");
+      
+      if (paymentStatus === "success") {
+        const msg = document.querySelector("#pricingmsg");
+        msg.className = "msg ok";
+        msg.textContent = "✅ Payment successful! Your subscription is now active. Redirecting to dashboard...";
+        
+        setTimeout(() => {
+          window.location.href = "/dashboard";
+        }, 2000);
+      } else if (paymentStatus === "cancelled") {
+        const msg = document.querySelector("#pricingmsg");
+        msg.className = "msg";
+        msg.textContent = "Payment was cancelled. You can try again anytime.";
+      }
+
+      // Initialize
+      document.addEventListener("DOMContentLoaded", () => {
+        checkAuth();
+        
+        if(document.querySelector("#logoutBtn")){
+          document.querySelector("#logoutBtn").addEventListener("click", logout);
+        }
+      });
+    </script>
+  </body>
+</html>

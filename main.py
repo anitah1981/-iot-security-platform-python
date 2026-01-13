@@ -50,9 +50,17 @@ async def lifespan(app: FastAPI):
     try:
         from services.heartbeat_sweep import start_background_sweep
         start_background_sweep()
-        print("Heartbeat sweep started")
+        print("✅ Heartbeat sweep started")
     except Exception as e:
-        print(f"Could not start heartbeat sweep: {e}")
+        print(f"❌ Could not start heartbeat sweep: {e}")
+    
+    # Start alert retention cleanup task
+    try:
+        from services.retention_cleanup import start_retention_cleanup_task
+        start_retention_cleanup_task()
+        print("✅ Alert retention cleanup task started")
+    except Exception as e:
+        print(f"❌ Could not start retention cleanup: {e}")
     print("Backend ready")
     
     yield
@@ -121,6 +129,11 @@ def settings_page():
     f = WEB_DIR / "settings.html"
     return FileResponse(str(f))
 
+@app.get("/pricing")
+def pricing_page():
+    f = WEB_DIR / "pricing.html"
+    return FileResponse(str(f))
+
 @app.get("/api/health")
 def health():
     return {
@@ -149,6 +162,10 @@ app.include_router(heartbeat_router, prefix="/api/heartbeat", tags=["Heartbeat"]
 # Include notification preferences routes
 from routes.notification_preferences import router as notification_prefs_router
 app.include_router(notification_prefs_router, prefix="/api/notification-preferences", tags=["Notification Preferences"])
+
+# 6) Payments (Stripe)
+from routes.payments import router as payments_router
+app.include_router(payments_router)
 
 # Mount Socket.IO for real-time updates - Temporarily disabled
 # app.mount("/socket.io", socket_app)
