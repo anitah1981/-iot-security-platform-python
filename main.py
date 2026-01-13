@@ -50,17 +50,17 @@ async def lifespan(app: FastAPI):
     try:
         from services.heartbeat_sweep import start_background_sweep
         start_background_sweep()
-        print("✅ Heartbeat sweep started")
+        print("[OK] Heartbeat sweep started")
     except Exception as e:
-        print(f"❌ Could not start heartbeat sweep: {e}")
+        print(f"[ERROR] Could not start heartbeat sweep: {e}")
     
     # Start alert retention cleanup task
     try:
         from services.retention_cleanup import start_retention_cleanup_task
         start_retention_cleanup_task()
-        print("✅ Alert retention cleanup task started")
+        print("[OK] Alert retention cleanup task started")
     except Exception as e:
-        print(f"❌ Could not start retention cleanup: {e}")
+        print(f"[ERROR] Could not start retention cleanup: {e}")
     print("Backend ready")
     
     yield

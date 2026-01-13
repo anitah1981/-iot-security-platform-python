@@ -43,16 +43,16 @@ async def cleanup_old_alerts_for_all_users():
             })
             
             if result.deleted_count > 0:
-                print(f"🗑️  Cleaned up {result.deleted_count} old alerts for user {user.get('email')} ({plan_name} plan, {retention_days} days retention)")
+                print(f"[CLEANUP] Cleaned up {result.deleted_count} old alerts for user {user.get('email')} ({plan_name} plan, {retention_days} days retention)")
                 total_deleted += result.deleted_count
             
             users_processed += 1
             
         except Exception as e:
-            print(f"❌ Error cleaning up alerts for user {user.get('email')}: {e}")
+            print(f"[ERROR] Error cleaning up alerts for user {user.get('email')}: {e}")
             continue
     
-    print(f"✅ Alert cleanup complete: {total_deleted} alerts deleted for {users_processed} users")
+    print(f"[OK] Alert cleanup complete: {total_deleted} alerts deleted for {users_processed} users")
     return {"deleted": total_deleted, "users_processed": users_processed}
 
 
@@ -109,19 +109,19 @@ def start_retention_cleanup_task():
                 
                 # Wait until next run
                 wait_seconds = (next_run - now).total_seconds()
-                print(f"📅 Next alert retention cleanup scheduled for {next_run.strftime('%Y-%m-%d %H:%M:%S')} UTC ({wait_seconds/3600:.1f} hours)")
+                print(f"[SCHEDULE] Next alert retention cleanup scheduled for {next_run.strftime('%Y-%m-%d %H:%M:%S')} UTC ({wait_seconds/3600:.1f} hours)")
                 
                 await asyncio.sleep(wait_seconds)
                 
                 # Run cleanup
-                print(f"🧹 Starting scheduled alert retention cleanup...")
+                print(f"[CLEANUP] Starting scheduled alert retention cleanup...")
                 await cleanup_old_alerts_for_all_users()
                 
             except Exception as e:
-                print(f"❌ Error in retention cleanup loop: {e}")
+                print(f"[ERROR] Error in retention cleanup loop: {e}")
                 # Wait 1 hour before retrying on error
                 await asyncio.sleep(3600)
     
     # Start the background task
     asyncio.create_task(cleanup_loop())
-    print("✅ Alert retention cleanup task started")
+    print("[OK] Alert retention cleanup task started")
