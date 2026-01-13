@@ -144,6 +144,16 @@ def reset_password_page():
     f = WEB_DIR / "reset-password.html"
     return FileResponse(str(f))
 
+@app.get("/terms")
+def terms_page():
+    f = WEB_DIR / "terms.html"
+    return FileResponse(str(f))
+
+@app.get("/privacy")
+def privacy_page():
+    f = WEB_DIR / "privacy.html"
+    return FileResponse(str(f))
+
 @app.get("/api/health")
 def health():
     return {
