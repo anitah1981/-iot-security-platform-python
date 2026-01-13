@@ -134,6 +134,16 @@ def pricing_page():
     f = WEB_DIR / "pricing.html"
     return FileResponse(str(f))
 
+@app.get("/forgot-password")
+def forgot_password_page():
+    f = WEB_DIR / "forgot-password.html"
+    return FileResponse(str(f))
+
+@app.get("/reset-password")
+def reset_password_page():
+    f = WEB_DIR / "reset-password.html"
+    return FileResponse(str(f))
+
 @app.get("/api/health")
 def health():
     return {
@@ -166,6 +176,10 @@ app.include_router(notification_prefs_router, prefix="/api/notification-preferen
 # 6) Payments (Stripe)
 from routes.payments import router as payments_router
 app.include_router(payments_router)
+
+# 7) Password Reset
+from routes.password_reset import router as password_reset_router
+app.include_router(password_reset_router)
 
 # Mount Socket.IO for real-time updates - Temporarily disabled
 # app.mount("/socket.io", socket_app)
