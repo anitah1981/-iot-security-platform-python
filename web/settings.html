@@ -148,6 +148,21 @@
         </div>
       </div>
 
+      <!-- Notification Preferences Section -->
+      <div class="card" style="margin-top: 24px;">
+        <h2>🔔 Notification Preferences</h2>
+        <p class="sub">Configure how you receive alerts</p>
+
+        <div id="notificationmsg" class="hint" style="margin: 16px 0;"></div>
+
+        <div id="notificationPrefs" style="margin-top: 20px;">
+          <div style="text-align: center; padding: 40px 20px;">
+            <div style="font-size: 48px; margin-bottom: 16px;">⏳</div>
+            <p style="color: var(--muted);">Loading preferences...</p>
+          </div>
+        </div>
+      </div>
+
       <div class="footer" style="text-align: center; padding: 20px;">
         <a href="/privacy" style="color: var(--primary); text-decoration: none; margin: 0 12px;">Privacy Policy</a>
         <span style="color: var(--muted);">•</span>
@@ -173,11 +188,206 @@
           // Load subscription and usage
           await loadSubscription();
           await loadUsage();
+          await loadNotificationPreferences();
         } catch(e) {
           // Not logged in
           setToken(null);
           window.location.href = "/login";
           return;
+        }
+      }
+
+      // Load notification preferences
+      async function loadNotificationPreferences() {
+        const container = document.querySelector("#notificationPrefs");
+        
+        try {
+          const prefs = await api("/api/notification-preferences/");
+          
+          container.innerHTML = `
+            <form id="notificationForm">
+              <!-- Email Notifications -->
+              <div style="padding: 20px; background: var(--surface-alt); border-radius: 8px; margin-bottom: 16px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                  <div>
+                    <h3 style="margin: 0; font-size: 16px;">📧 Email Notifications</h3>
+                    <p style="margin: 4px 0 0 0; font-size: 13px; color: var(--muted);">Receive alerts via email</p>
+                  </div>
+                  <label class="toggle">
+                    <input type="checkbox" id="emailEnabled" ${prefs.email_enabled ? 'checked' : ''}>
+                    <span class="slider"></span>
+                  </label>
+                </div>
+                <div style="margin-left: 20px; font-size: 13px; color: var(--muted);">
+                  Severities: ${prefs.email_severities.join(', ')}
+                </div>
+              </div>
+
+              <!-- SMS Notifications -->
+              <div style="padding: 20px; background: var(--surface-alt); border-radius: 8px; margin-bottom: 16px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                  <div>
+                    <h3 style="margin: 0; font-size: 16px;">📱 SMS Notifications</h3>
+                    <p style="margin: 4px 0 0 0; font-size: 13px; color: var(--muted);">Receive alerts via text message</p>
+                  </div>
+                  <label class="toggle">
+                    <input type="checkbox" id="smsEnabled" ${prefs.sms_enabled ? 'checked' : ''}>
+                    <span class="slider"></span>
+                  </label>
+                </div>
+                ${prefs.phone_number ? 
+                  `<div style="margin-left: 20px; font-size: 13px; color: var(--muted);">Phone: ${prefs.phone_number}</div>` :
+                  `<div style="margin-left: 20px; font-size: 13px; color: var(--warning);">⚠️ No phone number configured</div>`
+                }
+                <input type="tel" id="phoneNumber" placeholder="+44123456789" value="${prefs.phone_number || ''}"
+                       style="width: 100%; margin-top: 12px; padding: 10px; background: var(--surface); border: 1px solid var(--border); border-radius: 6px; color: var(--text);">
+              </div>
+
+              <!-- WhatsApp Notifications -->
+              <div style="padding: 20px; background: var(--surface-alt); border-radius: 8px; margin-bottom: 16px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                  <div>
+                    <h3 style="margin: 0; font-size: 16px;">💬 WhatsApp Notifications</h3>
+                    <p style="margin: 4px 0 0 0; font-size: 13px; color: var(--muted);">Receive alerts via WhatsApp</p>
+                  </div>
+                  <label class="toggle">
+                    <input type="checkbox" id="whatsappEnabled" ${prefs.whatsapp_enabled ? 'checked' : ''}>
+                    <span class="slider"></span>
+                  </label>
+                </div>
+                ${prefs.whatsapp_number ? 
+                  `<div style="margin-left: 20px; font-size: 13px; color: var(--muted);">WhatsApp: ${prefs.whatsapp_number}</div>` :
+                  `<div style="margin-left: 20px; font-size: 13px; color: var(--warning);">⚠️ No WhatsApp number configured</div>`
+                }
+                <input type="tel" id="whatsappNumber" placeholder="+44123456789" value="${prefs.whatsapp_number || ''}"
+                       style="width: 100%; margin-top: 12px; padding: 10px; background: var(--surface); border: 1px solid var(--border); border-radius: 6px; color: var(--text);">
+              </div>
+
+              <!-- Voice Call Notifications -->
+              <div style="padding: 20px; background: var(--surface-alt); border-radius: 8px; margin-bottom: 24px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                  <div>
+                    <h3 style="margin: 0; font-size: 16px;">📞 Voice Call Notifications</h3>
+                    <p style="margin: 4px 0 0 0; font-size: 13px; color: var(--muted);">Receive critical alerts via phone call</p>
+                  </div>
+                  <label class="toggle">
+                    <input type="checkbox" id="voiceEnabled" ${prefs.voice_enabled ? 'checked' : ''}>
+                    <span class="slider"></span>
+                  </label>
+                </div>
+                <div style="margin-left: 20px; font-size: 13px; color: var(--muted);">
+                  Only for: Critical alerts
+                </div>
+              </div>
+
+              <!-- Test Notifications -->
+              <div style="background: rgba(47,107,255,.08); border: 1px solid rgba(47,107,255,.2); border-radius: 8px; padding: 16px; margin-bottom: 20px;">
+                <h4 style="margin: 0 0 12px 0; font-size: 14px; color: var(--primary);">Test Your Notifications</h4>
+                <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                  <button type="button" onclick="testNotification('email')" class="btn-sm" style="background: var(--primary); color: white;">
+                    Test Email
+                  </button>
+                  <button type="button" onclick="testNotification('sms')" class="btn-sm" style="background: var(--primary); color: white;">
+                    Test SMS
+                  </button>
+                  <button type="button" onclick="testNotification('whatsapp')" class="btn-sm" style="background: var(--primary); color: white;">
+                    Test WhatsApp
+                  </button>
+                  <button type="button" onclick="testNotification('voice')" class="btn-sm" style="background: var(--primary); color: white;">
+                    Test Voice Call
+                  </button>
+                </div>
+              </div>
+
+              <!-- Save Button -->
+              <button type="submit" class="btn" style="background: var(--primary); color: white; padding: 12px 24px; width: 100%;">
+                Save Notification Preferences
+              </button>
+            </form>
+          `;
+
+          // Add form submit handler
+          document.getElementById("notificationForm").addEventListener("submit", async (e) => {
+            e.preventDefault();
+            await saveNotificationPreferences();
+          });
+
+        } catch(e) {
+          container.innerHTML = `
+            <div style="text-align: center; padding: 20px;">
+              <p style="color: var(--danger);">Failed to load notification preferences</p>
+            </div>
+          `;
+        }
+      }
+
+      // Save notification preferences
+      async function saveNotificationPreferences() {
+        const msg = document.querySelector("#notificationmsg");
+        
+        try {
+          const prefs = {
+            email_enabled: document.getElementById("emailEnabled").checked,
+            sms_enabled: document.getElementById("smsEnabled").checked,
+            whatsapp_enabled: document.getElementById("whatsappEnabled").checked,
+            voice_enabled: document.getElementById("voiceEnabled").checked,
+            phone_number: document.getElementById("phoneNumber").value || null,
+            whatsapp_number: document.getElementById("whatsappNumber").value || null
+          };
+
+          await api("/api/notification-preferences/", {
+            method: "PUT",
+            body: prefs
+          });
+
+          msg.className = "msg ok";
+          msg.textContent = "✓ Notification preferences saved successfully!";
+          
+          setTimeout(() => {
+            msg.textContent = "";
+            msg.className = "msg";
+          }, 3000);
+
+        } catch(e) {
+          msg.className = "msg bad";
+          msg.textContent = `✗ ${e.message}`;
+        }
+      }
+
+      // Test notification
+      async function testNotification(channel) {
+        const msg = document.querySelector("#notificationmsg");
+        msg.className = "msg";
+        msg.textContent = `Sending test ${channel} notification...`;
+
+        try {
+          // Create a test alert
+          const response = await api("/api/alerts/", {
+            method: "POST",
+            body: {
+              device_id: "test-device",
+              alert_type: "test",
+              severity: "medium",
+              message: `Test ${channel} notification from IoT Security Platform`,
+              details: {
+                test: true,
+                channel: channel,
+                timestamp: new Date().toISOString()
+              }
+            }
+          });
+
+          msg.className = "msg ok";
+          msg.textContent = `✓ Test ${channel} notification sent! Check your ${channel}.`;
+          
+          setTimeout(() => {
+            msg.textContent = "";
+            msg.className = "msg";
+          }, 5000);
+
+        } catch(e) {
+          msg.className = "msg bad";
+          msg.textContent = `✗ Failed to send test ${channel}: ${e.message}`;
         }
       }
 
