@@ -1,0 +1,188 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Family Sharing • IoT Security Platform</title>
+  <link rel="stylesheet" href="/assets/app.css?v=4"/>
+  <script defer src="/assets/app.js?v=4"></script>
+  <script defer src="/assets/family.js?v=4"></script>
+</head>
+<body>
+  <div class="wrap" id="familyRoot">
+    <div class="nav">
+      <div class="brand">
+        <div class="logo" aria-hidden="true"></div>
+        <div>
+          <h1>👨‍👩‍👧‍👦 Family Sharing</h1>
+          <p><span id="who">Loading...</span></p>
+        </div>
+      </div>
+      <div class="row">
+        <a class="btn" href="/dashboard">Dashboard</a>
+        <a class="btn" href="/settings">Settings</a>
+        <button class="btn danger" id="logoutBtn" type="button">Logout</button>
+      </div>
+    </div>
+
+    <div class="grid">
+      <!-- No Family State -->
+      <div id="noFamily" class="card" style="display: none;">
+        <h2>Create Your Family</h2>
+        <p class="sub">Share devices and alerts with your household. One account for the whole family!</p>
+        
+        <div style="background: rgba(59, 130, 246, 0.1); padding: 20px; border-radius: 8px; margin: 20px 0;">
+          <h3 style="color: var(--primary); margin-bottom: 12px;">✨ Family Features:</h3>
+          <ul style="list-style: none; padding: 0;">
+            <li style="padding: 8px 0; color: var(--text);">✅ All family members see the same devices</li>
+            <li style="padding: 8px 0; color: var(--text);">✅ Everyone receives alert notifications</li>
+            <li style="padding: 8px 0; color: var(--text);">✅ Family members can resolve alerts</li>
+            <li style="padding: 8px 0; color: var(--text);">✅ Admin controls who can manage devices</li>
+            <li style="padding: 8px 0; color: var(--text);">✅ Perfect for households, parents, roommates</li>
+          </ul>
+        </div>
+
+        <form id="createFamilyForm" style="margin-top: 24px;">
+          <div class="form-group">
+            <label for="familyName">Family Name *</label>
+            <input type="text" id="familyName" placeholder="e.g., Smith Family, My Home" required minlength="1" maxlength="100"/>
+          </div>
+          <div class="form-group">
+            <label for="familyDescription">Description (Optional)</label>
+            <textarea id="familyDescription" placeholder="Tell your family members what this is about..." maxlength="500" rows="3"></textarea>
+          </div>
+          <button type="submit" class="btn primary">Create Family</button>
+        </form>
+        <div id="createMsg" class="msg"></div>
+      </div>
+
+      <!-- Has Family State -->
+      <div id="hasFamily" style="display: none;">
+        <!-- Family Info Card -->
+        <div class="card">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+            <div>
+              <h2 id="familyName">Loading...</h2>
+              <p class="sub" id="familyDescription"></p>
+            </div>
+            <button class="btn-sm" onclick="editFamily()">Edit</button>
+          </div>
+          
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 16px; margin-top: 20px;">
+            <div class="card" style="text-align: center; padding: 16px; background: rgba(59, 130, 246, 0.1);">
+              <div style="font-size: 32px; font-weight: bold; color: var(--primary);" id="memberCount">0</div>
+              <div style="font-size: 12px; color: var(--muted); margin-top: 4px;">Family Members</div>
+            </div>
+            <div class="card" style="text-align: center; padding: 16px; background: rgba(34, 197, 94, 0.1);">
+              <div style="font-size: 32px; font-weight: bold; color: var(--ok);" id="deviceCount">0</div>
+              <div style="font-size: 12px; color: var(--muted); margin-top: 4px;">Shared Devices</div>
+            </div>
+            <div class="card" style="text-align: center; padding: 16px; background: rgba(168, 85, 247, 0.1);">
+              <div style="font-size: 32px; font-weight: bold; color: #a855f7;" id="inviteCount">0</div>
+              <div style="font-size: 12px; color: var(--muted); margin-top: 4px;">Pending Invites</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Invite Members Card -->
+        <div class="card" id="inviteCard">
+          <h2>Invite Family Member</h2>
+          <p class="sub">Send an invitation email to add someone to your family</p>
+          
+          <form id="inviteForm" style="margin-top: 20px;">
+            <div class="form-group">
+              <label for="inviteEmail">Email Address *</label>
+              <input type="email" id="inviteEmail" placeholder="family@example.com" required/>
+            </div>
+            <div class="form-group">
+              <label for="inviteName">Full Name *</label>
+              <input type="text" id="inviteName" placeholder="John Smith" required minlength="1" maxlength="100"/>
+            </div>
+            <div class="form-group">
+              <label for="inviteRole">Role</label>
+              <select id="inviteRole">
+                <option value="member">Member - Can view and manage devices</option>
+                <option value="admin">Admin - Full control including invites</option>
+              </select>
+            </div>
+            <div class="form-group" style="margin-top: 16px;">
+              <label style="display: flex; align-items: center; cursor: pointer;">
+                <input type="checkbox" id="canManageDevices" checked style="margin-right: 8px;"/>
+                Can create and manage devices
+              </label>
+            </div>
+            <div class="form-group">
+              <label style="display: flex; align-items: center; cursor: pointer;">
+                <input type="checkbox" id="canResolveAlerts" checked style="margin-right: 8px;"/>
+                Can resolve alerts
+              </label>
+            </div>
+            <div class="form-group">
+              <label style="display: flex; align-items: center; cursor: pointer;">
+                <input type="checkbox" id="canInviteMembers" style="margin-right: 8px;"/>
+                Can invite other members
+              </label>
+            </div>
+            <button type="submit" class="btn primary">Send Invitation</button>
+          </form>
+          <div id="inviteMsg" class="msg"></div>
+        </div>
+
+        <!-- Family Members List -->
+        <div class="card">
+          <h2>Family Members</h2>
+          <p class="sub">Manage your family members and their permissions</p>
+          
+          <div style="overflow:auto; margin-top:20px;">
+            <table>
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>Email</th>
+                  <th>Role</th>
+                  <th>Joined</th>
+                  <th>Permissions</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody id="membersTable">
+                <tr><td colspan="6" class="hint">Loading members...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Pending Invitations -->
+        <div class="card">
+          <h2>Pending Invitations</h2>
+          <p class="sub">Invitations waiting to be accepted</p>
+          
+          <div style="overflow:auto; margin-top:20px;">
+            <table>
+              <thead>
+                <tr>
+                  <th>Email</th>
+                  <th>Name</th>
+                  <th>Role</th>
+                  <th>Invited</th>
+                  <th>Expires</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody id="invitationsTable">
+                <tr><td colspan="6" class="hint">Loading invitations...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="footer" style="text-align: center; padding: 20px;">
+      <a href="/privacy" style="color: var(--primary); text-decoration: none; margin: 0 12px;">Privacy Policy</a>
+      <span style="color: var(--muted);">•</span>
+      <a href="/terms" style="color: var(--primary); text-decoration: none; margin: 0 12px;">Terms of Service</a>
+    </div>
+  </div>
+</body>
+</html>

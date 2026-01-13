@@ -7,10 +7,12 @@
     <meta http-equiv="Pragma" content="no-cache"/>
     <meta http-equiv="Expires" content="0"/>
     <title>Dashboard • IoT Security Platform</title>
-    <link rel="stylesheet" href="/assets/app.css?v=3"/>
+    <link rel="stylesheet" href="/assets/app.css?v=7"/>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
     <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
-    <script defer src="/assets/app.js?v=3"></script>
-    <script defer src="/assets/websocket-client.js?v=3"></script>
+    <script defer src="/assets/app.js?v=7"></script>
+    <script defer src="/assets/charts.js?v=7"></script>
+    <script defer src="/assets/websocket-client.js?v=7"></script>
   </head>
   <body>
     <div class="wrap" id="dashboardRoot">
@@ -24,12 +26,14 @@
         </div>
         <div class="row">
           <a class="btn" href="/">Home</a>
+          <a class="btn" href="/family">👨‍👩‍👧‍👦 Family</a>
           <a class="btn" href="/settings">Settings</a>
           <a class="btn" href="/docs">API Docs</a>
           <button class="btn danger" id="logoutBtn" type="button">Logout</button>
         </div>
       </div>
 
+      <!-- Devices and Recent Alerts - TOP SECTION -->
       <div class="grid">
         <div class="card">
           <div style="display: flex; justify-content: space-between; align-items: center;">
@@ -64,8 +68,20 @@
           </div>
         </div>
         <div class="card">
-          <h2>Recent alerts</h2>
-          <p class="sub">Latest alerts (first 25). Next: acknowledgement + escalation timeline.</p>
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+            <div>
+              <h2>Recent alerts</h2>
+              <p class="sub">Latest alerts (first 25). Export for detailed analysis.</p>
+            </div>
+            <div style="display: flex; gap: 8px;">
+              <button class="btn-sm" onclick="exportAlertsPDF()" style="background: var(--primary); color: white;">
+                📄 Export PDF
+              </button>
+              <button class="btn-sm" onclick="exportAlertsCSV()" style="background: var(--ok); color: white;">
+                📊 Export CSV
+              </button>
+            </div>
+          </div>
           <div style="overflow:auto; margin-top:10px;">
             <table>
               <thead>
@@ -81,6 +97,48 @@
               <tbody id="alerts"></tbody>
             </table>
           </div>
+        </div>
+      </div>
+
+      <!-- Analytics Overview + Top Alerting Devices - SECOND SECTION -->
+      <div class="grid" style="margin-top: 24px;">
+        <div class="card" style="padding: 24px;">
+          <h2 style="margin-bottom: 20px;">📊 Analytics Overview</h2>
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px;">
+            <div class="card" style="text-align: center; padding: 20px; background: linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(59, 130, 246, 0.05) 100%);">
+              <div id="healthScore">Loading...</div>
+            </div>
+            <div class="card" style="text-align: center; padding: 20px; background: linear-gradient(135deg, rgba(34, 197, 94, 0.1) 0%, rgba(34, 197, 94, 0.05) 100%);">
+              <div id="uptimePercentage">Loading...</div>
+            </div>
+            <div class="card" style="text-align: center; padding: 20px; background: linear-gradient(135deg, rgba(168, 85, 247, 0.1) 0%, rgba(168, 85, 247, 0.05) 100%);">
+              <div id="recentAlerts">Loading...</div>
+            </div>
+          </div>
+        </div>
+        <div class="card" style="padding: 20px;">
+          <h3 style="margin-bottom: 16px; color: var(--text);">🔥 Top Alerting Devices (Last 30 Days)</h3>
+          <div id="topAlertingDevices">Loading...</div>
+        </div>
+      </div>
+
+      <!-- Device Status Distribution + Devices by Type - THIRD SECTION -->
+      <div class="grid" style="margin-top: 24px;">
+        <div class="card" style="padding: 20px; height: 320px;">
+          <canvas id="deviceStatusChart"></canvas>
+        </div>
+        <div class="card" style="padding: 20px; height: 320px;">
+          <canvas id="deviceTypeChart"></canvas>
+        </div>
+      </div>
+
+      <!-- Alert Trends + Alerts by Severity - FOURTH SECTION -->
+      <div class="grid" style="margin-top: 24px; margin-bottom: 24px;">
+        <div class="card" style="padding: 20px; height: 320px;">
+          <canvas id="alertTrendsChart"></canvas>
+        </div>
+        <div class="card" style="padding: 20px; height: 320px;">
+          <canvas id="alertSeverityChart"></canvas>
         </div>
       </div>
 

@@ -93,7 +93,7 @@ async def run_forever(interval_seconds: int = DEFAULT_SWEEP_INTERVAL_SECONDS) ->
             await sweep_once()
         except Exception as e:
             # Don't crash the loop in MVP; print for visibility.
-            print(f"⚠️ Heartbeat sweep error: {e}")
+            print(f"[WARNING] Heartbeat sweep error: {e}")
         await asyncio.sleep(max(5, interval_seconds))
 
 

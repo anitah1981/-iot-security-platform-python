@@ -108,8 +108,18 @@ class StripeService:
             Dict with checkout session details
         """
         plan = PLANS.get(plan_name.lower())
-        if not plan or not plan.get("stripe_price_id"):
+        if not plan:
             raise ValueError(f"Invalid plan: {plan_name}")
+        
+        # DEMO MODE: If Stripe is not configured, return demo response
+        if not plan.get("stripe_price_id") or not stripe.api_key:
+            print(f"[DEMO MODE] Stripe not configured. Simulating checkout for {plan_name}")
+            return {
+                "session_id": "demo_session_" + plan_name,
+                "url": success_url + "&demo=true",
+                "demo_mode": True,
+                "message": "Demo mode - Stripe not configured. In production, this would redirect to Stripe checkout."
+            }
         
         try:
             session = stripe.checkout.Session.create(

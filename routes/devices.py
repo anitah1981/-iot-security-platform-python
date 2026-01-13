@@ -11,16 +11,32 @@ from middleware.plan_limits import PlanLimits
 
 router = APIRouter()
 
+
+async def _get_user_family_id(user_id: ObjectId, db) -> Optional[ObjectId]:
+    """Get user's family ID if they're part of one"""
+    membership = await db.family_members.find_one({"user_id": user_id})
+    return membership["family_id"] if membership else None
+
+
+async def _can_manage_devices(user_id: ObjectId, db) -> bool:
+    """Check if user can manage devices (always true for device owner, check permission for family members)"""
+    membership = await db.family_members.find_one({"user_id": user_id})
+    if not membership:
+        return True  # Not in family, full control
+    return membership.get("can_manage_devices", True)
+
 @router.get("/", response_model=DeviceListResponse)
 async def get_devices(
     type: Optional[str] = Query(None, description="Filter by device type"),
     status: Optional[str] = Query(None, description="Filter by status"),
     name: Optional[str] = Query(None, description="Filter by name (partial match)"),
     page: int = Query(1, ge=1, description="Page number"),
-    limit: int = Query(10, ge=1, le=100, description="Items per page")
+    limit: int = Query(10, ge=1, le=100, description="Items per page"),
+    user: dict = Depends(get_current_user)
 ):
     """
     Get all devices with optional filters and pagination
+    Shows devices owned by user OR their family
     
     Query params:
     - type: Filter by device type (Camera, Router, etc.)
@@ -29,10 +45,22 @@ async def get_devices(
     - page: Page number (default 1)
     - limit: Items per page (default 10, max 100)
     """
-    db = await get_database()
+    try:
+        db = await get_database()
     
-    # Build filter
-    filter_query = {}
+    # Build filter - show user's devices OR family devices
+    family_id = await _get_user_family_id(user["_id"], db)
+    
+    # Start with user/family filter
+    if family_id:
+        # Show all family devices
+        filter_query = {"family_id": family_id}
+    else:
+        # Show only user's devices (check both user_id and userId for compatibility)
+        # Use simpler approach - try userId first (most common)
+        filter_query = {"userId": user["_id"]}
+    
+    # Add additional filters directly
     if type:
         filter_query["type"] = type
     if status:
@@ -47,34 +75,60 @@ async def get_devices(
     cursor = db.devices.find(filter_query).skip(skip).limit(limit).sort([("status", 1), ("lastSeen", -1)])
     devices_raw = await cursor.to_list(length=limit)
     
+    # If no devices found and we're using userId, try user_id as fallback
+    if len(devices_raw) == 0 and not family_id and "userId" in filter_query:
+        # Try with user_id instead
+        fallback_query = filter_query.copy()
+        fallback_query["user_id"] = fallback_query.pop("userId")
+        cursor = db.devices.find(fallback_query).skip(skip).limit(limit).sort([("status", 1), ("lastSeen", -1)])
+        devices_raw = await cursor.to_list(length=limit)
+        if len(devices_raw) > 0:
+            filter_query = fallback_query
+    
     # Get total count
     total = await db.devices.count_documents(filter_query)
     
     # Shape response
     devices = []
     for d in devices_raw:
-        devices.append(DeviceResponse(
-            id=str(d["_id"]),
-            device_id=d.get("deviceId", ""),
-            name=d.get("name", ""),
-            type=d.get("type", ""),
-            ip_address=d.get("ipAddress", ""),
-            status=d.get("status", "offline"),
-            last_seen=d.get("lastSeen"),
-            heartbeat_interval=d.get("heartbeatInterval", 30),
-            alerts_enabled=d.get("alertsEnabled", True),
-            signal_strength=d.get("signalStrength"),
-            ip_address_history=d.get("ipAddressHistory", []),
-            organization=str(d["organization"]) if d.get("organization") else None,
-            created_at=d.get("createdAt", datetime.utcnow()),
-            updated_at=d.get("updatedAt", datetime.utcnow())
-        ))
+        try:
+            # Handle both createdAt/created_at and updatedAt/updated_at
+            created_at = d.get("createdAt") or d.get("created_at") or datetime.utcnow()
+            updated_at = d.get("updatedAt") or d.get("updated_at") or datetime.utcnow()
+            
+            devices.append(DeviceResponse(
+                id=str(d["_id"]),
+                device_id=d.get("deviceId", d.get("device_id", "")),
+                name=d.get("name", ""),
+                type=d.get("type", ""),
+                ip_address=d.get("ipAddress", d.get("ip_address", "")),
+                status=d.get("status", "offline"),
+                last_seen=d.get("lastSeen") or d.get("last_seen"),
+                heartbeat_interval=d.get("heartbeatInterval", d.get("heartbeat_interval", 30)),
+                alerts_enabled=d.get("alertsEnabled", d.get("alerts_enabled", True)),
+                signal_strength=d.get("signalStrength") or d.get("signal_strength"),
+                ip_address_history=d.get("ipAddressHistory", d.get("ip_address_history", [])),
+                organization=str(d["organization"]) if d.get("organization") else None,
+                created_at=created_at,
+                updated_at=updated_at
+            ))
+        except Exception as e:
+            print(f"[ERROR] Failed to parse device {d.get('_id')}: {e}")
+            continue
     
-    return DeviceListResponse(
-        page=page,
-        total=total,
-        devices=devices
-    )
+        return DeviceListResponse(
+            page=page,
+            total=total,
+            devices=devices
+        )
+    except Exception as e:
+        import traceback
+        print(f"[ERROR] get_devices failed: {e}")
+        print(traceback.format_exc())
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to load devices: {str(e)}"
+        )
 
 @router.get("/{device_id}/status")
 async def get_device_status(device_id: str):
@@ -115,29 +169,46 @@ async def create_device(device: DeviceCreate, user: dict = Depends(get_current_u
     
     - Checks plan device limits
     - Validates device doesn't already exist
-    - Associates device with user
+    - Associates device with user or their family
     """
     db = await get_database()
+    
+    # Check if user can manage devices
+    can_manage = await _can_manage_devices(user["_id"], db)
+    if not can_manage:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You don't have permission to create devices"
+        )
     
     # Check plan device limit
     await PlanLimits.check_device_limit(user)
     
-    # Check if device_id already exists for this user
-    existing = await db.devices.find_one({
-        "deviceId": device.device_id,
-        "userId": user["_id"]
-    })
+    # Get family ID if user is in a family
+    family_id = await _get_user_family_id(user["_id"], db)
+    
+    # Check if device_id already exists for this user/family
+    filter_existing = {"deviceId": device.device_id}
+    if family_id:
+        filter_existing["family_id"] = family_id
+    else:
+        filter_existing["user_id"] = user["_id"]
+    
+    existing = await db.devices.find_one(filter_existing)
     if existing:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail=f"Device with ID '{device.device_id}' already exists"
         )
     
-    # Check if IP already exists for this user
-    existing_ip = await db.devices.find_one({
-        "ipAddress": device.ip_address,
-        "userId": user["_id"]
-    })
+    # Check if IP already exists for this user/family
+    filter_ip = {"ipAddress": device.ip_address}
+    if family_id:
+        filter_ip["family_id"] = family_id
+    else:
+        filter_ip["user_id"] = user["_id"]
+        
+    existing_ip = await db.devices.find_one(filter_ip)
     if existing_ip:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
@@ -146,7 +217,7 @@ async def create_device(device: DeviceCreate, user: dict = Depends(get_current_u
     
     # Create device document
     device_doc = {
-        "userId": user["_id"],  # Associate device with user
+        "user_id": user["_id"],  # Creator
         "deviceId": device.device_id,
         "name": device.name,
         "type": device.type,
@@ -161,6 +232,10 @@ async def create_device(device: DeviceCreate, user: dict = Depends(get_current_u
         "createdAt": datetime.utcnow(),
         "updatedAt": datetime.utcnow()
     }
+    
+    # Add family_id if user is in a family
+    if family_id:
+        device_doc["family_id"] = family_id
     
     result = await db.devices.insert_one(device_doc)
     

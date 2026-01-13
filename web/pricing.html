@@ -223,6 +223,31 @@
             body: { plan }
           });
           
+          // Handle demo mode (Stripe not configured)
+          if (response.demo_mode) {
+            msg.className = "msg";
+            msg.innerHTML = `
+              <div style="text-align: left; padding: 20px; background: rgba(245, 158, 11, 0.1); border: 2px solid #f59e0b; border-radius: 8px; margin-top: 16px;">
+                <h3 style="color: #f59e0b; margin: 0 0 12px 0;">⚠️ Demo Mode: Stripe Not Configured</h3>
+                <p style="margin: 8px 0; color: var(--text); line-height: 1.6;">
+                  Payment processing is not set up yet. To enable real payments:
+                </p>
+                <ol style="margin: 12px 0 12px 20px; color: var(--text); line-height: 1.8;">
+                  <li>Create a Stripe account at <a href="https://dashboard.stripe.com" target="_blank" style="color: var(--primary);">dashboard.stripe.com</a></li>
+                  <li>Create products for Pro (£4.99/mo) and Business (£9.99/mo)</li>
+                  <li>Add the Stripe keys to your <code style="background: rgba(0,0,0,0.3); padding: 2px 6px; border-radius: 3px;">.env</code> file</li>
+                </ol>
+                <p style="margin: 12px 0 0 0; color: var(--muted); font-size: 14px;">
+                  📖 See <strong>STRIPE_SETUP_GUIDE.md</strong> for detailed instructions.
+                </p>
+                <button onclick="location.reload()" style="margin-top: 16px; padding: 10px 20px; background: var(--primary); color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 500;">
+                  Got it!
+                </button>
+              </div>
+            `;
+            return;
+          }
+          
           // Redirect to Stripe Checkout
           if (response.url) {
             window.location.href = response.url;

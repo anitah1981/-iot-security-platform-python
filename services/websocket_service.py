@@ -23,7 +23,7 @@ connected_users: Dict[str, Dict[str, Any]] = {}
 @sio.event
 async def connect(sid, environ, auth):
     """Handle client connection"""
-    print(f"✅ WebSocket client connected: {sid}")
+    print(f"[OK] WebSocket client connected: {sid}")
     
     # Get user info from auth
     user_id = auth.get('user_id') if auth else None
@@ -46,7 +46,7 @@ async def disconnect(sid):
     """Handle client disconnection"""
     if sid in connected_users:
         user_info = connected_users.pop(sid)
-        print(f"❌ WebSocket client disconnected: {sid} (user: {user_info.get('user_id')})")
+        print(f"[DISCONNECT] WebSocket client disconnected: {sid} (user: {user_info.get('user_id')})")
 
 
 @sio.event
@@ -57,7 +57,7 @@ async def join_room(sid, data):
         sio.enter_room(sid, room)
         if sid in connected_users:
             connected_users[sid]['rooms'].append(room)
-        print(f"🔗 Client {sid} joined room: {room}")
+        print(f"[ROOM] Client {sid} joined room: {room}")
         await sio.emit('room_joined', {'room': room}, to=sid)
 
 
@@ -69,7 +69,7 @@ async def leave_room(sid, data):
         sio.leave_room(sid, room)
         if sid in connected_users and room in connected_users[sid]['rooms']:
             connected_users[sid]['rooms'].remove(room)
-        print(f"🔌 Client {sid} left room: {room}")
+        print(f"[ROOM] Client {sid} left room: {room}")
 
 
 # Broadcast functions for different event types
@@ -90,7 +90,7 @@ async def broadcast_device_update(device_id: str, device_data: Dict[str, Any], u
         # Broadcast to all
         await sio.emit('device_update', event_data)
     
-    print(f"📡 Broadcasted device update: {device_id}")
+    print(f"[BROADCAST] Device update: {device_id}")
 
 
 async def broadcast_new_alert(alert_data: Dict[str, Any], user_id: str = None):
@@ -106,7 +106,7 @@ async def broadcast_new_alert(alert_data: Dict[str, Any], user_id: str = None):
     else:
         await sio.emit('new_alert', event_data)
     
-    print(f"🚨 Broadcasted new alert: {alert_data.get('severity')} - {alert_data.get('message')}")
+    print(f"[BROADCAST] New alert: {alert_data.get('severity')} - {alert_data.get('message')}")
 
 
 async def broadcast_alert_resolved(alert_id: str, user_id: str = None):
@@ -122,7 +122,7 @@ async def broadcast_alert_resolved(alert_id: str, user_id: str = None):
     else:
         await sio.emit('alert_resolved', event_data)
     
-    print(f"✅ Broadcasted alert resolved: {alert_id}")
+    print(f"[BROADCAST] Alert resolved: {alert_id}")
 
 
 async def broadcast_notification(message: str, severity: str = 'info', user_id: str = None):

@@ -25,6 +25,15 @@ class NotificationResult:
     detail: str
 
 
+# Helper function for simple email sending
+async def send_email(to_email: str, subject: str, body: str) -> NotificationResult:
+    """
+    Simple helper function to send an email
+    """
+    service = NotificationService()
+    return await service._send_email(to_email, subject, body)
+
+
 class NotificationService:
     def __init__(self) -> None:
         # Gmail SMTP Configuration
@@ -55,7 +64,7 @@ class NotificationService:
         """Send email notification via Gmail SMTP with HTML formatting"""
         
         if not self.smtp_user or not self.smtp_password:
-            print("⚠️  Gmail SMTP not configured - skipping email")
+            print("[WARNING] Gmail SMTP not configured - skipping email")
             return False
         
         try:
@@ -103,11 +112,11 @@ class NotificationService:
                 server.login(self.smtp_user, self.smtp_password)
                 server.send_message(msg)
             
-            print(f"✅ Email sent to {to_email}")
+            print(f"[OK] Email sent to {to_email}")
             return True
         
         except Exception as e:
-            print(f"❌ Email error: {e}")
+            print(f"[ERROR] Email error: {e}")
             return False
 
     def send_email(self, to_email: str, subject: str, content: str) -> NotificationResult:

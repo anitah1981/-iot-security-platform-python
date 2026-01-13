@@ -62,7 +62,7 @@ async function loadDashboard(){
 
   try{
     const me = await api("/api/auth/me");
-    who.textContent = `${me.name} (${me.email})`;
+    if (who) who.textContent = `${me.name} (${me.email})`;
   }catch(e){
     // Not logged in
     setToken(null);
@@ -70,7 +70,7 @@ async function loadDashboard(){
     return;
   }
 
-  msg.textContent = "Loading…";
+  if (msg) msg.textContent = "Loading…";
 
   try{
     const [devices, alerts] = await Promise.all([
@@ -82,9 +82,13 @@ async function loadDashboard(){
     renderAlerts(alerts.alerts || []);
     updateLastRefreshTime();
 
-    msg.textContent = "";
+    if (msg) msg.textContent = "";
   }catch(e){
-    msg.textContent = e.message;
+    console.error("Dashboard load error:", e);
+    if (msg) {
+      msg.className = "msg bad";
+      msg.textContent = "Error loading dashboard: " + (e.message || "Unknown error");
+    }
   }
 }
 
@@ -256,6 +260,89 @@ window.addEventListener("DOMContentLoaded", () => {
     }
   }
 });
+
+// Export functions
+async function exportAlertsPDF() {
+  const btn = event.target;
+  btn.disabled = true;
+  btn.textContent = '⏳ Generating PDF...';
+  
+  try {
+    const response = await fetch('/api/alerts/export/pdf?days=30', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${getToken()}`
+      }
+    });
+    
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.detail || 'Export failed');
+    }
+    
+    // Download the file
+    const blob = await response.blob();
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `alerts_report_${new Date().toISOString().slice(0,10)}.pdf`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
+    
+    btn.textContent = '✅ Downloaded!';
+    setTimeout(() => {
+      btn.disabled = false;
+      btn.textContent = '📄 Export PDF';
+    }, 2000);
+  } catch (error) {
+    alert('Export failed: ' + error.message);
+    btn.disabled = false;
+    btn.textContent = '📄 Export PDF';
+  }
+}
+
+async function exportAlertsCSV() {
+  const btn = event.target;
+  btn.disabled = true;
+  btn.textContent = '⏳ Generating CSV...';
+  
+  try {
+    const response = await fetch('/api/alerts/export/csv?days=30', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${getToken()}`
+      }
+    });
+    
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.detail || 'Export failed');
+    }
+    
+    // Download the file
+    const blob = await response.blob();
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `alerts_export_${new Date().toISOString().slice(0,10)}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
+    
+    btn.textContent = '✅ Downloaded!';
+    setTimeout(() => {
+      btn.disabled = false;
+      btn.textContent = '📊 Export CSV';
+    }, 2000);
+  } catch (error) {
+    alert('Export failed: ' + error.message);
+    btn.disabled = false;
+    btn.textContent = '📊 Export CSV';
+  }
+}
 
 // Clean up on page unload
 window.addEventListener("beforeunload", () => {

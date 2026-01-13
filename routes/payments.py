@@ -261,7 +261,7 @@ async def stripe_webhook(request: Request):
             }}
         )
         
-        print(f"✅ Subscription activated for user {subscription_data['user_id']}: {subscription_data['plan']}")
+        print(f"[OK] Subscription activated for user {subscription_data['user_id']}: {subscription_data['plan']}")
     
     elif event["type"] == "customer.subscription.updated":
         subscription = event["data"]["object"]
@@ -277,7 +277,7 @@ async def stripe_webhook(request: Request):
             }}
         )
         
-        print(f"✅ Subscription updated: {subscription_data['subscription_id']} - {subscription_data['status']}")
+        print(f"[OK] Subscription updated: {subscription_data['subscription_id']} - {subscription_data['status']}")
     
     elif event["type"] == "customer.subscription.deleted":
         subscription = event["data"]["object"]
@@ -294,7 +294,7 @@ async def stripe_webhook(request: Request):
             }}
         )
         
-        print(f"✅ Subscription cancelled: {subscription_data['subscription_id']}")
+        print(f"[OK] Subscription cancelled: {subscription_data['subscription_id']}")
     
     return {"status": "success"}
 

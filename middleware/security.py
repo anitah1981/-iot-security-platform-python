@@ -58,7 +58,7 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
             
             return response
         except Exception as e:
-            print(f"❌ {request.method} {request.url.path} - ERROR: {str(e)}")
+            print(f"[ERROR] {request.method} {request.url.path} - ERROR: {str(e)}")
             raise
 
 
@@ -76,7 +76,7 @@ class InputSanitizationMiddleware(BaseHTTPMiddleware):
         url_path = str(request.url.path).lower()
         for pattern in self.SUSPICIOUS_PATTERNS:
             if pattern.lower() in url_path:
-                print(f"🚨 Suspicious pattern detected in URL: {pattern}")
+                print(f"[SECURITY] Suspicious pattern detected in URL: {pattern}")
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail="Invalid request"
@@ -87,7 +87,7 @@ class InputSanitizationMiddleware(BaseHTTPMiddleware):
             value_lower = str(value).lower()
             for pattern in self.SUSPICIOUS_PATTERNS:
                 if pattern.lower() in value_lower:
-                    print(f"🚨 Suspicious pattern detected in query param {key}: {pattern}")
+                    print(f"[SECURITY] Suspicious pattern detected in query param {key}: {pattern}")
                     raise HTTPException(
                         status_code=status.HTTP_400_BAD_REQUEST,
                         detail="Invalid request parameters"

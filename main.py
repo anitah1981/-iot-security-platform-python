@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, Depends, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
@@ -71,10 +71,13 @@ async def lifespan(app: FastAPI):
     print("Shutdown complete")
 
 # Create FastAPI app
+# Disable public docs - require authentication
 app = FastAPI(
     title="IoT Security Platform",
     version="2.0.0",
-    lifespan=lifespan
+    lifespan=lifespan,
+    docs_url=None,  # Disable public Swagger UI
+    redoc_url=None  # Disable public ReDoc
 )
 
 # Static web UI
@@ -154,6 +157,11 @@ def privacy_page():
     f = WEB_DIR / "privacy.html"
     return FileResponse(str(f))
 
+@app.get("/family")
+def family_page():
+    f = WEB_DIR / "family.html"
+    return FileResponse(str(f))
+
 @app.get("/api/health")
 def health():
     return {
@@ -165,7 +173,32 @@ def health():
 
 # Include authentication routes
 from routes.auth import router as auth_router
+from routes.auth import get_current_user
 app.include_router(auth_router, prefix="/api/auth", tags=["Authentication"])
+
+# Protected API Documentation - Only for authenticated users
+@app.get("/docs")
+async def get_docs(user: dict = Depends(get_current_user)):
+    """API documentation - requires authentication"""
+    from fastapi.openapi.docs import get_swagger_ui_html
+    
+    return get_swagger_ui_html(
+        openapi_url=app.openapi_url,
+        title=app.title + " - API Documentation",
+        swagger_js_url="https://cdn.jsdelivr.net/npm/swagger-ui-dist@5/swagger-ui-bundle.js",
+        swagger_css_url="https://cdn.jsdelivr.net/npm/swagger-ui-dist@5/swagger-ui.css"
+    )
+
+@app.get("/redoc")
+async def get_redoc(user: dict = Depends(get_current_user)):
+    """ReDoc API documentation - requires authentication"""
+    from fastapi.openapi.docs import get_redoc_html
+    
+    return get_redoc_html(
+        openapi_url=app.openapi_url,
+        title=app.title + " - API Documentation",
+        redoc_js_url="https://cdn.jsdelivr.net/npm/redoc@next/bundles/redoc.standalone.js"
+    )
 
 # Include device routes
 from routes.devices import router as devices_router
@@ -190,6 +223,26 @@ app.include_router(payments_router)
 # 7) Password Reset
 from routes.password_reset import router as password_reset_router
 app.include_router(password_reset_router)
+
+# 8) Analytics & Dashboard Charts
+from routes.analytics import router as analytics_router
+app.include_router(analytics_router, prefix="/api/analytics", tags=["Analytics"])
+
+# 9) Family/Household Sharing
+from routes.family import router as family_router
+app.include_router(family_router, prefix="/api/family", tags=["Family Sharing"])
+
+# 10) Alert Exports (PDF & CSV)
+from routes.exports import router as exports_router
+app.include_router(exports_router, prefix="/api/alerts/export", tags=["Exports"])
+
+# 11) Device Grouping/Tags
+from routes.groups import router as groups_router
+app.include_router(groups_router, prefix="/api/groups", tags=["Device Groups"])
+
+# 12) Audit Logs
+from routes.audit import router as audit_router
+app.include_router(audit_router, prefix="/api/audit", tags=["Audit Logs"])
 
 # Mount Socket.IO for real-time updates - Temporarily disabled
 # app.mount("/socket.io", socket_app)

@@ -214,3 +214,118 @@ class NotificationPreferencesResponse(NotificationPreferences):
     """Response model with user ID"""
     user_id: str
     updated_at: datetime
+
+# ============================================================
+# FAMILY/HOUSEHOLD SHARING MODELS
+# ============================================================
+
+class FamilyBase(BaseModel):
+    """Base model for family/household"""
+    name: str = Field(..., min_length=1, max_length=100, description="e.g., 'Smith Family' or 'My Home'")
+    description: Optional[str] = Field(None, max_length=500)
+
+class FamilyCreate(FamilyBase):
+    """Create a new family/household"""
+    pass
+
+class FamilyUpdate(BaseModel):
+    """Update family details"""
+    name: Optional[str] = Field(None, min_length=1, max_length=100)
+    description: Optional[str] = Field(None, max_length=500)
+
+class FamilyMember(BaseModel):
+    """Family member information"""
+    user_id: str
+    email: str
+    name: str
+    role: Literal["admin", "member"] = "member"
+    joined_at: datetime
+    can_manage_devices: bool = True
+    can_resolve_alerts: bool = True
+    can_invite_members: bool = False  # Only admin by default
+
+class FamilyResponse(FamilyBase):
+    """Family/household with members"""
+    id: str
+    owner_id: str
+    owner_name: str
+    owner_email: str
+    members: List[FamilyMember] = []
+    total_devices: int = 0
+    created_at: datetime
+    updated_at: datetime
+
+class FamilyInvitationCreate(BaseModel):
+    """Invite someone to join family"""
+    email: EmailStr
+    name: str = Field(..., min_length=1, max_length=100)
+    role: Literal["admin", "member"] = "member"
+    can_manage_devices: bool = True
+    can_resolve_alerts: bool = True
+    can_invite_members: bool = False
+
+class FamilyInvitationResponse(BaseModel):
+    """Invitation details"""
+    id: str
+    family_id: str
+    family_name: str
+    invited_by_name: str
+    invited_by_email: str
+    invitee_email: str
+    invitee_name: str
+    role: str
+    status: Literal["pending", "accepted", "declined", "expired"] = "pending"
+    token: str
+    expires_at: datetime
+    created_at: datetime
+
+class AcceptInvitationRequest(BaseModel):
+    """Accept family invitation"""
+    token: str
+    password: Optional[str] = Field(None, min_length=12, description="Password if creating new account")
+
+# ============================================================
+# DEVICE GROUPING/TAGS MODELS
+# ============================================================
+
+class DeviceGroupBase(BaseModel):
+    """Base model for device groups"""
+    name: str = Field(..., min_length=1, max_length=100)
+    description: Optional[str] = Field(None, max_length=500)
+    color: str = Field("#3b82f6", description="Hex color for group badge")
+
+class DeviceGroupCreate(DeviceGroupBase):
+    """Create a device group"""
+    pass
+
+class DeviceGroupUpdate(BaseModel):
+    """Update device group"""
+    name: Optional[str] = Field(None, min_length=1, max_length=100)
+    description: Optional[str] = Field(None, max_length=500)
+    color: Optional[str] = None
+
+class DeviceGroupResponse(DeviceGroupBase):
+    """Device group with device count"""
+    id: str
+    user_id: str
+    device_count: int = 0
+    created_at: datetime
+    updated_at: datetime
+
+# ============================================================
+# AUDIT LOG MODELS
+# ============================================================
+
+class AuditLogEntry(BaseModel):
+    """Audit log entry"""
+    id: str
+    user_id: str
+    user_email: str
+    user_name: str
+    action: str  # login, logout, device_create, device_delete, alert_resolve, etc.
+    resource_type: str  # user, device, alert, family, etc.
+    resource_id: Optional[str] = None
+    details: Dict[str, Any] = {}
+    ip_address: Optional[str] = None
+    user_agent: Optional[str] = None
+    created_at: datetime
