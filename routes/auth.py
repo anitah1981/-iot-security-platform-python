@@ -428,6 +428,7 @@ async def get_current_user_info(current_user = Depends(get_current_user)):
 @router.post("/refresh", response_model=TokenResponse)
 @limiter.limit("10/minute")
 async def refresh_token(body: RefreshTokenRequest, request: Request):
+    from bson import ObjectId
     db = await get_database()
     token_hash = _hash_refresh_token(body.refresh_token)
     stored = await db.refresh_tokens.find_one({"token_hash": token_hash})
@@ -437,7 +438,15 @@ async def refresh_token(body: RefreshTokenRequest, request: Request):
         await _revoke_refresh_token(db, token_hash)
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Refresh token expired")
 
-    user = await db.users.find_one({"_id": stored["user_id"]})
+    # Convert user_id to ObjectId if it's a string
+    user_id = stored["user_id"]
+    if isinstance(user_id, str):
+        try:
+            user_id = ObjectId(user_id)
+        except Exception:
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid user ID in token")
+    
+    user = await db.users.find_one({"_id": user_id})
     if not user:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found")
 
