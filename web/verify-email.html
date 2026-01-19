@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <title>Verify Email • IoT Security Platform</title>
+    <link rel="stylesheet" href="/assets/app.css?v=9"/>
+    <script defer src="/assets/app.js?v=11"></script>
+  </head>
+  <body>
+    <div class="wrap">
+      <div class="nav">
+        <div class="brand">
+          <div class="logo" aria-hidden="true"></div>
+          <div>
+            <h1>Verify your email</h1>
+            <p>Confirm your account to continue</p>
+          </div>
+        </div>
+        <div class="row">
+          <a class="btn" href="/login">Back to Login</a>
+        </div>
+      </div>
+
+      <div class="card" style="max-width: 520px; margin: 40px auto;">
+        <div id="verifyLoading" style="text-align: center; padding: 32px;">
+          <div style="font-size: 48px; margin-bottom: 12px;">📨</div>
+          <p style="color: var(--muted);">Verifying your email...</p>
+        </div>
+
+        <div id="verifySuccess" style="display: none; text-align: center; padding: 32px;">
+          <div style="font-size: 48px; margin-bottom: 12px;">✅</div>
+          <h2 style="margin-bottom: 10px;">Email verified</h2>
+          <p class="sub">You can now sign in to your account.</p>
+          <a href="/login" class="btn" style="background: var(--primary); color: white; text-decoration: none;">Sign in</a>
+        </div>
+
+        <div id="verifyError" style="display: none;">
+          <div style="text-align: center; padding: 24px;">
+            <div style="font-size: 48px; margin-bottom: 12px;">⚠️</div>
+            <h2 style="margin-bottom: 10px;">Verification failed</h2>
+            <p class="sub">The link is invalid or expired. Request a new one.</p>
+          </div>
+          <form id="resendVerificationForm" style="padding: 0 20px 20px;">
+            <label style="display: block; margin-bottom: 8px; font-weight: 500;">Email Address</label>
+            <input
+              type="email"
+              id="verifyEmailInput"
+              required
+              placeholder="you@example.com"
+              style="width: 100%; padding: 12px 16px; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-size: 15px; margin-bottom: 12px;"
+            />
+            <button type="submit" class="btn" style="width: 100%; background: var(--primary); color: white; padding: 12px 16px; font-weight: 600;">
+              Resend verification email
+            </button>
+            <div class="hint" id="verifyMsg" style="margin-top: 12px;"></div>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const params = new URLSearchParams(window.location.search);
+      const token = params.get("token");
+      const emailParam = params.get("email");
+
+      function showError(){
+        document.getElementById("verifyLoading").style.display = "none";
+        document.getElementById("verifyError").style.display = "block";
+        if(emailParam){
+          document.getElementById("verifyEmailInput").value = emailParam;
+        }
+      }
+
+      async function verifyEmail(){
+        if(!token){
+          showError();
+          return;
+        }
+        try{
+          await api(`/api/auth/verify-email?token=${encodeURIComponent(token)}`, { method: "GET", auth: false });
+          document.getElementById("verifyLoading").style.display = "none";
+          document.getElementById("verifySuccess").style.display = "block";
+          showToast("Email verified successfully.", "success");
+        }catch(e){
+          showError();
+        }
+      }
+
+      document.getElementById("resendVerificationForm").addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const email = document.getElementById("verifyEmailInput").value.trim();
+        const msg = document.getElementById("verifyMsg");
+        msg.className = "msg";
+        msg.textContent = "Sending...";
+        try{
+          const response = await api("/api/auth/resend-verification", { method: "POST", auth: false, body: { email } });
+          msg.className = "msg ok";
+          msg.textContent = response.message || "Verification email sent.";
+          showToast("Verification email sent.", "info");
+        }catch(e){
+          msg.className = "msg bad";
+          msg.textContent = e.message || "Failed to send verification email.";
+          if(e.rateLimited){
+            showToast(e.message, "warning");
+          }
+        }
+      });
+
+      document.addEventListener("DOMContentLoaded", verifyEmail);
+    </script>
+  </body>
+</html>

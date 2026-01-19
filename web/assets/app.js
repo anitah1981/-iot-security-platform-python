@@ -11,8 +11,42 @@ function setToken(token){
   else localStorage.removeItem("iot_token");
 }
 function getToken(){ return localStorage.getItem("iot_token"); }
+function setRefreshToken(token){
+  if(token) localStorage.setItem("iot_refresh_token", token);
+  else localStorage.removeItem("iot_refresh_token");
+}
+function getRefreshToken(){ return localStorage.getItem("iot_refresh_token"); }
+function clearAuth(){
+  setToken(null);
+  setRefreshToken(null);
+}
 
-async function api(path, { method="GET", body, auth=true } = {}){
+function ensureToastContainer(){
+  let container = document.querySelector(".toast-container");
+  if(!container){
+    container = document.createElement("div");
+    container.className = "toast-container";
+    document.body.appendChild(container);
+  }
+  return container;
+}
+
+function showToast(message, type="info", timeout=3200){
+  const container = ensureToastContainer();
+  const toast = document.createElement("div");
+  toast.className = `toast toast-${type}`;
+  toast.textContent = message;
+  container.appendChild(toast);
+  requestAnimationFrame(() => {
+    toast.classList.add("show");
+  });
+  setTimeout(() => {
+    toast.classList.remove("show");
+    setTimeout(() => toast.remove(), 300);
+  }, timeout);
+}
+
+async function api(path, { method="GET", body, auth=true, retry=true } = {}){
   const headers = { "Content-Type": "application/json" };
   if(auth){
     const t = getToken();
@@ -25,7 +59,30 @@ async function api(path, { method="GET", body, auth=true } = {}){
   });
   let data = null;
   try{ data = await res.json(); } catch {}
+  if(res.status === 401 && auth && retry){
+    const refreshToken = getRefreshToken();
+    if(refreshToken){
+      try{
+        const refreshed = await api("/api/auth/refresh", {
+          method: "POST",
+          auth: false,
+          retry: false,
+          body: { refresh_token: refreshToken }
+        });
+        setToken(refreshed.token);
+        if(refreshed.refresh_token) setRefreshToken(refreshed.refresh_token);
+        return api(path, { method, body, auth, retry: false });
+      }catch(e){
+        clearAuth();
+      }
+    }
+  }
   if(!res.ok){
+    if(res.status === 429){
+      const error = new Error("Too many requests. Please wait a moment and try again.");
+      error.rateLimited = true;
+      throw error;
+    }
     // Handle both string and object error details
     if(data?.detail && typeof data.detail === 'object'){
       // If detail is an object (like password validation errors), throw the whole object
@@ -48,12 +105,26 @@ async function loginFlow(){
   try{
     const data = await api("/api/auth/login", { method:"POST", auth:false, body:{ email, password } });
     setToken(data.token);
+    if(data.refresh_token) setRefreshToken(data.refresh_token);
     msg.className = "msg ok";
     msg.textContent = "Signed in. Redirecting…";
     setTimeout(()=>{ window.location.href = "/dashboard"; }, 450);
   }catch(e){
     msg.className = "msg bad";
-    msg.textContent = e.message;
+    const lowerMsg = String(e.message || "").toLowerCase();
+    if(lowerMsg.includes("email not verified")){
+      const emailValue = encodeURIComponent(email || "");
+      msg.innerHTML = `Email not verified. <a href="/verify-email?email=${emailValue}" style="color: var(--primary); text-decoration: none;">Resend verification</a>`;
+      showToast("Check your inbox to verify your email.", "info");
+    } else if(lowerMsg.includes("temporarily locked")){
+      msg.textContent = e.message;
+      showToast("Account temporarily locked. Try again later.", "warning");
+    } else {
+      msg.textContent = e.message;
+    }
+    if(e.rateLimited){
+      showToast(e.message, "warning");
+    }
   }
 }
 
@@ -66,7 +137,7 @@ async function loadDashboard(){
     if (who) who.textContent = `${me.name} (${me.email})`;
   }catch(e){
     // Not logged in
-    setToken(null);
+    clearAuth();
     window.location.href = "/login";
     return;
   }
@@ -330,7 +401,14 @@ async function resolveAlert(alertId){
 }
 
 function logout(){
-  setToken(null);
+  const refreshToken = getRefreshToken();
+  api("/api/auth/logout", {
+    method: "POST",
+    body: refreshToken ? { refresh_token: refreshToken } : {},
+    auth: true,
+    retry: false
+  }).catch(() => {});
+  clearAuth();
   window.location.href = "/";
 }
 
@@ -826,6 +904,12 @@ async function manualRefresh(){
 window.addEventListener("DOMContentLoaded", () => {
   if(qs("#loginForm")){
     qs("#loginForm").addEventListener("submit", (e)=>{ e.preventDefault(); loginFlow(); });
+    const msg = qs("#msg");
+    const params = new URLSearchParams(window.location.search);
+    if(msg && params.get("reset") === "success"){
+      msg.className = "msg ok";
+      msg.textContent = "Password reset successful. Please sign in.";
+    }
   }
   if(qs("#logoutBtn")){
     qs("#logoutBtn").addEventListener("click", logout);

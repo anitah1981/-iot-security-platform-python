@@ -4,6 +4,7 @@ from typing import Dict, List, Optional, Set
 from bson import ObjectId
 import asyncio
 import socket
+import os
 
 from database import get_database
 from services.notification_service import send_alert_notification
@@ -13,7 +14,11 @@ class NetworkMonitor:
     """Monitor network changes: DNS changes, unknown IPs, new devices"""
     
     def __init__(self):
-        self.check_interval_seconds = 30  # Check every 30 seconds
+        self.check_interval_seconds = int(os.getenv("NETWORK_MONITOR_INTERVAL", "30"))
+        self.max_devices = int(os.getenv("NETWORK_MONITOR_MAX_DEVICES", "200"))
+        self.unknown_ip_limit = int(os.getenv("NETWORK_MONITOR_UNKNOWN_IP_LIMIT", "50"))
+        self.unknown_ip_devices_per_cycle = int(os.getenv("NETWORK_MONITOR_UNKNOWN_IP_DEVICES_PER_CYCLE", "3"))
+        self.unknown_ip_timeout_seconds = float(os.getenv("NETWORK_MONITOR_UNKNOWN_IP_TIMEOUT", "4"))
         self.is_running = False
     
     async def check_network_changes(self):
@@ -21,7 +26,8 @@ class NetworkMonitor:
         db = await get_database()
         
         # Get all devices
-        devices = await db.devices.find({}).to_list(length=1000)
+        devices = await db.devices.find({}).to_list(length=self.max_devices)
+        unknown_ip_checks = 0
         
         for device in devices:
             current_ip = device.get("ipAddress")
@@ -35,7 +41,17 @@ class NetworkMonitor:
             await self._check_dns_change(device, current_ip, db)
             
             # Check for unknown IPs on network
-            await self._check_unknown_ips(device, db)
+            if unknown_ip_checks < self.unknown_ip_devices_per_cycle:
+                try:
+                    await asyncio.wait_for(
+                        self._check_unknown_ips(device, db),
+                        timeout=self.unknown_ip_timeout_seconds
+                    )
+                except asyncio.TimeoutError:
+                    print("[WARN] Unknown IP scan timed out for device", device.get("_id"))
+                unknown_ip_checks += 1
+
+            await asyncio.sleep(0)
     
     async def _check_ip_change(self, device: Dict, current_ip: str, db):
         """Check if device IP has changed"""
@@ -91,8 +107,8 @@ class NetworkMonitor:
         device_name = device.get("name", "Unknown Device")
         
         try:
-            # Try to resolve IP to hostname
-            hostname, _, _ = socket.gethostbyaddr(ip_address)
+            # Try to resolve IP to hostname (offload blocking call)
+            hostname, _, _ = await asyncio.to_thread(socket.gethostbyaddr, ip_address)
             
             # Get stored DNS info
             stored_hostname = device.get("dnsHostname")
@@ -194,13 +210,15 @@ class NetworkMonitor:
             # Scan network for unknown IPs (simplified - ping common IPs)
             # In production, use proper network scanning
             unknown_ips = []
-            for i in range(1, 255):
+            for i in range(1, self.unknown_ip_limit + 1):
                 test_ip = f"{network_prefix}.{i}"
                 if test_ip not in known_ips and test_ip != device_ip:
                     # Quick connectivity check (simplified)
                     is_alive = await self._ping_ip(test_ip)
                     if is_alive:
                         unknown_ips.append(test_ip)
+                if i % 10 == 0:
+                    await asyncio.sleep(0)
             
             # If we found unknown IPs, create alert
             if unknown_ips:
@@ -244,21 +262,23 @@ class NetworkMonitor:
     
     async def _ping_ip(self, ip: str, timeout: float = 1.0) -> bool:
         """Check if an IP is alive (simplified ping)"""
-        try:
-            # Try to connect to common ports
-            for port in [80, 443, 22, 23, 3389]:
-                try:
-                    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                    sock.settimeout(timeout)
-                    result = sock.connect_ex((ip, port))
-                    sock.close()
-                    if result == 0:
-                        return True
-                except:
-                    continue
-            return False
-        except Exception:
-            return False
+        def _sync_ping(target_ip: str, target_timeout: float) -> bool:
+            try:
+                for port in [80, 443, 22, 23, 3389]:
+                    try:
+                        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                        sock.settimeout(target_timeout)
+                        result = sock.connect_ex((target_ip, port))
+                        sock.close()
+                        if result == 0:
+                            return True
+                    except Exception:
+                        continue
+                return False
+            except Exception:
+                return False
+
+        return await asyncio.to_thread(_sync_ping, ip, timeout)
     
     async def run_monitoring_loop(self):
         """Run continuous monitoring loop"""
@@ -282,29 +302,34 @@ class NetworkMonitor:
 
 # Global instance
 _monitor_instance: Optional[NetworkMonitor] = None
+_monitor_task: Optional[asyncio.Task] = None
+
+
+def is_network_monitoring_enabled() -> bool:
+    return _monitor_instance is not None and _monitor_instance.is_running
 
 
 def start_network_monitoring():
-    """Start network monitoring in background"""
-    global _monitor_instance
+    """Start network monitoring in background (current event loop)"""
+    global _monitor_instance, _monitor_task
     if _monitor_instance is None:
         _monitor_instance = NetworkMonitor()
-        # Run in background thread
-        import threading
-        import asyncio
-        
-        def run_loop():
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
-            loop.run_until_complete(_monitor_instance.run_monitoring_loop())
-        
-        thread = threading.Thread(target=run_loop, daemon=True)
-        thread.start()
+        try:
+            loop = asyncio.get_running_loop()
+        except RuntimeError:
+            loop = None
+        if loop and loop.is_running():
+            _monitor_task = loop.create_task(_monitor_instance.run_monitoring_loop())
+    elif not _monitor_instance.is_running:
+        _monitor_instance.is_running = True
 
 
 def stop_network_monitoring():
     """Stop network monitoring"""
-    global _monitor_instance
+    global _monitor_instance, _monitor_task
     if _monitor_instance:
         _monitor_instance.stop()
         _monitor_instance = None
+    if _monitor_task:
+        _monitor_task.cancel()
+        _monitor_task = None

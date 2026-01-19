@@ -64,22 +64,37 @@ document.getElementById('signupForm')?.addEventListener('submit', async (e) => {
       }
     });
     
-    // Save token
-    setToken(response.token);
+    // Save tokens (only if verification not required)
+    const verificationRequired = response.verification_required === true;
+    if(!verificationRequired){
+      setToken(response.token);
+      if(response.refresh_token) setRefreshToken(response.refresh_token);
+    } else {
+      setToken(null);
+      setRefreshToken(null);
+    }
     
     // Store plan selection for later use
     localStorage.setItem('selected_plan', plan);
     
-    msg.className = 'msg ok';
-    msg.textContent = 'Account created! Redirecting to dashboard...';
-    
-    // Redirect to dashboard
-    setTimeout(() => {
-      window.location.href = '/dashboard';
-    }, 1000);
+    if(verificationRequired){
+      msg.className = 'msg ok';
+      msg.innerHTML = `Account created! Please verify your email to continue.<br/>
+        <a href="/verify-email?email=${encodeURIComponent(email)}" style="color: var(--primary); text-decoration: none; font-weight: 600;">Verify email</a>`;
+      showToast("Verification email sent.", "info");
+    } else {
+      msg.className = 'msg ok';
+      msg.textContent = 'Account created! Redirecting to dashboard...';
+      setTimeout(() => {
+        window.location.href = '/dashboard';
+      }, 1000);
+    }
     
   } catch(error) {
     msg.className = 'msg bad';
     msg.textContent = error.message || 'Signup failed. Please try again.';
+    if(error.rateLimited){
+      showToast(error.message, "warning");
+    }
   }
 });

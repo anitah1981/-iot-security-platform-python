@@ -9,6 +9,7 @@ from typing import Optional
 from datetime import datetime, timedelta
 import secrets
 import hashlib
+import os
 
 from database import get_database
 from routes.auth import hash_password
@@ -38,7 +39,8 @@ def hash_token(token: str) -> str:
 
 async def send_reset_email(email: str, token: str, user_name: str):
     """Send password reset email"""
-    reset_link = f"http://localhost:8000/reset-password?token={token}"
+    base_url = os.getenv("APP_BASE_URL", "http://localhost:8000")
+    reset_link = f"{base_url}/reset-password?token={token}"
     
     subject = "Password Reset Request - IoT Security Platform"
     
@@ -201,7 +203,7 @@ async def reset_password(request: ResetPasswordRequest):
     
     # Validate new password strength
     try:
-        from utils import password_validator
+        from utils.password_validator import password_validator
         if password_validator:
             is_valid, errors = password_validator.validate(request.new_password)
             if not is_valid:

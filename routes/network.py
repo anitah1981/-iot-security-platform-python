@@ -1,5 +1,5 @@
 # routes/network.py - Network Monitoring & Change Detection
-from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi import APIRouter, Depends, HTTPException, status, Query, Request
 from typing import List, Dict, Any, Optional
 from bson import ObjectId
 import socket
@@ -7,12 +7,18 @@ import asyncio
 
 from database import get_database
 from routes.auth import get_current_user
-from services.network_monitor import NetworkMonitor
+from services.network_monitor import NetworkMonitor, start_network_monitoring, stop_network_monitoring, is_network_monitoring_enabled
+from middleware.security import limiter
 
 router = APIRouter()
 
+def _require_admin(user: dict):
+    if user.get("role") != "admin":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required")
+
 @router.post("/scan")
-async def scan_network(current_user: dict = Depends(get_current_user)):
+@limiter.limit("5/minute")
+async def scan_network(request: Request, current_user: dict = Depends(get_current_user)):
     """
     Manually trigger a network scan for changes
     - Checks for IP changes
@@ -76,7 +82,8 @@ async def get_network_changes(current_user: dict = Depends(get_current_user)):
     }
 
 @router.get("/scan-devices")
-async def scan_for_devices(current_user: dict = Depends(get_current_user)):
+@limiter.limit("5/minute")
+async def scan_for_devices(request: Request, current_user: dict = Depends(get_current_user)):
     """
     Scan network for available devices (auto-detect IPs)
     Returns list of detected devices that can be added
@@ -159,7 +166,9 @@ async def scan_for_devices(current_user: dict = Depends(get_current_user)):
     }
 
 @router.get("/verify-device")
+@limiter.limit("10/minute")
 async def verify_device_connection(
+    request: Request,
     ip_address: str = Query(..., description="IP address to verify"),
     current_user: dict = Depends(get_current_user)
 ):
@@ -253,3 +262,20 @@ async def verify_device_connection(
             "message": "Device IP is on your network but not currently reachable. Make sure the device is powered on and connected.",
             "warning": "not_reachable"
         }
+
+@router.get("/monitoring/status")
+async def monitoring_status(current_user: dict = Depends(get_current_user)):
+    _require_admin(current_user)
+    return {"enabled": is_network_monitoring_enabled()}
+
+@router.post("/monitoring/enable")
+async def enable_monitoring(current_user: dict = Depends(get_current_user)):
+    _require_admin(current_user)
+    start_network_monitoring()
+    return {"enabled": is_network_monitoring_enabled()}
+
+@router.post("/monitoring/disable")
+async def disable_monitoring(current_user: dict = Depends(get_current_user)):
+    _require_admin(current_user)
+    stop_network_monitoring()
+    return {"enabled": is_network_monitoring_enabled()}

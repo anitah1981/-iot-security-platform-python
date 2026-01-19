@@ -1,5 +1,6 @@
-from fastapi import FastAPI, Request, Depends, Depends
+from fastapi import FastAPI, Request, Depends
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from contextlib import asynccontextmanager
@@ -11,12 +12,12 @@ import socketio
 
 from database import init_db, close_db
 # from services.websocket_service import sio, socket_app
-# from middleware.security import (
-#     SecurityHeadersMiddleware,
-#     RequestLoggingMiddleware,
-#     InputSanitizationMiddleware,
-#     setup_rate_limiting
-# )
+from middleware.security import (
+    SecurityHeadersMiddleware,
+    RequestLoggingMiddleware,
+    InputSanitizationMiddleware,
+    setup_rate_limiting
+)
 
 # Load environment variables
 load_dotenv()
@@ -33,7 +34,10 @@ def _parse_cors_origins(raw: str | None) -> list[str]:
     - comma-separated list of origins: "https://app.example.com,https://example.com"
     """
     if not raw:
-        return ["*"]
+        env = os.getenv("APP_ENV", "local")
+        if env.lower() in ["local", "development"]:
+            return ["http://localhost:8000", "http://127.0.0.1:8000"]
+        return []
     raw = raw.strip()
     if raw == "*":
         return ["*"]
@@ -62,11 +66,17 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         print(f"[ERROR] Could not start retention cleanup: {e}")
     
-    # Start network monitoring task
+    # Start network monitoring task (optional)
     try:
-        from services.network_monitor import start_network_monitoring
-        start_network_monitoring()
-        print("[OK] Network monitoring started")
+        enable_network_monitoring = os.getenv("ENABLE_NETWORK_MONITORING")
+        if enable_network_monitoring is None:
+            enable_network_monitoring = "false" if os.getenv("APP_ENV", "local").lower() in ["local", "development"] else "true"
+        if enable_network_monitoring.lower() == "true":
+            from services.network_monitor import start_network_monitoring
+            start_network_monitoring()
+            print("[OK] Network monitoring started")
+        else:
+            print("[INFO] Network monitoring disabled (ENABLE_NETWORK_MONITORING=false)")
     except Exception as e:
         print(f"[ERROR] Could not start network monitoring: {e}")
     
@@ -93,20 +103,28 @@ app = FastAPI(
 if WEB_DIR.exists():
     app.mount("/assets", StaticFiles(directory=str(WEB_DIR / "assets")), name="assets")
 
-# Security Middleware - Temporarily disabled for debugging
-# app.add_middleware(SecurityHeadersMiddleware)
-# app.add_middleware(RequestLoggingMiddleware)
-# app.add_middleware(InputSanitizationMiddleware)
+# Security Middleware
+app.add_middleware(SecurityHeadersMiddleware)
+app.add_middleware(RequestLoggingMiddleware)
+app.add_middleware(InputSanitizationMiddleware)
 
-# Rate Limiting - Temporarily disabled
-# limiter = setup_rate_limiting(app)
+# Rate Limiting
+limiter = setup_rate_limiting(app)
+
+# Trusted hosts (enable only outside local/dev)
+app_env = os.getenv("APP_ENV", "local").lower()
+if app_env not in ["local", "development"]:
+    allowed_hosts = os.getenv("ALLOWED_HOSTS", "localhost,127.0.0.1").split(",")
+    allowed_hosts = [h.strip() for h in allowed_hosts if h.strip()]
+    app.add_middleware(TrustedHostMiddleware, allowed_hosts=allowed_hosts)
 
 # CORS - Allow frontend to connect (set CORS_ORIGINS in prod)
 cors_origins = _parse_cors_origins(os.getenv("CORS_ORIGINS"))
+allow_credentials = "*" not in cors_origins
 app.add_middleware(
     CORSMiddleware,
     allow_origins=cors_origins,
-    allow_credentials=True,
+    allow_credentials=allow_credentials,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -154,6 +172,11 @@ def forgot_password_page():
 @app.get("/reset-password")
 def reset_password_page():
     f = WEB_DIR / "reset-password.html"
+    return FileResponse(str(f))
+
+@app.get("/verify-email")
+def verify_email_page():
+    f = WEB_DIR / "verify-email.html"
     return FileResponse(str(f))
 
 @app.get("/terms")

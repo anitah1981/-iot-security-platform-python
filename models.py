@@ -37,8 +37,20 @@ class UserResponse(UserBase):
 
 class TokenResponse(BaseModel):
     token: str
+    refresh_token: Optional[str] = None
+    email_verified: Optional[bool] = None
+    verification_required: Optional[bool] = None
     user: UserResponse
     message: str = "Authentication successful"
+
+class RefreshTokenRequest(BaseModel):
+    refresh_token: str = Field(..., min_length=20)
+
+class LogoutRequest(BaseModel):
+    refresh_token: Optional[str] = None
+
+class ResendVerificationRequest(BaseModel):
+    email: EmailStr
 
 # ============================================================
 # DEVICE MODELS

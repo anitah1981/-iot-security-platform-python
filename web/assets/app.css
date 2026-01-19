@@ -329,6 +329,15 @@ th{ color: var(--muted); font-weight: 600; }
   transform: translateX(100px);
   transition: all 0.3s cubic-bezier(0.68, -0.55, 0.27, 1.55);
 }
+.toast-container{
+  position: fixed;
+  right: 20px;
+  bottom: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  z-index: 1000;
+}
 .toast.show{
   opacity: 1;
   transform: translateX(0);

@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1"/>
     <title>Settings • IoT Security Platform</title>
     <link rel="stylesheet" href="/assets/app.css"/>
-    <script defer src="/assets/app.js"></script>
+    <script defer src="/assets/app.js?v=11"></script>
   </head>
   <body>
     <div class="wrap" id="settingsRoot">
@@ -109,12 +109,63 @@
               <label style="display: block; margin-bottom: 6px; font-size: 12px; color: var(--muted);">Role</label>
               <div id="userRole" style="font-size: 15px; font-weight: 500;">Loading...</div>
             </div>
+            <div style="margin-bottom: 16px;">
+              <label style="display: block; margin-bottom: 6px; font-size: 12px; color: var(--muted);">User ID</label>
+              <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                <div id="userId" style="font-size: 14px; font-weight: 500;">Loading...</div>
+                <button type="button" class="btn-sm" id="copyUserIdBtn">Copy</button>
+              </div>
+            </div>
 
             <div style="margin-top: 24px; padding-top: 16px; border-top: 1px solid var(--border);">
               <p style="font-size: 12px; color: var(--muted); margin: 0;">
                 🔒 Your account is secured with enterprise-grade encryption
               </p>
             </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Session & Security Section -->
+      <div class="grid" style="margin-top: 24px;">
+        <div class="card">
+          <h2>🛡️ Session Security</h2>
+          <p class="sub">Manage active sessions across devices.</p>
+          <div class="hint" id="sessionmsg" style="margin: 12px 0;"></div>
+          <button
+            type="button"
+            class="btn danger"
+            id="logoutAllBtn"
+            style="background: var(--danger); color: white; padding: 12px 24px; font-weight: 600;"
+          >
+            Sign out of all devices
+          </button>
+        </div>
+        <div class="card" id="adminUnlockCard" style="display: none;">
+          <h2>🧰 Admin: Unlock Account</h2>
+          <p class="sub">Unlock a user who was locked out after failed logins.</p>
+          <div class="hint" id="unlockmsg" style="margin: 12px 0;"></div>
+          <input
+            type="text"
+            id="unlockUserId"
+            placeholder="Enter user ID"
+            style="width: 100%; padding: 10px 14px; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-size: 14px; margin-bottom: 12px;"
+          />
+          <button
+            type="button"
+            class="btn"
+            id="unlockBtn"
+            style="background: var(--primary); color: white; padding: 12px 24px; font-weight: 600;"
+          >
+            Unlock account
+          </button>
+          <div style="margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--border);">
+            <h3 style="margin: 0 0 8px 0;">Network monitoring</h3>
+            <p class="sub" style="margin-bottom: 12px;">Admin-only background scanning for security alerts.</p>
+            <div class="hint" id="monitoringmsg" style="margin-bottom: 12px;"></div>
+            <button type="button" class="btn" id="monitoringToggleBtn" style="background: var(--primary); color: white;">
+              Enable monitoring
+            </button>
           </div>
         </div>
       </div>
@@ -175,6 +226,8 @@
       async function loadSettings() {
         const msg = document.querySelector("#settingsmsg");
         const who = document.querySelector("#who");
+        const sessionMsg = document.querySelector("#sessionmsg");
+        const unlockMsg = document.querySelector("#unlockmsg");
 
         try {
           const me = await api("/api/auth/me");
@@ -184,6 +237,16 @@
           document.querySelector("#userEmail").textContent = me.email;
           document.querySelector("#userName").textContent = me.name;
           document.querySelector("#userRole").textContent = me.role;
+          document.querySelector("#userId").textContent = me.id || "—";
+
+          const adminCard = document.querySelector("#adminUnlockCard");
+          if (adminCard) {
+            adminCard.style.display = me.role === "admin" ? "block" : "none";
+          }
+
+          if(me.role === "admin"){
+            await loadMonitoringStatus();
+          }
           
           // Load subscription and usage
           await loadSubscription();
@@ -191,7 +254,7 @@
           await loadNotificationPreferences();
         } catch(e) {
           // Not logged in
-          setToken(null);
+          clearAuth();
           window.location.href = "/login";
           return;
         }
@@ -351,6 +414,25 @@
         } catch(e) {
           msg.className = "msg bad";
           msg.textContent = `✗ ${e.message}`;
+        }
+      }
+
+      async function loadMonitoringStatus(){
+        const msg = document.querySelector("#monitoringmsg");
+        const btn = document.querySelector("#monitoringToggleBtn");
+        if(!msg || !btn) return;
+        msg.className = "msg";
+        msg.textContent = "Loading monitoring status...";
+        try{
+          const status = await api("/api/network/monitoring/status");
+          const enabled = status.enabled === true;
+          msg.className = enabled ? "msg ok" : "msg";
+          msg.textContent = enabled ? "Monitoring is enabled" : "Monitoring is disabled";
+          btn.textContent = enabled ? "Disable monitoring" : "Enable monitoring";
+          btn.dataset.enabled = enabled ? "true" : "false";
+        }catch(e){
+          msg.className = "msg bad";
+          msg.textContent = `Failed to load monitoring status: ${e.message}`;
         }
       }
 
@@ -570,6 +652,74 @@
           loadSettings();
         }
 
+        if(document.querySelector("#logoutAllBtn")){
+          document.querySelector("#logoutAllBtn").addEventListener("click", async () => {
+            if(!confirm("Sign out of all devices? You will need to log in again everywhere.")){
+              return;
+            }
+            const sessionMsg = document.querySelector("#sessionmsg");
+            sessionMsg.className = "msg";
+            sessionMsg.textContent = "Signing out of all devices...";
+            try{
+              await api("/api/auth/logout", { method: "POST", body: {}, auth: true, retry: false });
+              clearAuth();
+              sessionMsg.className = "msg ok";
+              sessionMsg.textContent = "Signed out of all devices.";
+              setTimeout(() => { window.location.href = "/login"; }, 800);
+            }catch(e){
+              sessionMsg.className = "msg bad";
+              sessionMsg.textContent = `Failed to sign out: ${e.message}`;
+            }
+          });
+        }
+
+        if(document.querySelector("#unlockBtn")){
+          document.querySelector("#unlockBtn").addEventListener("click", async () => {
+            const unlockMsg = document.querySelector("#unlockmsg");
+            const userId = document.querySelector("#unlockUserId").value.trim();
+            if(!userId){
+              unlockMsg.className = "msg bad";
+              unlockMsg.textContent = "Enter a user ID to unlock.";
+              return;
+            }
+            unlockMsg.className = "msg";
+            unlockMsg.textContent = "Unlocking account...";
+            try{
+              await api(`/api/auth/unlock/${encodeURIComponent(userId)}`, { method: "POST" });
+              unlockMsg.className = "msg ok";
+              unlockMsg.textContent = "Account unlocked.";
+            }catch(e){
+              unlockMsg.className = "msg bad";
+              unlockMsg.textContent = `Failed to unlock: ${e.message}`;
+            }
+          });
+        }
+
+        if(document.querySelector("#monitoringToggleBtn")){
+          document.querySelector("#monitoringToggleBtn").addEventListener("click", async () => {
+            const btn = document.querySelector("#monitoringToggleBtn");
+            const msg = document.querySelector("#monitoringmsg");
+            const enabled = btn.dataset.enabled === "true";
+            msg.className = "msg";
+            msg.textContent = enabled ? "Disabling monitoring..." : "Enabling monitoring...";
+            try{
+              if(enabled){
+                await api("/api/network/monitoring/disable", { method: "POST" });
+              } else {
+                await api("/api/network/monitoring/enable", { method: "POST" });
+              }
+              await loadMonitoringStatus();
+              showToast("Monitoring updated.", "success");
+            }catch(e){
+              msg.className = "msg bad";
+              msg.textContent = `Failed to update monitoring: ${e.message}`;
+              if(e.rateLimited){
+                showToast(e.message, "warning");
+              }
+            }
+          });
+        }
+
         if(document.querySelector("#changePasswordForm")){
           document.querySelector("#changePasswordForm").addEventListener("submit", async (e) => {
             e.preventDefault();
@@ -634,6 +784,25 @@
               } else {
                 msg.textContent = `❌ Failed to change password`;
               }
+              if(e.rateLimited){
+                showToast(e.message, "warning");
+              }
+            }
+          });
+        }
+
+        if(document.querySelector("#copyUserIdBtn")){
+          document.querySelector("#copyUserIdBtn").addEventListener("click", async () => {
+            const userId = document.querySelector("#userId").textContent || "";
+            if(!userId || userId === "—"){
+              alert("User ID not available");
+              return;
+            }
+            try{
+              await navigator.clipboard.writeText(userId);
+              alert("User ID copied");
+            }catch(e){
+              alert("Copy failed. Please copy manually.");
             }
           });
         }

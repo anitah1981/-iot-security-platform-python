@@ -11,11 +11,13 @@ from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
 import time
 from typing import Callable
+import os
 import secrets
 
 
-# Rate limiter configuration - Unlimited for development, set limits in production
-limiter = Limiter(key_func=get_remote_address, default_limits=["10000/minute"])
+# Rate limiter configuration
+default_limit = os.getenv("RATE_LIMIT_DEFAULT", "120/minute")
+limiter = Limiter(key_func=get_remote_address, default_limits=[default_limit])
 
 
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):
@@ -28,8 +30,15 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         response.headers["X-Content-Type-Options"] = "nosniff"
         response.headers["X-Frame-Options"] = "DENY"
         response.headers["X-XSS-Protection"] = "1; mode=block"
-        response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
-        response.headers["Content-Security-Policy"] = "default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.socket.io; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' wss: https:;"
+        if os.getenv("ENABLE_HSTS", "true").lower() == "true":
+            response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+        response.headers["Content-Security-Policy"] = (
+            "default-src 'self'; "
+            "script-src 'self' 'unsafe-inline' https://cdn.socket.io https://cdn.jsdelivr.net; "
+            "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
+            "img-src 'self' data: https:; "
+            "connect-src 'self' wss: https:;"
+        )
         response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
         response.headers["Permissions-Policy"] = "geolocation=(), microphone=(), camera=()"
         
