@@ -4,10 +4,29 @@ from datetime import datetime
 from bson import ObjectId
 
 from models import NotificationPreferences, NotificationPreferencesResponse
+from services.notification_service import get_notification_service, NotificationResult
 from routes.auth import get_current_user
 from database import get_database
 
 router = APIRouter()
+
+DEFAULT_PREFS = {
+    "emailEnabled": True,
+    "smsEnabled": False,
+    "whatsappEnabled": False,
+    "voiceEnabled": False,
+    "emailSeverities": ["low", "medium", "high", "critical"],
+    "smsSeverities": ["high", "critical"],
+    "whatsappSeverities": ["medium", "high", "critical"],
+    "voiceSeverities": ["critical"],
+    "phoneNumber": None,
+    "whatsappNumber": None,
+    "quietHoursEnabled": False,
+    "quietHoursStart": None,
+    "quietHoursEnd": None,
+    "escalationEnabled": True,
+    "escalationDelayMinutes": 15,
+}
 
 @router.get("/", response_model=NotificationPreferencesResponse)
 async def get_notification_preferences(current_user = Depends(get_current_user)):
@@ -63,6 +82,67 @@ async def get_notification_preferences(current_user = Depends(get_current_user))
         escalation_delay_minutes=prefs.get("escalationDelayMinutes", 15),
         updated_at=prefs.get("updatedAt", datetime.utcnow())
     )
+
+
+@router.post("/test/{channel}")
+async def test_notification_channel(
+    channel: str,
+    current_user = Depends(get_current_user)
+):
+    """
+    Send a test notification for a specific channel.
+    Channels: email, sms, whatsapp, voice
+    """
+    channel = channel.lower().strip()
+    allowed = {"email", "sms", "whatsapp", "voice"}
+    if channel not in allowed:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid channel")
+
+    db = await get_database()
+    user_id = str(current_user["_id"])
+    prefs = await db.notification_preferences.find_one({"userId": ObjectId(user_id)}) or DEFAULT_PREFS
+
+    enabled_map = {
+        "email": "emailEnabled",
+        "sms": "smsEnabled",
+        "whatsapp": "whatsappEnabled",
+        "voice": "voiceEnabled",
+    }
+    if not prefs.get(enabled_map[channel], False):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"{channel} notifications are disabled")
+
+    service = get_notification_service()
+    result: NotificationResult
+
+    if channel == "email":
+        subject = "Test notification — IoT Security Platform"
+        message = "This is a test email notification from your IoT Security Platform settings."
+        success = await service._send_email(
+            to_email=current_user.get("email", ""),
+            subject=subject,
+            message=message,
+            severity="medium",
+            alert_id="test-notification"
+        )
+        result = NotificationResult(success, "email", "Sent" if success else "Failed")
+    elif channel == "sms":
+        phone_number = prefs.get("phoneNumber")
+        if not phone_number:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Phone number is required for SMS")
+        result = service.send_sms(phone_number, "Test SMS from IoT Security Platform.")
+    elif channel == "whatsapp":
+        whatsapp_number = prefs.get("whatsappNumber")
+        if not whatsapp_number:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="WhatsApp number is required")
+        result = service.send_whatsapp(whatsapp_number, "Test WhatsApp message from IoT Security Platform.")
+    else:
+        phone_number = prefs.get("phoneNumber")
+        if not phone_number:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Phone number is required for voice calls")
+        twiml = "<Response><Say>This is a test call from IoT Security Platform.</Say></Response>"
+        result = service.make_voice_call(phone_number, twiml)
+
+    return {"ok": result.ok, "channel": result.channel, "detail": result.detail}
 
 @router.put("/", response_model=NotificationPreferencesResponse)
 async def update_notification_preferences(

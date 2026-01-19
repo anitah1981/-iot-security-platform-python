@@ -1,7 +1,7 @@
 # services/export_service.py - Alert Export Service (PDF & CSV)
 from datetime import datetime
 from typing import List, Dict, Any, Optional
-from io import BytesIO
+from io import BytesIO, StringIO
 import csv
 
 # PDF generation
@@ -16,7 +16,10 @@ from reportlab.graphics.charts.piecharts import Pie
 from reportlab.graphics.charts.barcharts import VerticalBarChart
 from reportlab.lib.enums import TA_CENTER, TA_LEFT
 
-import pandas as pd
+try:
+    import pandas as pd
+except ImportError:
+    pd = None
 
 
 class ExportService:
@@ -253,9 +256,7 @@ class ExportService:
         Returns:
             BytesIO buffer containing CSV
         """
-        buffer = BytesIO()
-        
-        # Prepare data for pandas
+        # Prepare data for export
         data = []
         for alert in alerts:
             data.append({
@@ -271,11 +272,31 @@ class ExportService:
                 'Context': str(alert.get('context', {}))
             })
         
-        # Create DataFrame
-        df = pd.DataFrame(data)
-        
-        # Write to CSV
-        df.to_csv(buffer, index=False, encoding='utf-8')
+        fieldnames = [
+            'Alert ID',
+            'Created Date',
+            'Severity',
+            'Type',
+            'Message',
+            'Device ID',
+            'Device Name',
+            'Resolved',
+            'Resolved Date',
+            'Context'
+        ]
+
+        if pd is not None:
+            buffer = BytesIO()
+            df = pd.DataFrame(data, columns=fieldnames)
+            df.to_csv(buffer, index=False, encoding='utf-8')
+            buffer.seek(0)
+            return buffer
+
+        text_buffer = StringIO()
+        writer = csv.DictWriter(text_buffer, fieldnames=fieldnames)
+        writer.writeheader()
+        writer.writerows(data)
+        buffer = BytesIO(text_buffer.getvalue().encode('utf-8'))
         buffer.seek(0)
         return buffer
     

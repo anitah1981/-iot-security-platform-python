@@ -304,6 +304,9 @@
                 }
                 <input type="tel" id="phoneNumber" placeholder="+44123456789" value="${prefs.phone_number || ''}"
                        style="width: 100%; margin-top: 12px; padding: 10px; background: var(--surface); border: 1px solid var(--border); border-radius: 6px; color: var(--text);">
+                <div style="margin-top: 8px; font-size: 12px; color: var(--muted);">
+                  Trial Twilio accounts can only send SMS to verified numbers. UK SMS may require UK regulatory approval.
+                </div>
               </div>
 
               <!-- WhatsApp Notifications -->
@@ -443,24 +446,17 @@
         msg.textContent = `Sending test ${channel} notification...`;
 
         try {
-          // Create a test alert
-          const response = await api("/api/alerts/", {
-            method: "POST",
-            body: {
-              device_id: "test-device",
-              alert_type: "test",
-              severity: "medium",
-              message: `Test ${channel} notification from IoT Security Platform`,
-              details: {
-                test: true,
-                channel: channel,
-                timestamp: new Date().toISOString()
-              }
-            }
+          const response = await api(`/api/notification-preferences/test/${channel}`, {
+            method: "POST"
           });
 
-          msg.className = "msg ok";
-          msg.textContent = `✓ Test ${channel} notification sent! Check your ${channel}.`;
+          if (response.ok) {
+            msg.className = "msg ok";
+            msg.textContent = `✓ Test ${channel} sent! ${response.detail || ""}`.trim();
+          } else {
+            msg.className = "msg bad";
+            msg.textContent = `✗ ${response.detail || "Failed to send test notification."}`;
+          }
           
           setTimeout(() => {
             msg.textContent = "";

@@ -122,6 +122,7 @@ docker compose up --build
 ### Notification Preferences
 - `GET /api/notification-preferences` - Get user preferences
 - `PUT /api/notification-preferences` - Update preferences
+- `POST /api/notification-preferences/test/{channel}` - Send a test notification (email|sms|whatsapp|voice)
 
 ## 🔧 Configuration
 
@@ -166,7 +167,12 @@ FROM_EMAIL=your@gmail.com
 TWILIO_ACCOUNT_SID=ACxxxxx
 TWILIO_AUTH_TOKEN=xxxxx
 TWILIO_PHONE_NUMBER=+1234567890
+TWILIO_WHATSAPP_NUMBER=whatsapp:+14155238886
 ```
+**Trial & UK regulatory notes:**
+- Trial accounts can only send SMS to verified recipient numbers.
+- UK SMS may require a UK Regulatory Bundle before you can buy/use a UK number.
+- Error code **21612** means UK SMS geo permissions are disabled.
 
 ## 🎨 Frontend Features
 

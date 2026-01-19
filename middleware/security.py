@@ -55,15 +55,16 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next: Callable):
         start_time = time.time()
         
-        # Log request
-        print(f"📥 {request.method} {request.url.path} from {request.client.host}")
+        # Log request (ASCII only for Windows consoles)
+        client_host = request.client.host if request.client else "unknown"
+        print(f"[IN] {request.method} {request.url.path} from {client_host}")
         
         try:
             response = await call_next(request)
             
             # Log response
             process_time = time.time() - start_time
-            print(f"📤 {request.method} {request.url.path} - {response.status_code} ({process_time:.3f}s)")
+            print(f"[OUT] {request.method} {request.url.path} - {response.status_code} ({process_time:.3f}s)")
             
             return response
         except Exception as e:

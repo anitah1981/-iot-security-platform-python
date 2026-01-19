@@ -42,12 +42,24 @@ TWILIO_PHONE_NUMBER=+1234567890
 TWILIO_WHATSAPP_NUMBER=whatsapp:+14155238886
 ```
 
+### Trial & UK Regulatory Notes
+- Trial Twilio accounts can only send SMS to verified recipient numbers.
+- UK SMS may require a UK Regulatory Bundle for UK numbers.
+- If you see error code **21612**, enable UK in Twilio Geo Permissions.
+
 ### Test It
 ```bash
-# Test SMS
-curl -X POST http://localhost:8000/api/test/sms \
+# Test SMS (requires login + saved preferences)
+# 1) Login and capture token
+TOKEN=$(curl -s -X POST http://localhost:8000/api/auth/login \
   -H "Content-Type: application/json" \
-  -d '{"to":"+447712345678","message":"Test from IoT Security"}'
+  -d '{"email":"your@email.com","password":"your_password"}' | jq -r '.token')
+
+# 2) Ensure sms_enabled=true and phone_number set in /api/notification-preferences
+
+# 3) Send test SMS
+curl -X POST http://localhost:8000/api/notification-preferences/test/sms \
+  -H "Authorization: Bearer $TOKEN"
 ```
 
 ---

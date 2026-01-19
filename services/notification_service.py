@@ -46,12 +46,32 @@ class NotificationService:
         self.twilio_account_sid = os.getenv("TWILIO_ACCOUNT_SID")
         self.twilio_auth_token = os.getenv("TWILIO_AUTH_TOKEN")
         self.twilio_phone_number = os.getenv("TWILIO_PHONE_NUMBER")
+        self.twilio_whatsapp_number = os.getenv("TWILIO_WHATSAPP_NUMBER")
 
     def _smtp_ready(self) -> bool:
         return bool(self.smtp_user and self.smtp_password and self.from_email)
 
-    def _twilio_ready(self) -> bool:
-        return bool(self.twilio_account_sid and self.twilio_auth_token and self.twilio_phone_number)
+    def _twilio_base_ready(self) -> bool:
+        return bool(self.twilio_account_sid and self.twilio_auth_token)
+
+    def _sms_ready(self) -> bool:
+        return bool(self._twilio_base_ready() and self.twilio_phone_number)
+
+    def _voice_ready(self) -> bool:
+        return bool(self._twilio_base_ready() and self.twilio_phone_number)
+
+    def _whatsapp_ready(self) -> bool:
+        return bool(self._twilio_base_ready() and (self.twilio_whatsapp_number or self.twilio_phone_number))
+
+    def _format_whatsapp_from(self) -> Optional[str]:
+        number = self.twilio_whatsapp_number or self.twilio_phone_number
+        if not number:
+            return None
+        return number if number.startswith("whatsapp:") else f"whatsapp:{number}"
+
+    @staticmethod
+    def _format_whatsapp_to(to_number: str) -> str:
+        return to_number if to_number.startswith("whatsapp:") else f"whatsapp:{to_number}"
 
     async def _send_email(
         self,
@@ -146,8 +166,12 @@ class NotificationService:
             return NotificationResult(False, "email", f"Send failed: {e}")
 
     def send_sms(self, to_number: str, body: str) -> NotificationResult:
-        if not self._twilio_ready():
-            return NotificationResult(False, "sms", "Twilio not configured (TWILIO_* env vars)")
+        if not self._sms_ready():
+            return NotificationResult(
+                False,
+                "sms",
+                "Twilio not configured (TWILIO_ACCOUNT_SID/TWILIO_AUTH_TOKEN/TWILIO_PHONE_NUMBER)",
+            )
 
         try:
             from twilio.rest import Client
@@ -159,16 +183,28 @@ class NotificationService:
             return NotificationResult(False, "sms", f"Send failed: {e}")
 
     def send_whatsapp(self, to_number: str, body: str) -> NotificationResult:
-        if not self._twilio_ready():
-            return NotificationResult(False, "whatsapp", "Twilio not configured (TWILIO_* env vars)")
+        if not self._whatsapp_ready():
+            return NotificationResult(
+                False,
+                "whatsapp",
+                "Twilio not configured (TWILIO_ACCOUNT_SID/TWILIO_AUTH_TOKEN + TWILIO_WHATSAPP_NUMBER or TWILIO_PHONE_NUMBER)",
+            )
 
         try:
             from twilio.rest import Client
 
+            from_number = self._format_whatsapp_from()
+            if not from_number:
+                return NotificationResult(
+                    False,
+                    "whatsapp",
+                    "Twilio WhatsApp sender not configured (TWILIO_WHATSAPP_NUMBER or TWILIO_PHONE_NUMBER)",
+                )
+
             client = Client(self.twilio_account_sid, self.twilio_auth_token)
             client.messages.create(
-                from_=f"whatsapp:{self.twilio_phone_number}",
-                to=f"whatsapp:{to_number}",
+                from_=from_number,
+                to=self._format_whatsapp_to(to_number),
                 body=body,
             )
             return NotificationResult(True, "whatsapp", "Sent")
@@ -179,8 +215,12 @@ class NotificationService:
         """
         MVP: uses inline TwiML if provided, otherwise a simple default message.
         """
-        if not self._twilio_ready():
-            return NotificationResult(False, "voice", "Twilio not configured (TWILIO_* env vars)")
+        if not self._voice_ready():
+            return NotificationResult(
+                False,
+                "voice",
+                "Twilio not configured (TWILIO_ACCOUNT_SID/TWILIO_AUTH_TOKEN/TWILIO_PHONE_NUMBER)",
+            )
 
         try:
             from twilio.rest import Client
