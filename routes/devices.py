@@ -116,11 +116,11 @@ async def get_devices(
             print(f"[ERROR] Failed to parse device {d.get('_id')}: {e}")
             continue
     
-        return DeviceListResponse(
-            page=page,
-            total=total,
-            devices=devices
-        )
+    return DeviceListResponse(
+        page=page,
+        total=total,
+        devices=devices
+    )
     except Exception as e:
         import traceback
         print(f"[ERROR] get_devices failed: {e}")
