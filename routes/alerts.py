@@ -98,8 +98,9 @@ async def create_alert(alert: AlertCreate, background_tasks: BackgroundTasks):
         allow_duplicate = True
     
     # Check for recent duplicate if duplicates not allowed
+    # Note: We check deviceId since new alerts are created with deviceId
     if not allow_duplicate:
-        query = {
+        base_query = {
             "deviceId": ObjectId(alert.device_id),
             "message": alert.message,
             "type": alert.type,
@@ -108,21 +109,33 @@ async def create_alert(alert: AlertCreate, background_tasks: BackgroundTasks):
         
         if time_window:
             cutoff = datetime.utcnow() - timedelta(seconds=time_window)
-            query["createdAt"] = {"$gte": cutoff}
+            # Check both createdAt and created_at for backward compatibility
+            query = {
+                **base_query,
+                "$or": [
+                    {"createdAt": {"$gte": cutoff}},
+                    {"created_at": {"$gte": cutoff}}
+                ]
+            }
+        else:
+            query = base_query
         
         existing_alert = await db.alerts.find_one(query)
         
         if existing_alert:
+            # Handle both deviceId and device_id formats
+            existing_device_id = existing_alert.get("deviceId") or existing_alert.get("device_id")
+            created_at = existing_alert.get("createdAt") or existing_alert.get("created_at") or datetime.utcnow()
             return AlertResponse(
                 id=str(existing_alert["_id"]),
-                device_id=str(existing_alert["deviceId"]),
-                message=existing_alert["message"],
-                severity=existing_alert["severity"],
-                type=existing_alert["type"],
+                device_id=str(existing_device_id) if existing_device_id else "",
+                message=existing_alert.get("message", ""),
+                severity=existing_alert.get("severity", "medium"),
+                type=existing_alert.get("type", "system"),
                 context=existing_alert.get("context", {}),
                 resolved=existing_alert.get("resolved", False),
-                resolved_at=existing_alert.get("resolvedAt"),
-                created_at=existing_alert["createdAt"]
+                resolved_at=existing_alert.get("resolvedAt") or existing_alert.get("resolved_at"),
+                created_at=created_at
             )
     
     # Create new alert
@@ -184,16 +197,37 @@ async def get_alerts(
     """
     db = await get_database()
     
-    # Build filter
+    # Build filter - handle both deviceId and device_id formats
     filter_query = {}
+    
+    # Device filter - check both field names
     if device_id:
-        filter_query["deviceId"] = ObjectId(device_id)
+        device_obj_id = ObjectId(device_id)
+        filter_query["$or"] = [
+            {"deviceId": device_obj_id},
+            {"device_id": device_obj_id}
+        ]
+    
+    # Date filter - check both field names
+    if since:
+        date_condition = {
+            "$or": [
+                {"createdAt": {"$gte": since}},
+                {"created_at": {"$gte": since}}
+            ]
+        }
+        # If we already have $or for device_id, use $and to combine
+        if "$or" in filter_query:
+            device_condition = {"$or": filter_query.pop("$or")}
+            filter_query["$and"] = [device_condition, date_condition]
+        else:
+            filter_query.update(date_condition)
+    
+    # Add direct field filters (these are AND conditions)
     if severity:
         filter_query["severity"] = severity
     if type:
         filter_query["type"] = type
-    if since:
-        filter_query["createdAt"] = {"$gte": since}
     
     # Calculate skip
     skip = (page - 1) * limit
@@ -208,28 +242,38 @@ async def get_alerts(
     # Shape response with device info
     alerts = []
     for a in alerts_raw:
+        # Get device ID - handle both deviceId and device_id formats
+        alert_device_id = a.get("deviceId") or a.get("device_id")
+        
         # Get device info
         device_info = None
-        if a.get("deviceId"):
-            device = await db.devices.find_one({"_id": a["deviceId"]})
-            if device:
-                device_info = {
-                    "id": str(device["_id"]),
-                    "logical_id": device.get("deviceId"),
-                    "name": device.get("name"),
-                    "type": device.get("type")
-                }
+        if alert_device_id:
+            try:
+                device = await db.devices.find_one({"_id": ObjectId(alert_device_id)})
+                if device:
+                    device_info = {
+                        "id": str(device["_id"]),
+                        "logical_id": device.get("deviceId") or device.get("device_id"),
+                        "name": device.get("name"),
+                        "type": device.get("type")
+                    }
+            except Exception as e:
+                print(f"[ERROR] Failed to get device info for alert {a.get('_id')}: {e}")
+        
+        # Handle both createdAt and created_at
+        created_at = a.get("createdAt") or a.get("created_at") or datetime.utcnow()
+        resolved_at = a.get("resolvedAt") or a.get("resolved_at")
         
         alerts.append(AlertResponse(
             id=str(a["_id"]),
-            device_id=str(a["deviceId"]),
-            message=a["message"],
-            severity=a["severity"],
-            type=a["type"],
+            device_id=str(alert_device_id) if alert_device_id else "",
+            message=a.get("message", ""),
+            severity=a.get("severity", "medium"),
+            type=a.get("type", "system"),
             context=a.get("context", {}),
             resolved=a.get("resolved", False),
-            resolved_at=a.get("resolvedAt"),
-            created_at=a["createdAt"],
+            resolved_at=resolved_at,
+            created_at=created_at,
             device=device_info
         ))
     
@@ -257,7 +301,7 @@ async def cleanup_old_alerts(days: int = Query(..., description="Delete alerts o
         "deleted_count": result.deleted_count
     }
 
-@router.patch("/{alert_id}/resolve")
+@router.post("/{alert_id}/resolve")
 async def resolve_alert(alert_id: str):
     """
     Mark an alert as resolved

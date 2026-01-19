@@ -154,7 +154,7 @@ function renderDevices(devs){
       <td>${esc(d.device_id)}</td>
       <td>${esc(d.name)}</td>
       <td>${esc(d.type)}</td>
-      <td>${esc(d.ip_address)}</td>
+      <td>${esc(d.router_ip || d.routerIp || 'Not set')}</td>
       <td class="device-status">${badgeForStatus(d.status)}</td>
     </tr>
   `).join("");
@@ -163,44 +163,325 @@ function renderDevices(devs){
 function renderAlerts(alerts){
   const tbody = qs("#alerts");
   if(!tbody) return;
+  
+  // Filter out resolved alerts or show them dimmed
+  const unresolvedAlerts = alerts.filter(a => !a.resolved);
+  const resolvedAlerts = alerts.filter(a => a.resolved);
+  
   if(!alerts.length){
     tbody.innerHTML = `<tr><td colspan="6" class="hint">No alerts yet.</td></tr>`;
     return;
   }
-  tbody.innerHTML = alerts.map(a => `
-    <tr class="${a.resolved ? 'resolved-alert' : ''}" data-alert-id="${a.id || a._id}">
+  
+  // Render unresolved alerts first
+  let html = unresolvedAlerts.map(a => `
+    <tr class="alert-row" data-alert-id="${a.id || a._id}">
       <td><span class="${badgeForSeverity(a.severity)}">${esc(a.severity)}</span></td>
       <td>${esc(a.type)}</td>
       <td>${esc(a.message)}</td>
       <td>${a.device?.name ? esc(a.device.name) : esc(a.device_id)}</td>
       <td>${esc((a.created_at || "").toString().slice(0,19).replace("T"," "))}</td>
       <td class="alert-action">
-        ${!a.resolved ? `<button class="btn-sm" onclick="resolveAlert('${a.id}')">Resolve</button>` : '<span class="badge b-ok">Resolved</span>'}
+        <button class="btn-sm" onclick="resolveAlert('${a.id}')">Resolve</button>
       </td>
     </tr>
   `).join("");
+  
+  // Optionally show resolved alerts (dimmed)
+  if(resolvedAlerts.length > 0){
+    html += `<tr class="resolved-alerts-header"><td colspan="6" style="padding: 8px; font-weight: 600; color: var(--muted); font-size: 12px; border-top: 1px solid var(--border);">Resolved (${resolvedAlerts.length})</td></tr>`;
+    html += resolvedAlerts.slice(0, 5).map(a => `
+      <tr class="resolved-alert" data-alert-id="${a.id || a._id}" style="opacity: 0.6;">
+        <td><span class="${badgeForSeverity(a.severity)}">${esc(a.severity)}</span></td>
+        <td>${esc(a.type)}</td>
+        <td>${esc(a.message)}</td>
+        <td>${a.device?.name ? esc(a.device.name) : esc(a.device_id)}</td>
+        <td>${esc((a.created_at || "").toString().slice(0,19).replace("T"," "))}</td>
+        <td class="alert-action">
+          <span class="badge b-ok">Resolved</span>
+        </td>
+      </tr>
+    `).join("");
+  }
+  
+  tbody.innerHTML = html;
 }
 
 async function resolveAlert(alertId){
   const msg = qs("#dashmsg");
+  const alertRow = document.querySelector(`tr[data-alert-id="${alertId}"]`);
+  
   try{
     msg.textContent = "Resolving alert...";
     await api(`/api/alerts/${alertId}/resolve`, { method: "POST" });
+    
+    // Immediately hide/update the alert in UI
+    if(alertRow){
+      alertRow.classList.add('resolved-alert');
+      const actionCell = alertRow.querySelector('.alert-action');
+      if(actionCell){
+        actionCell.innerHTML = '<span class="badge b-ok">Resolved</span>';
+      }
+      // Optionally fade out and remove after a delay
+      setTimeout(() => {
+        alertRow.style.opacity = '0.5';
+        alertRow.style.transition = 'opacity 0.3s';
+      }, 500);
+    }
+    
     msg.className = "msg ok";
     msg.textContent = "Alert resolved!";
     setTimeout(() => { msg.textContent = ""; msg.className = "msg"; }, 2000);
-    // Reload alerts
+    
+    // Reload alerts to refresh the list
     const alerts = await api("/api/alerts?limit=25&page=1");
     renderAlerts(alerts.alerts || []);
   }catch(e){
     msg.className = "msg bad";
-    msg.textContent = e.message;
+    msg.textContent = "Failed to resolve alert: " + e.message;
+    console.error("Resolve alert error:", e);
   }
 }
 
 function logout(){
   setToken(null);
   window.location.href = "/";
+}
+
+// Alerts section toggle
+function toggleAlertsSection(){
+  const content = document.getElementById('alertsContent');
+  const toggle = document.getElementById('alertsToggle');
+  if(content.style.display === 'none'){
+    content.style.display = 'block';
+    toggle.textContent = '▼';
+  } else {
+    content.style.display = 'none';
+    toggle.textContent = '▶';
+  }
+}
+
+// Device form functions
+async function showAddDeviceForm(){
+  const form = document.getElementById('addDeviceForm');
+  if(form) {
+    form.style.display = 'block';
+    form.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    
+    // Load router IP and auto-fill
+    try {
+      const settings = await api("/api/network-settings");
+      if(settings.router_ip) {
+        document.getElementById('router_ip_display').value = settings.router_ip;
+        document.getElementById('routerIpSetup').style.display = 'none';
+      } else {
+        document.getElementById('routerIpSetup').style.display = 'block';
+      }
+    } catch(e) {
+      console.error("Failed to load network settings:", e);
+      document.getElementById('routerIpSetup').style.display = 'block';
+    }
+  }
+}
+
+async function saveRouterIp(){
+  const routerIp = document.getElementById('router_ip').value.trim();
+  if(!routerIp) {
+    alert("Please enter your router IP address");
+    return;
+  }
+  
+  // Validate IP format
+  const ipPattern = /^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$/;
+  if(!ipPattern.test(routerIp)) {
+    alert("Please enter a valid IP address (e.g., 192.168.1.1)");
+    return;
+  }
+  
+  try {
+    await api("/api/network-settings", {
+      method: "PUT",
+      body: { router_ip: routerIp }
+    });
+    
+    document.getElementById('routerIpSetup').style.display = 'none';
+    alert("Router IP saved! You can now scan for devices.");
+  } catch(e) {
+    alert("Failed to save router IP: " + e.message);
+  }
+}
+
+async function scanForDevices(){
+  const statusDiv = document.getElementById('deviceIpStatus');
+  const detectedDiv = document.getElementById('detectedDevices');
+  const detectedList = document.getElementById('detectedDevicesList');
+  
+  statusDiv.innerHTML = '<span style="color: var(--primary);">Scanning network...</span>';
+  detectedDiv.style.display = 'none';
+  
+  try {
+    const result = await api("/api/network/scan-devices");
+    
+    if(result.error === 'no_router_ip') {
+      statusDiv.innerHTML = '<span style="color: var(--danger);">⚠️ Please configure your router IP first</span>';
+      document.getElementById('routerIpSetup').style.display = 'block';
+      return;
+    }
+    
+    if(result.devices && result.devices.length > 0) {
+      statusDiv.innerHTML = `<span style="color: var(--ok);">✓ Found ${result.total_detected} device(s) on your network</span>`;
+      
+      // Show detected devices
+      detectedList.innerHTML = result.devices.map(device => `
+        <div style="padding: 8px; margin-bottom: 4px; background: var(--bg); border-radius: 4px; cursor: pointer; border: 1px solid var(--border);" 
+             onclick="selectDetectedDevice('${device.ip}', '${device.hostname || 'Unknown'}')"
+             onmouseover="this.style.borderColor='var(--primary)'"
+             onmouseout="this.style.borderColor='var(--border)'">
+          <div style="font-weight: 500;">${device.ip}</div>
+          <div style="font-size: 12px; color: var(--muted);">
+            ${device.hostname ? `Hostname: ${device.hostname} | ` : ''}
+            Ports: ${device.ports_open.join(', ')}
+          </div>
+        </div>
+      `).join('');
+      
+      detectedDiv.style.display = 'block';
+    } else {
+      statusDiv.innerHTML = '<span style="color: var(--warning);">No new devices detected. Make sure devices are powered on and connected.</span>';
+      detectedDiv.style.display = 'none';
+    }
+  } catch(e) {
+    statusDiv.innerHTML = `<span style="color: var(--danger);">✗ Scan failed: ${e.message}</span>`;
+    detectedDiv.style.display = 'none';
+  }
+}
+
+function selectDetectedDevice(ip, hostname){
+  document.getElementById('device_ip').value = ip;
+  if(hostname && hostname !== 'Unknown' && !document.getElementById('device_name').value) {
+    document.getElementById('device_name').value = hostname;
+  }
+  document.getElementById('detectedDevices').style.display = 'none';
+  verifyDeviceConnection();
+}
+
+async function verifyDeviceConnection(){
+  const ip = document.getElementById('device_ip').value.trim();
+  const statusDiv = document.getElementById('deviceIpStatus');
+  
+  if(!ip) {
+    statusDiv.innerHTML = '<span style="color: var(--warning);">Please enter an IP address first</span>';
+    return;
+  }
+  
+  // Validate IP format
+  const ipPattern = /^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$/;
+  if(!ipPattern.test(ip)) {
+    statusDiv.innerHTML = '<span style="color: var(--danger);">Invalid IP address format</span>';
+    return;
+  }
+  
+  statusDiv.innerHTML = '<span style="color: var(--primary);">Testing connection...</span>';
+  
+  try {
+    const result = await api(`/api/network/verify-device?ip_address=${encodeURIComponent(ip)}`);
+    
+    if(result.verified && result.reachable) {
+      statusDiv.innerHTML = `<span style="color: var(--ok);">✓ Device is reachable and on your network${result.hostname ? ` (${result.hostname})` : ''}</span>`;
+    } else if(result.same_network && !result.reachable) {
+      statusDiv.innerHTML = `<span style="color: var(--warning);">⚠️ Device is on your network but not currently reachable. Make sure it's powered on.</span>`;
+    } else if(!result.same_network) {
+      statusDiv.innerHTML = `<span style="color: var(--danger);">⚠️ WARNING: Device is NOT on your network! This may be a security risk.</span>`;
+    } else {
+      statusDiv.innerHTML = '<span style="color: var(--danger);">✗ Connection test failed</span>';
+    }
+  } catch(e) {
+    statusDiv.innerHTML = `<span style="color: var(--danger);">✗ Test failed: ${e.message}</span>`;
+  }
+}
+
+function hideAddDeviceForm(){
+  const form = document.getElementById('addDeviceForm');
+  if(form) {
+    form.style.display = 'none';
+    // Clear form
+    document.getElementById('device_id').value = '';
+    document.getElementById('device_name').value = '';
+    document.getElementById('device_type').value = '';
+    document.getElementById('device_heartbeat').value = '30';
+    document.getElementById('device_alerts').checked = true;
+    // Router IP stays filled (readonly)
+  }
+}
+
+async function addDevice(event){
+  event.preventDefault();
+  const msg = qs("#dashmsg");
+  const form = document.getElementById('addDeviceForm');
+  const submitBtn = event.target.querySelector('button[type="submit"]');
+  
+  const deviceData = {
+    device_id: document.getElementById('device_id').value.trim(),
+    name: document.getElementById('device_name').value.trim(),
+    type: document.getElementById('device_type').value,
+    router_ip: document.getElementById('router_ip_display').value,
+    device_ip: null, // Not required
+    heartbeat_interval: parseInt(document.getElementById('device_heartbeat').value) || 30,
+    alerts_enabled: document.getElementById('device_alerts').checked
+  };
+  
+  // Validation
+  if(!deviceData.device_id || !deviceData.name || !deviceData.type || !deviceData.router_ip) {
+    if(msg) {
+      msg.className = "msg bad";
+      msg.textContent = "Please fill in all required fields";
+    }
+    return;
+  }
+  
+  try{
+    if(msg) {
+      msg.textContent = "Adding device...";
+      msg.className = "msg";
+    }
+    
+    if(submitBtn) {
+      submitBtn.disabled = true;
+      submitBtn.textContent = "Adding...";
+    }
+    
+    const newDevice = await api("/api/devices", {
+      method: "POST",
+      body: deviceData
+    });
+    
+    if(msg) {
+      msg.className = "msg ok";
+      msg.textContent = `Device "${deviceData.name}" added successfully!`;
+    }
+    
+    // Hide form and reload devices
+    hideAddDeviceForm();
+    
+    // Reload dashboard
+    setTimeout(() => {
+      loadDashboard();
+      if(msg) msg.textContent = "";
+    }, 1000);
+    
+  }catch(e){
+    if(msg) {
+      msg.className = "msg bad";
+      msg.textContent = "Failed to add device: " + (e.message || e.detail || "Unknown error");
+    }
+    console.error("Add device error:", e);
+    
+    // Re-enable button
+    if(submitBtn) {
+      submitBtn.disabled = false;
+      submitBtn.textContent = "Add Device";
+    }
+  }
 }
 
 async function manualRefresh(){

@@ -61,6 +61,15 @@ async def lifespan(app: FastAPI):
         print("[OK] Alert retention cleanup task started")
     except Exception as e:
         print(f"[ERROR] Could not start retention cleanup: {e}")
+    
+    # Start network monitoring task
+    try:
+        from services.network_monitor import start_network_monitoring
+        start_network_monitoring()
+        print("[OK] Network monitoring started")
+    except Exception as e:
+        print(f"[ERROR] Could not start network monitoring: {e}")
+    
     print("Backend ready")
     
     yield
@@ -204,6 +213,10 @@ async def get_redoc(user: dict = Depends(get_current_user)):
 from routes.devices import router as devices_router
 app.include_router(devices_router, prefix="/api/devices", tags=["Devices"])
 
+# Network settings routes
+from routes.network_settings import router as network_settings_router
+app.include_router(network_settings_router, prefix="/api/network-settings", tags=["Network Settings"])
+
 # Include alert routes
 from routes.alerts import router as alerts_router
 app.include_router(alerts_router, prefix="/api/alerts", tags=["Alerts"])
@@ -243,6 +256,10 @@ app.include_router(groups_router, prefix="/api/groups", tags=["Device Groups"])
 # 12) Audit Logs
 from routes.audit import router as audit_router
 app.include_router(audit_router, prefix="/api/audit", tags=["Audit Logs"])
+
+# Network monitoring routes
+from routes.network import router as network_router
+app.include_router(network_router, prefix="/api/network", tags=["Network Monitoring"])
 
 # Mount Socket.IO for real-time updates - Temporarily disabled
 # app.mount("/socket.io", socket_app)

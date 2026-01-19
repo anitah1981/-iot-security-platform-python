@@ -48,7 +48,8 @@ class DeviceBase(BaseModel):
     device_id: str = Field(..., description="Logical device ID like 'dev-001'")
     name: str = Field(..., min_length=1, max_length=100)
     type: str = Field(..., description="Camera, Router, Sensor, etc.")
-    ip_address: str = Field(..., pattern=r'^(\d{1,3}\.){3}\d{1,3}$')
+    router_ip: Optional[str] = Field(None, description="Router/Gateway IP address")
+    device_ip: Optional[str] = Field(None, description="Device's actual IP (optional, auto-detected)")
 
 class DeviceCreate(DeviceBase):
     heartbeat_interval: int = Field(30, ge=10, description="Seconds between heartbeats")
@@ -73,6 +74,8 @@ class DeviceResponse(DeviceBase):
     organization: Optional[str] = None
     created_at: datetime
     updated_at: datetime
+    # Keep ip_address for backward compatibility but it's now device_ip
+    ip_address: Optional[str] = None  # Deprecated, use device_ip instead
 
 class DeviceListResponse(BaseModel):
     page: int
