@@ -4,6 +4,7 @@ const API_BASE = ""; // same-origin
 
 function qs(sel){ return document.querySelector(sel); }
 function esc(s){ return String(s ?? "").replace(/[&<>"']/g, (c)=>({ "&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;" }[c])); }
+function jsString(s){ return JSON.stringify(String(s ?? "")); }
 
 function setToken(token){
   if(token) localStorage.setItem("iot_token", token);
@@ -73,13 +74,7 @@ async function loadDashboard(){
   if (msg) msg.textContent = "Loading…";
 
   try{
-    const [devices, alerts] = await Promise.all([
-      api("/api/devices?limit=25&page=1"),
-      api("/api/alerts?limit=25&page=1"),
-    ]);
-
-    renderDevices(devices.devices || []);
-    renderAlerts(alerts.alerts || []);
+    await Promise.all([loadDevices(), loadAlerts()]);
     updateLastRefreshTime();
 
     if (msg) msg.textContent = "";
@@ -108,12 +103,7 @@ function startAutoRefresh(){
   if(refreshInterval) return;
   refreshInterval = setInterval(async () => {
     try{
-      const [devices, alerts] = await Promise.all([
-        api("/api/devices?limit=25&page=1"),
-        api("/api/alerts?limit=25&page=1"),
-      ]);
-      renderDevices(devices.devices || []);
-      renderAlerts(alerts.alerts || []);
+      await Promise.all([loadDevices(), loadAlerts()]);
       updateLastRefreshTime();
     }catch(e){
       console.error("Auto-refresh error:", e);
@@ -142,22 +132,118 @@ function badgeForSeverity(sev){
   return `badge b-ok`;
 }
 
+let deviceCache = new Map();
+let editingDeviceId = null;
+let devicesTableBound = false;
+let deviceFilters = { search: "", type: "", status: "" };
+let filterDebounce = null;
+let editSnapshot = null;
+let pendingDelete = null;
+
+function formatDate(value){
+  if(!value) return null;
+  const d = new Date(value);
+  return Number.isNaN(d.getTime()) ? null : d;
+}
+
+function formatRelativeTime(value){
+  const d = formatDate(value);
+  if(!d) return "Never";
+  const diffMs = Date.now() - d.getTime();
+  if(diffMs < 60000) return "Just now";
+  const minutes = Math.floor(diffMs / 60000);
+  if(minutes < 60) return `${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  if(hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  if(days < 7) return `${days}d ago`;
+  return d.toLocaleDateString();
+}
+
+function formatDateTime(value){
+  const d = formatDate(value);
+  return d ? d.toLocaleString() : "Never";
+}
+
+function buildDevicesQuery(){
+  const params = new URLSearchParams();
+  params.set("limit", "25");
+  params.set("page", "1");
+  if(deviceFilters.search) params.set("name", deviceFilters.search);
+  if(deviceFilters.type) params.set("type", deviceFilters.type);
+  if(deviceFilters.status) params.set("status", deviceFilters.status);
+  return `/api/devices?${params.toString()}`;
+}
+
+async function loadDevices(){
+  const data = await api(buildDevicesQuery());
+  renderDevices(data.devices || []);
+  return data;
+}
+
+async function loadAlerts(){
+  const data = await api("/api/alerts?limit=25&page=1");
+  renderAlerts(data.alerts || []);
+  return data;
+}
+
+function scheduleDeviceFilterUpdate(){
+  if(filterDebounce) clearTimeout(filterDebounce);
+  filterDebounce = setTimeout(() => {
+    loadDevices().catch((e) => console.error("Device filter error:", e));
+  }, 250);
+}
+
 function renderDevices(devs){
   const tbody = qs("#devices");
   if(!tbody) return;
   if(!devs.length){
-    tbody.innerHTML = `<tr><td colspan="5" class="hint">No devices yet.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="7" class="hint">No devices yet.</td></tr>`;
     return;
   }
+  deviceCache = new Map(devs.map(d => [d.device_id, d]));
   tbody.innerHTML = devs.map(d => `
-    <tr data-device-id="${d.id || d._id}">
+    <tr data-device-id="${d.id || d._id}" data-device-key="${esc(d.device_id)}">
       <td>${esc(d.device_id)}</td>
       <td>${esc(d.name)}</td>
       <td>${esc(d.type)}</td>
       <td>${esc(d.router_ip || d.routerIp || 'Not set')}</td>
       <td class="device-status">${badgeForStatus(d.status)}</td>
+      <td>${esc(formatRelativeTime(d.last_seen))}</td>
+      <td>
+        <div style="display:flex; gap:6px; flex-wrap:wrap;">
+          <button class="btn-sm" data-action="edit" data-device-id="${esc(d.device_id)}">Edit</button>
+          <button class="btn-sm danger" data-action="delete" data-device-id="${esc(d.device_id)}" data-device-name="${esc(d.name)}">Delete</button>
+        </div>
+      </td>
     </tr>
   `).join("");
+
+  if(!devicesTableBound){
+    devicesTableBound = true;
+    tbody.addEventListener("click", (e) => {
+      const btn = e.target.closest("button[data-action]");
+      if(btn){
+        const action = btn.dataset.action;
+        const deviceId = btn.dataset.deviceId;
+        const deviceName = btn.dataset.deviceName;
+        if(action === "edit"){
+          showEditDeviceForm(deviceId);
+        } else if(action === "delete"){
+          deleteDevice(deviceId, deviceName);
+        }
+        return;
+      }
+
+      const row = e.target.closest("tr[data-device-key]");
+      if(!row) return;
+      const deviceId = row.dataset.deviceKey;
+      if(deviceId){
+        const device = deviceCache.get(deviceId);
+        if(device) openDevicePanel(device);
+      }
+    });
+  }
 }
 
 function renderAlerts(alerts){
@@ -262,11 +348,63 @@ function toggleAlertsSection(){
 }
 
 // Device form functions
+function setDeviceFormMode(mode, device = null){
+  const title = document.getElementById('deviceFormTitle');
+  const submitBtn = document.getElementById('deviceSubmitBtn');
+  const deviceIdInput = document.getElementById('device_id');
+  const hint = document.getElementById('deviceFormHint');
+
+  if(mode === "edit" && device){
+    editingDeviceId = device.device_id;
+    editSnapshot = {
+      name: device.name || "",
+      type: device.type || "",
+      heartbeat_interval: device.heartbeat_interval || 30,
+      alerts_enabled: device.alerts_enabled !== false
+    };
+    if(title) title.textContent = "Edit Device";
+    if(submitBtn) submitBtn.textContent = "Save Changes";
+    if(deviceIdInput){
+      deviceIdInput.value = device.device_id || "";
+      deviceIdInput.readOnly = true;
+      deviceIdInput.style.background = "var(--surface)";
+      deviceIdInput.style.color = "var(--muted)";
+    }
+
+    document.getElementById('device_name').value = device.name || "";
+    document.getElementById('device_type').value = device.type || "";
+    document.getElementById('device_heartbeat').value = device.heartbeat_interval || 30;
+    document.getElementById('device_alerts').checked = device.alerts_enabled !== false;
+    document.getElementById('router_ip_display').value = device.router_ip || device.routerIp || "";
+    if(hint) hint.textContent = "Make changes to enable Save.";
+    setDeviceSubmitEnabled(false);
+    return;
+  }
+
+  editingDeviceId = null;
+  editSnapshot = null;
+  if(title) title.textContent = "Add New Device";
+  if(submitBtn) submitBtn.textContent = "Add Device";
+  if(deviceIdInput){
+    deviceIdInput.readOnly = false;
+    deviceIdInput.style.background = "var(--bg)";
+    deviceIdInput.style.color = "var(--text)";
+  }
+  if(hint) hint.textContent = "";
+  setDeviceSubmitEnabled(true);
+}
+
 async function showAddDeviceForm(){
   const form = document.getElementById('addDeviceForm');
   if(form) {
     form.style.display = 'block';
     form.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    setDeviceFormMode("add");
+    document.getElementById('device_id').value = '';
+    document.getElementById('device_name').value = '';
+    document.getElementById('device_type').value = '';
+    document.getElementById('device_heartbeat').value = '30';
+    document.getElementById('device_alerts').checked = true;
     
     // Load router IP and auto-fill
     try {
@@ -411,27 +549,39 @@ function hideAddDeviceForm(){
     document.getElementById('device_heartbeat').value = '30';
     document.getElementById('device_alerts').checked = true;
     // Router IP stays filled (readonly)
+    setDeviceFormMode("add");
   }
 }
 
-async function addDevice(event){
+function showEditDeviceForm(deviceId){
+  const device = deviceCache.get(deviceId);
+  if(!device){
+    alert("Device not found in the current list. Please refresh.");
+    return;
+  }
+
+  const form = document.getElementById('addDeviceForm');
+  if(form) {
+    form.style.display = 'block';
+    form.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    setDeviceFormMode("edit", device);
+  }
+}
+
+async function submitDeviceForm(event){
   event.preventDefault();
   const msg = qs("#dashmsg");
-  const form = document.getElementById('addDeviceForm');
   const submitBtn = event.target.querySelector('button[type="submit"]');
   
-  const deviceData = {
-    device_id: document.getElementById('device_id').value.trim(),
-    name: document.getElementById('device_name').value.trim(),
-    type: document.getElementById('device_type').value,
-    router_ip: document.getElementById('router_ip_display').value,
-    device_ip: null, // Not required
-    heartbeat_interval: parseInt(document.getElementById('device_heartbeat').value) || 30,
-    alerts_enabled: document.getElementById('device_alerts').checked
-  };
-  
+  const deviceId = document.getElementById('device_id').value.trim();
+  const name = document.getElementById('device_name').value.trim();
+  const type = document.getElementById('device_type').value;
+  const routerIp = document.getElementById('router_ip_display').value;
+  const heartbeatInterval = parseInt(document.getElementById('device_heartbeat').value) || 30;
+  const alertsEnabled = document.getElementById('device_alerts').checked;
+
   // Validation
-  if(!deviceData.device_id || !deviceData.name || !deviceData.type || !deviceData.router_ip) {
+  if(!deviceId || !name || !type || !routerIp) {
     if(msg) {
       msg.className = "msg bad";
       msg.textContent = "Please fill in all required fields";
@@ -441,25 +591,53 @@ async function addDevice(event){
   
   try{
     if(msg) {
-      msg.textContent = "Adding device...";
+      msg.textContent = editingDeviceId ? "Saving changes..." : "Adding device...";
       msg.className = "msg";
     }
     
     if(submitBtn) {
       submitBtn.disabled = true;
-      submitBtn.textContent = "Adding...";
+      submitBtn.textContent = editingDeviceId ? "Saving..." : "Adding...";
     }
-    
-    const newDevice = await api("/api/devices", {
-      method: "POST",
-      body: deviceData
-    });
-    
-    if(msg) {
-      msg.className = "msg ok";
-      msg.textContent = `Device "${deviceData.name}" added successfully!`;
+
+    if(editingDeviceId){
+      await api(`/api/devices/${encodeURIComponent(editingDeviceId)}`, {
+        method: "PATCH",
+        body: {
+          name,
+          type,
+          heartbeat_interval: heartbeatInterval,
+          alerts_enabled: alertsEnabled
+        }
+      });
+
+      if(msg) {
+        msg.className = "msg ok";
+        msg.textContent = `Device "${name}" updated successfully!`;
+      }
+      editSnapshot = null;
+    } else {
+      const deviceData = {
+        device_id: deviceId,
+        name,
+        type,
+        router_ip: routerIp,
+        device_ip: null, // Not required
+        heartbeat_interval: heartbeatInterval,
+        alerts_enabled: alertsEnabled
+      };
+
+      await api("/api/devices", {
+        method: "POST",
+        body: deviceData
+      });
+
+      if(msg) {
+        msg.className = "msg ok";
+        msg.textContent = `Device "${name}" added successfully!`;
+      }
     }
-    
+
     // Hide form and reload devices
     hideAddDeviceForm();
     
@@ -472,14 +650,145 @@ async function addDevice(event){
   }catch(e){
     if(msg) {
       msg.className = "msg bad";
-      msg.textContent = "Failed to add device: " + (e.message || e.detail || "Unknown error");
+      msg.textContent = (editingDeviceId ? "Failed to update device: " : "Failed to add device: ") + (e.message || e.detail || "Unknown error");
     }
-    console.error("Add device error:", e);
+    console.error("Device submit error:", e);
     
     // Re-enable button
     if(submitBtn) {
       submitBtn.disabled = false;
-      submitBtn.textContent = "Add Device";
+      submitBtn.textContent = editingDeviceId ? "Save Changes" : "Add Device";
+    }
+  }
+}
+
+function deleteDevice(deviceId, deviceName){
+  openDeleteModal(deviceId, deviceName);
+}
+
+function setDeviceSubmitEnabled(enabled){
+  const btn = document.getElementById('deviceSubmitBtn');
+  if(btn) btn.disabled = !enabled;
+}
+
+function getDeviceFormState(){
+  return {
+    name: document.getElementById('device_name').value.trim(),
+    type: document.getElementById('device_type').value,
+    heartbeat_interval: parseInt(document.getElementById('device_heartbeat').value) || 30,
+    alerts_enabled: document.getElementById('device_alerts').checked
+  };
+}
+
+function refreshDeviceFormState(){
+  if(!editingDeviceId || !editSnapshot){
+    setDeviceSubmitEnabled(true);
+    return;
+  }
+  const current = getDeviceFormState();
+  const isDirty = Object.keys(editSnapshot).some((key) => editSnapshot[key] !== current[key]);
+  const hint = document.getElementById('deviceFormHint');
+  if(hint) hint.textContent = isDirty ? "" : "No changes to save.";
+  setDeviceSubmitEnabled(isDirty);
+}
+
+function openDevicePanel(device){
+  const overlay = document.getElementById('deviceDrawerOverlay');
+  const panel = document.getElementById('deviceDetailPanel');
+  if(!overlay || !panel) return;
+
+  document.getElementById('deviceDetailName').textContent = device.name || "Device";
+  document.getElementById('deviceDetailId').textContent = `ID: ${device.device_id || ""}`;
+  document.getElementById('deviceDetailStatus').innerHTML = badgeForStatus(device.status);
+  document.getElementById('deviceDetailLastSeen').textContent = `${formatRelativeTime(device.last_seen)} • ${formatDateTime(device.last_seen)}`;
+  document.getElementById('deviceDetailType').textContent = device.type || "—";
+  document.getElementById('deviceDetailRouterIp').textContent = device.router_ip || device.routerIp || "—";
+  document.getElementById('deviceDetailDeviceIp').textContent = device.device_ip || device.ip_address || "—";
+  document.getElementById('deviceDetailHeartbeat').textContent = `${device.heartbeat_interval || 30}s`;
+  document.getElementById('deviceDetailAlerts').textContent = device.alerts_enabled === false ? "Disabled" : "Enabled";
+  document.getElementById('deviceDetailSignal').textContent = device.signal_strength != null ? `${device.signal_strength} dBm` : "—";
+
+  const editBtn = document.getElementById('deviceDetailEdit');
+  const deleteBtn = document.getElementById('deviceDetailDelete');
+  if(editBtn) editBtn.dataset.deviceId = device.device_id;
+  if(deleteBtn){
+    deleteBtn.dataset.deviceId = device.device_id;
+    deleteBtn.dataset.deviceName = device.name || device.device_id;
+  }
+
+  overlay.classList.add('show');
+  panel.classList.add('show');
+  overlay.setAttribute('aria-hidden', 'false');
+  panel.setAttribute('aria-hidden', 'false');
+}
+
+function closeDevicePanel(){
+  const overlay = document.getElementById('deviceDrawerOverlay');
+  const panel = document.getElementById('deviceDetailPanel');
+  if(!overlay || !panel) return;
+  overlay.classList.remove('show');
+  panel.classList.remove('show');
+  overlay.setAttribute('aria-hidden', 'true');
+  panel.setAttribute('aria-hidden', 'true');
+}
+
+function openDeleteModal(deviceId, deviceName){
+  const overlay = document.getElementById('deleteModalOverlay');
+  const input = document.getElementById('deleteConfirmInput');
+  const confirmBtn = document.getElementById('deleteModalConfirm');
+  const deviceLabel = document.getElementById('deleteModalDevice');
+  if(!overlay || !input || !confirmBtn || !deviceLabel) return;
+
+  pendingDelete = { deviceId, deviceName: deviceName || deviceId };
+  deviceLabel.textContent = pendingDelete.deviceName;
+  input.value = "";
+  confirmBtn.disabled = true;
+  overlay.classList.add('show');
+  overlay.setAttribute('aria-hidden', 'false');
+  input.focus();
+}
+
+function closeDeleteModal(){
+  const overlay = document.getElementById('deleteModalOverlay');
+  if(!overlay) return;
+  overlay.classList.remove('show');
+  overlay.setAttribute('aria-hidden', 'true');
+  pendingDelete = null;
+}
+
+async function confirmDeleteDevice(){
+  if(!pendingDelete) return;
+  const msg = qs("#dashmsg");
+  const { deviceId, deviceName } = pendingDelete;
+
+  try{
+    if(msg){
+      msg.className = "msg";
+      msg.textContent = `Deleting "${deviceName}"...`;
+    }
+
+    await api(`/api/devices/${encodeURIComponent(deviceId)}`, { method: "DELETE" });
+
+    if(msg){
+      msg.className = "msg ok";
+      msg.textContent = `Device "${deviceName}" deleted successfully!`;
+    }
+
+    if(editingDeviceId === deviceId){
+      hideAddDeviceForm();
+    }
+
+    closeDeleteModal();
+    closeDevicePanel();
+
+    setTimeout(() => {
+      loadDashboard();
+      if(msg) msg.textContent = "";
+    }, 1000);
+  }catch(e){
+    if(msg){
+      msg.className = "msg bad";
+      msg.textContent = "Failed to delete device: " + (e.message || "Unknown error");
     }
   }
 }
@@ -496,13 +805,7 @@ async function manualRefresh(){
   
   try{
     msg.textContent = "Refreshing...";
-    const [devices, alerts] = await Promise.all([
-      api("/api/devices?limit=25&page=1"),
-      api("/api/alerts?limit=25&page=1"),
-    ]);
-    
-    renderDevices(devices.devices || []);
-    renderAlerts(alerts.alerts || []);
+    await Promise.all([loadDevices(), loadAlerts()]);
     updateLastRefreshTime();
     
     msg.textContent = "✅ Refreshed successfully!";
@@ -539,6 +842,104 @@ window.addEventListener("DOMContentLoaded", () => {
         requestNotificationPermission();
       }
     }
+
+    const searchInput = document.getElementById('deviceSearch');
+    const typeFilter = document.getElementById('deviceTypeFilter');
+    const statusFilter = document.getElementById('deviceStatusFilter');
+    const clearFilters = document.getElementById('clearDeviceFilters');
+
+    if(searchInput){
+      searchInput.addEventListener('input', () => {
+        deviceFilters.search = searchInput.value.trim();
+        scheduleDeviceFilterUpdate();
+      });
+    }
+    if(typeFilter){
+      typeFilter.addEventListener('change', () => {
+        deviceFilters.type = typeFilter.value;
+        scheduleDeviceFilterUpdate();
+      });
+    }
+    if(statusFilter){
+      statusFilter.addEventListener('change', () => {
+        deviceFilters.status = statusFilter.value;
+        scheduleDeviceFilterUpdate();
+      });
+    }
+    if(clearFilters){
+      clearFilters.addEventListener('click', () => {
+        deviceFilters = { search: "", type: "", status: "" };
+        if(searchInput) searchInput.value = "";
+        if(typeFilter) typeFilter.value = "";
+        if(statusFilter) statusFilter.value = "";
+        loadDevices().catch((e) => console.error("Device filter error:", e));
+      });
+    }
+
+    ['device_name', 'device_type', 'device_heartbeat', 'device_alerts'].forEach((id) => {
+      const el = document.getElementById(id);
+      if(el){
+        el.addEventListener('input', refreshDeviceFormState);
+        el.addEventListener('change', refreshDeviceFormState);
+      }
+    });
+
+    const drawerOverlay = document.getElementById('deviceDrawerOverlay');
+    const closeDrawerBtn = document.getElementById('closeDevicePanel');
+    const detailEdit = document.getElementById('deviceDetailEdit');
+    const detailDelete = document.getElementById('deviceDetailDelete');
+    if(drawerOverlay){
+      drawerOverlay.addEventListener('click', closeDevicePanel);
+    }
+    if(closeDrawerBtn){
+      closeDrawerBtn.addEventListener('click', closeDevicePanel);
+    }
+    if(detailEdit){
+      detailEdit.addEventListener('click', () => {
+        const deviceId = detailEdit.dataset.deviceId;
+        if(deviceId){
+          closeDevicePanel();
+          showEditDeviceForm(deviceId);
+        }
+      });
+    }
+    if(detailDelete){
+      detailDelete.addEventListener('click', () => {
+        const deviceId = detailDelete.dataset.deviceId;
+        const deviceName = detailDelete.dataset.deviceName;
+        if(deviceId){
+          openDeleteModal(deviceId, deviceName);
+        }
+      });
+    }
+
+    const deleteOverlay = document.getElementById('deleteModalOverlay');
+    const deleteCancel = document.getElementById('deleteModalCancel');
+    const deleteConfirm = document.getElementById('deleteModalConfirm');
+    const deleteInput = document.getElementById('deleteConfirmInput');
+    if(deleteOverlay){
+      deleteOverlay.addEventListener('click', (e) => {
+        if(e.target === deleteOverlay) closeDeleteModal();
+      });
+    }
+    if(deleteCancel){
+      deleteCancel.addEventListener('click', closeDeleteModal);
+    }
+    if(deleteInput && deleteConfirm){
+      deleteInput.addEventListener('input', () => {
+        deleteConfirm.disabled = deleteInput.value.trim().toUpperCase() !== "DELETE";
+      });
+    }
+    if(deleteConfirm){
+      deleteConfirm.addEventListener('click', confirmDeleteDevice);
+    }
+
+    document.addEventListener('keydown', (e) => {
+      if(e.key === "Escape"){
+        closeDeleteModal();
+        closeDevicePanel();
+      }
+    });
   }
 });
 

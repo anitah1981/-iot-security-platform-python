@@ -1,5 +1,5 @@
 # routes/devices.py - Device Management Routes
-from fastapi import APIRouter, HTTPException, status, Query, Depends
+from fastapi import APIRouter, HTTPException, status, Query, Depends, Request
 from typing import Optional
 from bson import ObjectId
 from datetime import datetime
@@ -8,6 +8,7 @@ from models import DeviceCreate, DeviceUpdate, DeviceResponse, DeviceListRespons
 from database import get_database
 from routes.auth import get_current_user
 from middleware.plan_limits import PlanLimits
+from services.audit_logger import AuditLogger
 
 router = APIRouter()
 
@@ -71,13 +72,19 @@ async def get_devices(
             # Use simpler approach - try userId first (most common)
             filter_query = {"userId": user_id}
         
+        # Exclude soft-deleted devices
+        filter_query["isDeleted"] = {"$ne": True}
+
         # Add additional filters directly
         if device_type:
             filter_query["type"] = device_type
         if status:
             filter_query["status"] = status
         if name:
-            filter_query["name"] = {"$regex": name, "$options": "i"}
+            filter_query["$or"] = [
+                {"name": {"$regex": name, "$options": "i"}},
+                {"deviceId": {"$regex": name, "$options": "i"}}
+            ]
         
         # Calculate skip
         skip = (page - 1) * limit
@@ -176,7 +183,7 @@ async def get_device_status(device_id: str):
     """
     db = await get_database()
     
-    device = await db.devices.find_one({"deviceId": device_id})
+    device = await db.devices.find_one({"deviceId": device_id, "isDeleted": {"$ne": True}})
     
     if not device:
         raise HTTPException(
@@ -202,7 +209,7 @@ async def get_device_status(device_id: str):
     }
 
 @router.post("/", response_model=DeviceResponse, status_code=status.HTTP_201_CREATED)
-async def create_device(device: DeviceCreate, user: dict = Depends(get_current_user)):
+async def create_device(device: DeviceCreate, user: dict = Depends(get_current_user), request: Request = None):
     """
     Register a new device
     
@@ -283,7 +290,9 @@ async def create_device(device: DeviceCreate, user: dict = Depends(get_current_u
         "ipAddressHistory": [device.device_ip] if device.device_ip else [],
         "organization": ObjectId(device.organization) if device.organization else None,
         "createdAt": datetime.utcnow(),
-        "updatedAt": datetime.utcnow()
+        "updatedAt": datetime.utcnow(),
+        "isDeleted": False,
+        "deletedAt": None
     }
     
     # Add family_id if user is in a family
@@ -291,6 +300,20 @@ async def create_device(device: DeviceCreate, user: dict = Depends(get_current_u
         device_doc["family_id"] = family_id
     
     result = await db.devices.insert_one(device_doc)
+
+    client_ip = request.client.host if request and request.client else None
+    user_agent = request.headers.get("user-agent") if request else None
+
+    await AuditLogger.log_device_created(
+        db=db,
+        user_id=user_id,
+        user_email=user.get("email", ""),
+        user_name=user.get("name", ""),
+        device_id=device.device_id,
+        device_name=device.name,
+        ip_address=client_ip,
+        user_agent=user_agent
+    )
     
     return DeviceResponse(
         id=str(result.inserted_id),
@@ -312,14 +335,41 @@ async def create_device(device: DeviceCreate, user: dict = Depends(get_current_u
     )
 
 @router.patch("/{device_id}", response_model=DeviceResponse)
-async def update_device(device_id: str, updates: DeviceUpdate):
+async def update_device(device_id: str, updates: DeviceUpdate, user: dict = Depends(get_current_user), request: Request = None):
     """
     Update device information
     """
     db = await get_database()
+
+    # Check if user can manage devices
+    can_manage = await _can_manage_devices(user["_id"], db)
+    if not can_manage:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You don't have permission to update devices"
+        )
+
+    # Ensure user_id is ObjectId
+    user_id = user["_id"]
+    if not isinstance(user_id, ObjectId):
+        user_id = ObjectId(user_id)
+
+    # Get family ID if user is in a family
+    family_id = await _get_user_family_id(user_id, db)
+    if family_id:
+        filter_query = {"deviceId": device_id, "family_id": family_id, "isDeleted": {"$ne": True}}
+    else:
+        filter_query = {
+            "deviceId": device_id,
+            "isDeleted": {"$ne": True},
+            "$or": [
+                {"userId": user_id},
+                {"user_id": user_id}
+            ]
+        }
     
     # Find device
-    device = await db.devices.find_one({"deviceId": device_id})
+    device = await db.devices.find_one(filter_query)
     if not device:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -329,28 +379,61 @@ async def update_device(device_id: str, updates: DeviceUpdate):
     # Build update document
     update_doc = {"updatedAt": datetime.utcnow()}
     
+    changes = {}
+
     if updates.name is not None:
         update_doc["name"] = updates.name
-    if updates.ip_address is not None:
-        update_doc["ipAddress"] = updates.ip_address
+        changes["name"] = updates.name
+    if updates.type is not None:
+        update_doc["type"] = updates.type
+        changes["type"] = updates.type
+    if updates.router_ip is not None:
+        update_doc["routerIp"] = updates.router_ip
+        changes["router_ip"] = updates.router_ip
+    if updates.heartbeat_interval is not None:
+        update_doc["heartbeatInterval"] = updates.heartbeat_interval
+        changes["heartbeat_interval"] = updates.heartbeat_interval
+    if updates.device_ip is not None or updates.ip_address is not None:
+        new_ip = updates.device_ip if updates.device_ip is not None else updates.ip_address
+        update_doc["ipAddress"] = new_ip
+        changes["device_ip"] = new_ip
         # Add to history if changed
-        if updates.ip_address != device.get("ipAddress"):
-            update_doc["$push"] = {"ipAddressHistory": updates.ip_address}
+        if new_ip != device.get("ipAddress"):
+            update_doc["$push"] = {"ipAddressHistory": new_ip}
     if updates.status is not None:
         update_doc["status"] = updates.status
+        changes["status"] = updates.status
     if updates.signal_strength is not None:
         update_doc["signalStrength"] = updates.signal_strength
+        changes["signal_strength"] = updates.signal_strength
     if updates.alerts_enabled is not None:
         update_doc["alertsEnabled"] = updates.alerts_enabled
+        changes["alerts_enabled"] = updates.alerts_enabled
     
     # Update device
-    await db.devices.update_one(
-        {"deviceId": device_id},
-        {"$set": update_doc}
+    update_payload = {"$set": update_doc}
+    if "$push" in update_doc:
+        update_payload["$push"] = update_doc.pop("$push")
+
+    await db.devices.update_one(filter_query, update_payload)
+
+    client_ip = request.client.host if request and request.client else None
+    user_agent = request.headers.get("user-agent") if request else None
+
+    await AuditLogger.log_device_updated(
+        db=db,
+        user_id=user_id,
+        user_email=user.get("email", ""),
+        user_name=user.get("name", ""),
+        device_id=device_id,
+        device_name=update_doc.get("name", device.get("name", "")),
+        changes=changes,
+        ip_address=client_ip,
+        user_agent=user_agent
     )
     
     # Get updated device
-    updated_device = await db.devices.find_one({"deviceId": device_id})
+    updated_device = await db.devices.find_one(filter_query)
     
     return DeviceResponse(
         id=str(updated_device["_id"]),
@@ -372,18 +455,63 @@ async def update_device(device_id: str, updates: DeviceUpdate):
     )
 
 @router.delete("/{device_id}")
-async def delete_device(device_id: str):
+async def delete_device(device_id: str, user: dict = Depends(get_current_user), request: Request = None):
     """
     Delete a device
     """
     db = await get_database()
-    
-    result = await db.devices.delete_one({"deviceId": device_id})
-    
-    if result.deleted_count == 0:
+
+    # Check if user can manage devices
+    can_manage = await _can_manage_devices(user["_id"], db)
+    if not can_manage:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You don't have permission to delete devices"
+        )
+
+    # Ensure user_id is ObjectId
+    user_id = user["_id"]
+    if not isinstance(user_id, ObjectId):
+        user_id = ObjectId(user_id)
+
+    # Get family ID if user is in a family
+    family_id = await _get_user_family_id(user_id, db)
+    if family_id:
+        filter_query = {"deviceId": device_id, "family_id": family_id, "isDeleted": {"$ne": True}}
+    else:
+        filter_query = {
+            "deviceId": device_id,
+            "isDeleted": {"$ne": True},
+            "$or": [
+                {"userId": user_id},
+                {"user_id": user_id}
+            ]
+        }
+
+    device = await db.devices.find_one(filter_query)
+    if not device:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Device not found"
         )
-    
+
+    await db.devices.update_one(
+        filter_query,
+        {"$set": {"isDeleted": True, "deletedAt": datetime.utcnow(), "updatedAt": datetime.utcnow()}}
+    )
+
+    client_ip = request.client.host if request and request.client else None
+    user_agent = request.headers.get("user-agent") if request else None
+
+    await AuditLogger.log_device_deleted(
+        db=db,
+        user_id=user_id,
+        user_email=user.get("email", ""),
+        user_name=user.get("name", ""),
+        device_id=device_id,
+        device_name=device.get("name", ""),
+        ip_address=client_ip,
+        user_agent=user_agent
+    )
+
     return {"message": f"Device '{device_id}' deleted successfully"}

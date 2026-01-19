@@ -82,7 +82,16 @@ class AuditLogger:
         )
     
     @staticmethod
-    async def log_device_created(db, user_id: ObjectId, user_email: str, user_name: str, device_id: str, device_name: str):
+    async def log_device_created(
+        db,
+        user_id: ObjectId,
+        user_email: str,
+        user_name: str,
+        device_id: str,
+        device_name: str,
+        ip_address: Optional[str] = None,
+        user_agent: Optional[str] = None
+    ):
         """Log device creation"""
         await AuditLogger.log(
             db=db,
@@ -92,11 +101,22 @@ class AuditLogger:
             action="device_create",
             resource_type="device",
             resource_id=device_id,
-            details={"device_name": device_name}
+            details={"device_name": device_name},
+            ip_address=ip_address,
+            user_agent=user_agent
         )
     
     @staticmethod
-    async def log_device_deleted(db, user_id: ObjectId, user_email: str, user_name: str, device_id: str, device_name: str):
+    async def log_device_deleted(
+        db,
+        user_id: ObjectId,
+        user_email: str,
+        user_name: str,
+        device_id: str,
+        device_name: str,
+        ip_address: Optional[str] = None,
+        user_agent: Optional[str] = None
+    ):
         """Log device deletion"""
         await AuditLogger.log(
             db=db,
@@ -106,7 +126,35 @@ class AuditLogger:
             action="device_delete",
             resource_type="device",
             resource_id=device_id,
-            details={"device_name": device_name}
+            details={"device_name": device_name},
+            ip_address=ip_address,
+            user_agent=user_agent
+        )
+
+    @staticmethod
+    async def log_device_updated(
+        db,
+        user_id: ObjectId,
+        user_email: str,
+        user_name: str,
+        device_id: str,
+        device_name: str,
+        changes: Optional[Dict[str, Any]] = None,
+        ip_address: Optional[str] = None,
+        user_agent: Optional[str] = None
+    ):
+        """Log device update"""
+        await AuditLogger.log(
+            db=db,
+            user_id=user_id,
+            user_email=user_email,
+            user_name=user_name,
+            action="device_update",
+            resource_type="device",
+            resource_id=device_id,
+            details={"device_name": device_name, "changes": changes or {}},
+            ip_address=ip_address,
+            user_agent=user_agent
         )
     
     @staticmethod

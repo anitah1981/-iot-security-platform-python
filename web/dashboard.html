@@ -7,10 +7,10 @@
     <meta http-equiv="Pragma" content="no-cache"/>
     <meta http-equiv="Expires" content="0"/>
     <title>Dashboard • IoT Security Platform</title>
-    <link rel="stylesheet" href="/assets/app.css?v=7"/>
+    <link rel="stylesheet" href="/assets/app.css?v=9"/>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
     <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
-    <script defer src="/assets/app.js?v=7"></script>
+    <script defer src="/assets/app.js?v=10"></script>
     <script defer src="/assets/charts.js?v=7"></script>
     <script defer src="/assets/websocket-client.js?v=7"></script>
   </head>
@@ -55,10 +55,32 @@
             </div>
           </div>
           <div class="hint" id="dashmsg"></div>
+
+          <div class="device-filters">
+            <input type="text" id="deviceSearch" placeholder="Search by name or ID" aria-label="Search devices">
+            <select id="deviceTypeFilter" aria-label="Filter by device type">
+              <option value="">All types</option>
+              <option value="Camera">Camera</option>
+              <option value="Router">Router</option>
+              <option value="Sensor">Sensor</option>
+              <option value="Smart TV">Smart TV</option>
+              <option value="Smart Speaker">Smart Speaker</option>
+              <option value="Thermostat">Thermostat</option>
+              <option value="Other">Other</option>
+            </select>
+            <select id="deviceStatusFilter" aria-label="Filter by status">
+              <option value="">All statuses</option>
+              <option value="online">Online</option>
+              <option value="offline">Offline</option>
+              <option value="error">Error</option>
+              <option value="suspected_jamming">Suspected jamming</option>
+            </select>
+            <button class="btn-sm" id="clearDeviceFilters" type="button">Clear</button>
+          </div>
           
           <!-- Add Device Form (hidden by default) -->
           <div id="addDeviceForm" style="display: none; margin: 16px 0; padding: 16px; background: var(--surface); border-radius: 8px; border: 1px solid var(--border);">
-            <h3 style="margin-bottom: 16px;">Add New Device</h3>
+            <h3 id="deviceFormTitle" style="margin-bottom: 16px;">Add New Device</h3>
             
             <!-- Router IP Setup (if not configured) -->
             <div id="routerIpSetup" style="display: none; margin-bottom: 16px; padding: 12px; background: rgba(59, 130, 246, 0.1); border-radius: 6px; border: 1px solid var(--primary);">
@@ -73,7 +95,7 @@
               </div>
             </div>
             
-            <form onsubmit="addDevice(event); return false;">
+            <form onsubmit="submitDeviceForm(event); return false;">
               <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-bottom: 12px;">
                 <div>
                   <label style="display: block; margin-bottom: 4px; font-weight: 500;">Device ID *</label>
@@ -113,9 +135,10 @@
                 </div>
               </div>
               <div style="display: flex; gap: 8px;">
-                <button type="submit" class="btn-sm" style="background: var(--ok); color: white; border: none; cursor: pointer; padding: 8px 16px; border-radius: 6px;">Add Device</button>
+                <button type="submit" id="deviceSubmitBtn" class="btn-sm" style="background: var(--ok); color: white; border: none; cursor: pointer; padding: 8px 16px; border-radius: 6px;">Add Device</button>
                 <button type="button" class="btn-sm" onclick="hideAddDeviceForm()" style="background: var(--muted); color: white; border: none; cursor: pointer; padding: 8px 16px; border-radius: 6px;">Cancel</button>
               </div>
+              <div class="hint" id="deviceFormHint" style="margin-top: 8px;"></div>
             </form>
           </div>
           
@@ -128,6 +151,8 @@
                   <th>Type</th>
                   <th>Router IP</th>
                   <th>Status</th>
+                  <th>Last Seen</th>
+                  <th>Actions</th>
                 </tr>
               </thead>
               <tbody id="devices"></tbody>
@@ -215,6 +240,70 @@
         <a href="/terms" style="color: var(--primary); text-decoration: none; margin: 0 12px;">Terms of Service</a>
         <span style="color: var(--muted);">•</span>
         <span style="color: var(--muted); font-size: 12px;">Built for trust: calm dark surfaces, clear status badges, and consistent "security blue + verification teal".</span>
+      </div>
+    </div>
+
+    <div class="drawer-overlay" id="deviceDrawerOverlay" aria-hidden="true"></div>
+    <aside class="drawer" id="deviceDetailPanel" aria-hidden="true">
+      <div class="drawer-header">
+        <div>
+          <div class="drawer-title" id="deviceDetailName">Device details</div>
+          <div class="drawer-sub" id="deviceDetailId"></div>
+        </div>
+        <button class="btn-sm" id="closeDevicePanel" type="button">Close</button>
+      </div>
+      <div class="drawer-body">
+        <div class="detail-grid">
+          <div class="detail-item">
+            <div class="detail-label">Status</div>
+            <div class="detail-value" id="deviceDetailStatus"></div>
+          </div>
+          <div class="detail-item">
+            <div class="detail-label">Last seen</div>
+            <div class="detail-value" id="deviceDetailLastSeen"></div>
+          </div>
+          <div class="detail-item">
+            <div class="detail-label">Type</div>
+            <div class="detail-value" id="deviceDetailType"></div>
+          </div>
+          <div class="detail-item">
+            <div class="detail-label">Router IP</div>
+            <div class="detail-value" id="deviceDetailRouterIp"></div>
+          </div>
+          <div class="detail-item">
+            <div class="detail-label">Device IP</div>
+            <div class="detail-value" id="deviceDetailDeviceIp"></div>
+          </div>
+          <div class="detail-item">
+            <div class="detail-label">Heartbeat interval</div>
+            <div class="detail-value" id="deviceDetailHeartbeat"></div>
+          </div>
+          <div class="detail-item">
+            <div class="detail-label">Alerts</div>
+            <div class="detail-value" id="deviceDetailAlerts"></div>
+          </div>
+          <div class="detail-item">
+            <div class="detail-label">Signal strength</div>
+            <div class="detail-value" id="deviceDetailSignal"></div>
+          </div>
+        </div>
+        <div class="drawer-actions">
+          <button class="btn-sm" id="deviceDetailEdit" type="button">Edit</button>
+          <button class="btn-sm danger" id="deviceDetailDelete" type="button">Delete</button>
+        </div>
+      </div>
+    </aside>
+
+    <div class="modal-overlay" id="deleteModalOverlay" aria-hidden="true">
+      <div class="modal">
+        <div class="modal-title">Confirm deletion</div>
+        <p class="modal-text">This will archive the device and remove it from your list. Type DELETE to confirm.</p>
+        <div class="modal-device" id="deleteModalDevice"></div>
+        <input type="text" id="deleteConfirmInput" placeholder="Type DELETE to confirm">
+        <div class="modal-actions">
+          <button class="btn-sm" id="deleteModalCancel" type="button">Cancel</button>
+          <button class="btn-sm danger" id="deleteModalConfirm" type="button" disabled>Delete device</button>
+        </div>
       </div>
     </div>
   </body>

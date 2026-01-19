@@ -58,10 +58,14 @@ class DeviceCreate(DeviceBase):
 
 class DeviceUpdate(BaseModel):
     name: Optional[str] = None
+    type: Optional[str] = None
+    router_ip: Optional[str] = None
+    device_ip: Optional[str] = None
     ip_address: Optional[str] = None
     status: Optional[Literal["online", "offline", "error", "suspected_jamming"]] = None
     signal_strength: Optional[int] = None
     alerts_enabled: Optional[bool] = None
+    heartbeat_interval: Optional[int] = Field(None, ge=10, description="Seconds between heartbeats")
 
 class DeviceResponse(DeviceBase):
     id: str
