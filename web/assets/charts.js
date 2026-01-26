@@ -1,5 +1,8 @@
 /* Dashboard Charts - Chart.js Integration */
 
+// Chart instances storage (for updating)
+let chartInstances = {};
+
 // Initialize all charts on dashboard
 async function initializeCharts() {
   // Check if api function is available
@@ -10,17 +13,29 @@ async function initializeCharts() {
   }
 
   try {
+    // Get date range from selector
+    const dateRange = document.getElementById('analyticsDateRange');
+    const days = dateRange ? parseInt(dateRange.value) || 30 : 30;
+
     // Fetch all analytics data
     const [deviceStats, alertTrends, healthMetrics] = await Promise.all([
       api('/api/analytics/devices/stats'),
-      api('/api/analytics/alerts/trends?days=30'),
+      api(`/api/analytics/alerts/trends?days=${days}`),
       api('/api/analytics/health/metrics')
     ]);
+
+    // Destroy existing charts before creating new ones
+    Object.values(chartInstances).forEach(chart => {
+      if (chart && typeof chart.destroy === 'function') {
+        chart.destroy();
+      }
+    });
+    chartInstances = {};
 
     // Render all charts
     renderDeviceStatusChart(deviceStats);
     renderDeviceTypeChart(deviceStats);
-    renderAlertTrendsChart(alertTrends);
+    renderAlertTrendsChart(alertTrends, days);
     renderAlertSeverityChart(alertTrends);
     renderHealthMetrics(healthMetrics);
     renderTopAlertingDevices(healthMetrics);
@@ -30,6 +45,11 @@ async function initializeCharts() {
   }
 }
 
+// Update charts when date range changes
+async function updateChartsDateRange() {
+  await initializeCharts();
+}
+
 // Device Status Pie Chart
 function renderDeviceStatusChart(data) {
   const ctx = document.getElementById('deviceStatusChart');
@@ -37,7 +57,7 @@ function renderDeviceStatusChart(data) {
 
   const statusData = data.status_breakdown;
   
-  new Chart(ctx, {
+  chartInstances.deviceStatus = new Chart(ctx, {
     type: 'doughnut',
     data: {
       labels: ['Online', 'Offline', 'Error'],
@@ -103,7 +123,7 @@ function renderDeviceTypeChart(data) {
     'rgba(139, 92, 246, 0.8)'   // Violet
   ];
 
-  new Chart(ctx, {
+  chartInstances.deviceType = new Chart(ctx, {
     type: 'doughnut',
     data: {
       labels: labels,
@@ -139,7 +159,7 @@ function renderDeviceTypeChart(data) {
 }
 
 // Alert Trends Line Chart
-function renderAlertTrendsChart(data) {
+function renderAlertTrendsChart(data, days = 30) {
   const ctx = document.getElementById('alertTrendsChart');
   if (!ctx) return;
 
@@ -150,7 +170,7 @@ function renderAlertTrendsChart(data) {
   });
   const counts = timeline.map(t => t.count);
 
-  new Chart(ctx, {
+  chartInstances.alertTrends = new Chart(ctx, {
     type: 'line',
     data: {
       labels: labels,
@@ -182,7 +202,7 @@ function renderAlertTrendsChart(data) {
         },
         title: {
           display: true,
-          text: 'Alert Trends (Last 30 Days)',
+          text: `Alert Trends (Last ${days} Days)`,
           color: '#e2e8f0',
           font: { size: 16, weight: 'bold' },
           padding: { bottom: 20 }
@@ -232,7 +252,7 @@ function renderAlertSeverityChart(data) {
 
   const severityData = data.severity_breakdown;
 
-  new Chart(ctx, {
+  chartInstances.alertSeverity = new Chart(ctx, {
     type: 'bar',
     data: {
       labels: ['Low', 'Medium', 'High', 'Critical'],

@@ -319,6 +319,24 @@
         sidebar.classList.toggle('open');
       }
 
+      // Toggle quiet hours settings visibility
+      function toggleQuietHours() {
+        const enabled = document.getElementById("quietHoursEnabled").checked;
+        const settings = document.getElementById("quietHoursSettings");
+        if (settings) {
+          settings.style.display = enabled ? 'block' : 'none';
+        }
+      }
+
+      // Toggle digest settings visibility
+      function toggleDigest() {
+        const enabled = document.getElementById("digestEnabled").checked;
+        const settings = document.getElementById("digestSettings");
+        if (settings) {
+          settings.style.display = enabled ? 'block' : 'none';
+        }
+      }
+
       // Close sidebar when clicking outside on mobile
       document.addEventListener('click', (e) => {
         const sidebar = document.getElementById('sidebar');
@@ -441,7 +459,7 @@
               </div>
 
               <!-- Voice Call Notifications -->
-              <div style="padding: 20px; background: var(--surface-alt); border-radius: 8px; margin-bottom: 24px;">
+              <div style="padding: 20px; background: var(--surface-alt); border-radius: 8px; margin-bottom: 16px;">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
                   <div>
                     <h3 style="margin: 0; font-size: 16px;">📞 Voice Call Notifications</h3>
@@ -454,6 +472,70 @@
                 </div>
                 <div style="margin-left: 20px; font-size: 13px; color: var(--muted);">
                   Only for: Critical alerts
+                </div>
+              </div>
+
+              <!-- Quiet Hours -->
+              <div style="padding: 20px; background: var(--surface-alt); border-radius: 8px; margin-bottom: 16px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                  <div>
+                    <h3 style="margin: 0; font-size: 16px;">🌙 Quiet Hours</h3>
+                    <p style="margin: 4px 0 0 0; font-size: 13px; color: var(--muted);">Suppress non-critical alerts during specified hours</p>
+                  </div>
+                  <label class="toggle">
+                    <input type="checkbox" id="quietHoursEnabled" ${prefs.quiet_hours_enabled ? 'checked' : ''} onchange="toggleQuietHours()">
+                    <span class="slider"></span>
+                  </label>
+                </div>
+                <div id="quietHoursSettings" style="margin-top: 16px; ${prefs.quiet_hours_enabled ? '' : 'display: none;'}">
+                  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                    <div>
+                      <label style="display: block; margin-bottom: 6px; font-size: 13px; font-weight: 500;">Start Time</label>
+                      <input type="time" id="quietHoursStart" value="${prefs.quiet_hours_start || '22:00'}"
+                             style="width: 100%; padding: 10px; background: var(--surface); border: 1px solid var(--border); border-radius: 6px; color: var(--text);">
+                    </div>
+                    <div>
+                      <label style="display: block; margin-bottom: 6px; font-size: 13px; font-weight: 500;">End Time</label>
+                      <input type="time" id="quietHoursEnd" value="${prefs.quiet_hours_end || '07:00'}"
+                             style="width: 100%; padding: 10px; background: var(--surface); border: 1px solid var(--border); border-radius: 6px; color: var(--text);">
+                    </div>
+                  </div>
+                  <div style="margin-top: 8px; font-size: 12px; color: var(--muted);">
+                    Critical alerts will still be sent during quiet hours. Other alerts will be queued for digest.
+                  </div>
+                </div>
+              </div>
+
+              <!-- Notification Digest -->
+              <div style="padding: 20px; background: var(--surface-alt); border-radius: 8px; margin-bottom: 24px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                  <div>
+                    <h3 style="margin: 0; font-size: 16px;">📬 Notification Digest</h3>
+                    <p style="margin: 4px 0 0 0; font-size: 13px; color: var(--muted);">Receive a summary of alerts instead of individual notifications</p>
+                  </div>
+                  <label class="toggle">
+                    <input type="checkbox" id="digestEnabled" ${prefs.digest_enabled ? 'checked' : ''} onchange="toggleDigest()">
+                    <span class="slider"></span>
+                  </label>
+                </div>
+                <div id="digestSettings" style="margin-top: 16px; ${prefs.digest_enabled ? '' : 'display: none;'}">
+                  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px;">
+                    <div>
+                      <label style="display: block; margin-bottom: 6px; font-size: 13px; font-weight: 500;">Frequency</label>
+                      <select id="digestFrequency" style="width: 100%; padding: 10px; background: var(--surface); border: 1px solid var(--border); border-radius: 6px; color: var(--text);">
+                        <option value="daily" ${prefs.digest_frequency === 'daily' ? 'selected' : ''}>Daily</option>
+                        <option value="weekly" ${prefs.digest_frequency === 'weekly' ? 'selected' : ''}>Weekly</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label style="display: block; margin-bottom: 6px; font-size: 13px; font-weight: 500;">Send Time</label>
+                      <input type="time" id="digestTime" value="${prefs.digest_time || '09:00'}"
+                             style="width: 100%; padding: 10px; background: var(--surface); border: 1px solid var(--border); border-radius: 6px; color: var(--text);">
+                    </div>
+                  </div>
+                  <div style="font-size: 12px; color: var(--muted);">
+                    You'll receive a summary email with all alerts from the selected period.
+                  </div>
                 </div>
               </div>
 
@@ -544,7 +626,13 @@
             whatsapp_enabled: whatsappEnabled,
             voice_enabled: voiceEnabled,
             phone_number: phoneValue || null,
-            whatsapp_number: whatsappValue || null
+            whatsapp_number: whatsappValue || null,
+            quiet_hours_enabled: document.getElementById("quietHoursEnabled").checked,
+            quiet_hours_start: document.getElementById("quietHoursEnabled").checked ? document.getElementById("quietHoursStart").value : null,
+            quiet_hours_end: document.getElementById("quietHoursEnabled").checked ? document.getElementById("quietHoursEnd").value : null,
+            digest_enabled: document.getElementById("digestEnabled").checked,
+            digest_frequency: document.getElementById("digestEnabled").checked ? document.getElementById("digestFrequency").value : null,
+            digest_time: document.getElementById("digestEnabled").checked ? document.getElementById("digestTime").value : null
           };
 
           setButtonLoading(saveBtn, true, "Saving...");

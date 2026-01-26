@@ -66,6 +66,9 @@ async def get_notification_preferences(current_user = Depends(get_current_user))
             quiet_hours_enabled=False,
             quiet_hours_start=None,
             quiet_hours_end=None,
+            digest_enabled=False,
+            digest_frequency=None,
+            digest_time=None,
             escalation_enabled=True,
             escalation_delay_minutes=15,
             updated_at=datetime.utcnow()
@@ -87,6 +90,9 @@ async def get_notification_preferences(current_user = Depends(get_current_user))
         quiet_hours_enabled=prefs.get("quietHoursEnabled", False),
         quiet_hours_start=prefs.get("quietHoursStart"),
         quiet_hours_end=prefs.get("quietHoursEnd"),
+        digest_enabled=prefs.get("digestEnabled", False),
+        digest_frequency=prefs.get("digestFrequency"),
+        digest_time=prefs.get("digestTime"),
         escalation_enabled=prefs.get("escalationEnabled", True),
         escalation_delay_minutes=prefs.get("escalationDelayMinutes", 15),
         updated_at=prefs.get("updatedAt", datetime.utcnow())
@@ -216,6 +222,9 @@ async def update_notification_preferences(
         "quietHoursEnabled": preferences.quiet_hours_enabled,
         "quietHoursStart": preferences.quiet_hours_start,
         "quietHoursEnd": preferences.quiet_hours_end,
+        "digestEnabled": preferences.digest_enabled,
+        "digestFrequency": preferences.digest_frequency,
+        "digestTime": preferences.digest_time,
         "escalationEnabled": preferences.escalation_enabled,
         "escalationDelayMinutes": preferences.escalation_delay_minutes,
         "updatedAt": datetime.utcnow()

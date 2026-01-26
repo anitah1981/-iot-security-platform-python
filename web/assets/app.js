@@ -205,7 +205,7 @@ async function loadDashboard(){
   if (msg) msg.textContent = "Loading…";
 
   try{
-    await Promise.all([loadDevices(), loadAlerts()]);
+    await Promise.all([loadDevices(), loadAlerts(), loadGroups()]);
     updateLastRefreshTime();
 
     if (msg) msg.textContent = "";
@@ -344,15 +344,42 @@ function renderDevices(devs){
   const tbody = qs("#devices");
   if(!tbody) return;
   if(!devs.length){
-    tbody.innerHTML = `<tr><td colspan="7" class="hint">No devices yet.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="8" class="hint">No devices yet.</td></tr>`;
     return;
   }
   deviceCache = new Map(devs.map(d => [d.device_id, d]));
-  tbody.innerHTML = devs.map(d => `
+  
+  // Filter by group if selected
+  let filteredDevs = devs;
+  if (currentGroupFilter) {
+    filteredDevs = devs.filter(d => {
+      const deviceGroups = d.groups || [];
+      return deviceGroups.some(g => String(g) === currentGroupFilter);
+    });
+  }
+  
+  if (!filteredDevs.length && currentGroupFilter) {
+    tbody.innerHTML = `<tr><td colspan="8" class="hint">No devices in this group.</td></tr>`;
+    return;
+  }
+  
+  tbody.innerHTML = filteredDevs.map(d => {
+    // Get group names for this device
+    const deviceGroups = d.groups || [];
+    const groupBadges = deviceGroups.map(gId => {
+      const group = allGroups.find(g => g.id === String(gId));
+      if (group) {
+        return `<span class="badge" style="background: ${esc(group.color)}; margin-right: 4px;">${esc(group.name)}</span>`;
+      }
+      return '';
+    }).filter(b => b).join('');
+    
+    return `
     <tr data-device-id="${d.id || d._id}" data-device-key="${esc(d.device_id)}">
       <td>${esc(d.device_id)}</td>
       <td>${esc(d.name)}</td>
       <td>${esc(d.type)}</td>
+      <td>${groupBadges || '<span class="hint">No groups</span>'}</td>
       <td>${esc(d.router_ip || d.routerIp || 'Not set')}</td>
       <td class="device-status">${badgeForStatus(d.status)}</td>
       <td>${esc(formatRelativeTime(d.last_seen))}</td>
@@ -363,7 +390,8 @@ function renderDevices(devs){
         </div>
       </td>
     </tr>
-  `).join("");
+  `;
+  }).join("");
 
   if(!devicesTableBound){
     devicesTableBound = true;
@@ -1203,6 +1231,166 @@ async function exportAlertsCSV() {
     alert('Export failed: ' + error.message);
     btn.disabled = false;
     btn.textContent = '📊 Export CSV';
+  }
+}
+
+// ============================================================
+// DEVICE GROUP MANAGEMENT
+// ============================================================
+
+let allGroups = [];
+let currentGroupFilter = null;
+
+// Load groups and populate filter dropdown
+async function loadGroups() {
+  try {
+    allGroups = await api('/api/groups');
+    const filterSelect = qs('#groupFilter');
+    if (filterSelect) {
+      filterSelect.innerHTML = '<option value="">All Devices</option>' +
+        allGroups.map(g => `<option value="${g.id}">${esc(g.name)} (${g.device_count})</option>`).join('');
+      if (currentGroupFilter) {
+        filterSelect.value = currentGroupFilter;
+      }
+    }
+    renderGroupsList();
+  } catch (e) {
+    console.error('Failed to load groups:', e);
+  }
+}
+
+// Render groups list in management panel
+function renderGroupsList() {
+  const container = qs('#groupsList');
+  if (!container) return;
+  
+  if (allGroups.length === 0) {
+    container.innerHTML = '<div class="hint">No groups yet. Create one to get started!</div>';
+    return;
+  }
+  
+  container.innerHTML = allGroups.map(group => `
+    <div class="card" style="margin-bottom: 12px; padding: 16px;">
+      <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 8px;">
+        <div style="flex: 1;">
+          <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
+            <span style="display: inline-block; width: 16px; height: 16px; border-radius: 4px; background: ${esc(group.color)};"></span>
+            <strong>${esc(group.name)}</strong>
+            <span class="badge" style="background: var(--muted);">${group.device_count} devices</span>
+          </div>
+          ${group.description ? `<div style="color: var(--muted); font-size: 14px; margin-top: 4px;">${esc(group.description)}</div>` : ''}
+        </div>
+        <div style="display: flex; gap: 4px;">
+          <button class="btn-sm" onclick="deleteGroup('${group.id}')" style="background: var(--danger); color: white;">Delete</button>
+        </div>
+      </div>
+    </div>
+  `).join('');
+}
+
+// Show group management panel
+function showGroupManagement() {
+  const overlay = qs('#groupModalOverlay');
+  const panel = qs('#groupManagementPanel');
+  if (overlay && panel) {
+    overlay.style.display = 'block';
+    panel.style.display = 'block';
+    loadGroups();
+  }
+}
+
+// Hide group management panel
+function hideGroupManagement() {
+  const overlay = qs('#groupModalOverlay');
+  const panel = qs('#groupManagementPanel');
+  if (overlay && panel) {
+    overlay.style.display = 'none';
+    panel.style.display = 'none';
+    hideCreateGroupForm();
+  }
+}
+
+// Show create group form
+function showCreateGroupForm() {
+  const form = qs('#createGroupForm');
+  if (form) form.style.display = 'block';
+}
+
+// Hide create group form
+function hideCreateGroupForm() {
+  const form = qs('#createGroupForm');
+  if (form) {
+    form.style.display = 'none';
+    const nameInput = qs('#groupName');
+    const descInput = qs('#groupDescription');
+    const colorInput = qs('#groupColor');
+    if (nameInput) nameInput.value = '';
+    if (descInput) descInput.value = '';
+    if (colorInput) colorInput.value = '#3b82f6';
+  }
+}
+
+// Create new group
+async function createGroup(event) {
+  event.preventDefault();
+  const nameInput = qs('#groupName');
+  const descInput = qs('#groupDescription');
+  const colorInput = qs('#groupColor');
+  
+  if (!nameInput) return;
+  
+  const name = nameInput.value.trim();
+  const description = descInput ? descInput.value.trim() : '';
+  const color = colorInput ? colorInput.value : '#3b82f6';
+  
+  if (!name) {
+    showToast('Group name is required', 'error');
+    return;
+  }
+  
+  try {
+    await api('/api/groups', {
+      method: 'POST',
+      body: {
+        name,
+        description: description || undefined,
+        color
+      }
+    });
+    showToast('Group created successfully', 'success');
+    hideCreateGroupForm();
+    await loadGroups();
+  } catch (e) {
+    showToast('Failed to create group: ' + (e.message || 'Unknown error'), 'error');
+  }
+}
+
+// Delete group
+async function deleteGroup(groupId) {
+  if (!confirm('Are you sure you want to delete this group? Devices will be removed from the group.')) {
+    return;
+  }
+  
+  try {
+    await api(`/api/groups/${groupId}`, { method: 'DELETE' });
+    showToast('Group deleted successfully', 'success');
+    await loadGroups();
+    if (currentGroupFilter === groupId) {
+      currentGroupFilter = null;
+      filterDevicesByGroup();
+    }
+    await loadDevices();
+  } catch (e) {
+    showToast('Failed to delete group: ' + (e.message || 'Unknown error'), 'error');
+  }
+}
+
+// Filter devices by group
+function filterDevicesByGroup() {
+  const filterSelect = qs('#groupFilter');
+  if (filterSelect) {
+    currentGroupFilter = filterSelect.value || null;
+    loadDevices(); // Reload devices with filter
   }
 }
 

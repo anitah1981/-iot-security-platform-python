@@ -242,6 +242,11 @@ class NotificationPreferences(BaseModel):
     quiet_hours_start: Optional[str] = None  # e.g., "22:00"
     quiet_hours_end: Optional[str] = None    # e.g., "07:00"
     
+    # Notification digest
+    digest_enabled: bool = False
+    digest_frequency: Optional[Literal["daily", "weekly"]] = None  # "daily" or "weekly"
+    digest_time: Optional[str] = None  # e.g., "09:00" - time to send digest
+    
     # Escalation settings
     escalation_enabled: bool = True
     escalation_delay_minutes: int = 15  # Wait time before escalating

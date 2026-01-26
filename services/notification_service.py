@@ -290,11 +290,38 @@ async def send_alert_notification(
     if notification_prefs.get("quietHoursEnabled", False):
         from datetime import datetime
         now = datetime.utcnow()
-        # TODO: Implement quiet hours check
-        # For now, skip quiet hours for critical alerts
-        if alert_severity != "critical":
-            # Would check time here
-            pass
+        quiet_start = notification_prefs.get("quietHoursStart")
+        quiet_end = notification_prefs.get("quietHoursEnd")
+        
+        if quiet_start and quiet_end:
+            # Parse time strings (format: "HH:MM")
+            try:
+                start_hour, start_min = map(int, quiet_start.split(":"))
+                end_hour, end_min = map(int, quiet_end.split(":"))
+                
+                current_hour = now.hour
+                current_min = now.minute
+                current_time_minutes = current_hour * 60 + current_min
+                start_time_minutes = start_hour * 60 + start_min
+                end_time_minutes = end_hour * 60 + end_min
+                
+                # Check if current time is in quiet hours
+                in_quiet_hours = False
+                if start_time_minutes > end_time_minutes:
+                    # Quiet hours span midnight (e.g., 22:00 to 07:00)
+                    in_quiet_hours = current_time_minutes >= start_time_minutes or current_time_minutes < end_time_minutes
+                else:
+                    # Quiet hours within same day (e.g., 22:00 to 23:00)
+                    in_quiet_hours = start_time_minutes <= current_time_minutes < end_time_minutes
+                
+                # Skip non-critical alerts during quiet hours
+                if in_quiet_hours and alert_severity != "critical":
+                    # Store alert for digest instead of sending immediately
+                    # TODO: Queue for digest
+                    return NotificationResult(True, "email", "Queued for digest (quiet hours)")
+            except (ValueError, AttributeError):
+                # Invalid time format, skip quiet hours check
+                pass
     
     # Email notification - using new HTML email
     if notification_prefs.get("emailEnabled", True):

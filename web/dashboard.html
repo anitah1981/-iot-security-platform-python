@@ -192,6 +192,17 @@
                   </form>
                 </div>
                 
+                <!-- Group Filter -->
+                <div style="margin-bottom: 16px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
+                  <label style="color: var(--muted); font-size: 14px;">Filter by Group:</label>
+                  <select id="groupFilter" onchange="filterDevicesByGroup()" style="padding: 8px 12px; border-radius: 6px; border: 1px solid var(--border); background: var(--bg); color: var(--text); font-size: 14px; min-width: 200px;">
+                    <option value="">All Devices</option>
+                  </select>
+                  <button class="btn-sm" onclick="showGroupManagement()" style="background: var(--primary); color: white;">
+                    📁 Manage Groups
+                  </button>
+                </div>
+
                 <div style="overflow:auto; margin-top:10px;">
                   <table>
                     <thead>
@@ -199,6 +210,7 @@
                         <th>Device ID</th>
                         <th>Name</th>
                         <th>Type</th>
+                        <th>Groups</th>
                         <th>Router IP</th>
                         <th>Status</th>
                         <th>Last Seen</th>
@@ -275,10 +287,30 @@
 
           <!-- Analytics & Charts Tab -->
           <div id="tab-analytics" class="tab-content">
+            <!-- Date Range Filter -->
+            <div class="card" style="margin-bottom: 24px; padding: 16px;">
+              <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px;">
+                <h3 style="margin: 0;">📊 Analytics & Insights</h3>
+                <div style="display: flex; gap: 12px; align-items: center;">
+                  <label style="color: var(--muted); font-size: 14px;">Time Range:</label>
+                  <select id="analyticsDateRange" onchange="updateChartsDateRange()" style="padding: 8px 12px; border-radius: 6px; border: 1px solid var(--border); background: var(--bg); color: var(--text); font-size: 14px;">
+                    <option value="7">Last 7 days</option>
+                    <option value="30" selected>Last 30 days</option>
+                    <option value="90">Last 90 days</option>
+                    <option value="180">Last 6 months</option>
+                    <option value="365">Last year</option>
+                  </select>
+                  <button class="btn-sm" onclick="refreshCharts()" style="background: var(--primary); color: white;">
+                    🔄 Refresh
+                  </button>
+                </div>
+              </div>
+            </div>
+
             <!-- Analytics Overview Cards -->
             <div class="grid" style="margin-bottom: 24px;">
               <div class="card" style="padding: 24px;">
-                <h2 style="margin-bottom: 20px;">📊 IoT Device Analytics & Insights</h2>
+                <h2 style="margin-bottom: 20px;">System Health Overview</h2>
                 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px;">
                   <div class="card" style="text-align: center; padding: 20px; background: linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(59, 130, 246, 0.05) 100%);">
                     <div id="healthScore">Loading...</div>
@@ -292,7 +324,7 @@
                 </div>
               </div>
               <div class="card" style="padding: 20px;">
-                <h3 style="margin-bottom: 16px; color: var(--text);">🔥 Top Alerting Devices (Last 30 Days)</h3>
+                <h3 style="margin-bottom: 16px; color: var(--text);">🔥 Top Alerting Devices</h3>
                 <div id="topAlertingDevices">Loading...</div>
               </div>
             </div>
@@ -318,6 +350,53 @@
           </div>
         </div>
       </main>
+    </div>
+
+    <!-- Group Management Modal -->
+    <div class="drawer-overlay" id="groupModalOverlay" style="display: none;" onclick="hideGroupManagement()"></div>
+    <div class="drawer" id="groupManagementPanel" style="display: none; max-width: 600px;">
+      <div class="drawer-header">
+        <div>
+          <div class="drawer-title">Device Groups</div>
+          <div class="drawer-sub">Organize your devices into groups</div>
+        </div>
+        <button class="btn-sm" onclick="hideGroupManagement()" type="button">Close</button>
+      </div>
+      <div class="drawer-body">
+        <div style="margin-bottom: 24px;">
+          <button class="btn-sm" onclick="showCreateGroupForm()" style="background: var(--ok); color: white; width: 100%;">
+            + Create New Group
+          </button>
+        </div>
+        
+        <!-- Create Group Form (hidden by default) -->
+        <div id="createGroupForm" style="display: none; margin-bottom: 24px; padding: 16px; background: var(--surface); border-radius: 8px;">
+          <h3 style="margin-bottom: 16px;">Create Group</h3>
+          <form onsubmit="createGroup(event)">
+            <div style="margin-bottom: 12px;">
+              <label style="display: block; margin-bottom: 4px; font-weight: 500;">Group Name *</label>
+              <input type="text" id="groupName" required placeholder="e.g., Living Room" style="width: 100%; padding: 8px; border: 1px solid var(--border); border-radius: 4px; background: var(--bg); color: var(--text);">
+            </div>
+            <div style="margin-bottom: 12px;">
+              <label style="display: block; margin-bottom: 4px; font-weight: 500;">Description</label>
+              <input type="text" id="groupDescription" placeholder="Optional description" style="width: 100%; padding: 8px; border: 1px solid var(--border); border-radius: 4px; background: var(--bg); color: var(--text);">
+            </div>
+            <div style="margin-bottom: 12px;">
+              <label style="display: block; margin-bottom: 4px; font-weight: 500;">Color</label>
+              <input type="color" id="groupColor" value="#3b82f6" style="width: 100%; height: 40px; border: 1px solid var(--border); border-radius: 4px; cursor: pointer;">
+            </div>
+            <div style="display: flex; gap: 8px;">
+              <button type="submit" class="btn-sm" style="background: var(--ok); color: white;">Create</button>
+              <button type="button" class="btn-sm" onclick="hideCreateGroupForm()" style="background: var(--muted); color: white;">Cancel</button>
+            </div>
+          </form>
+        </div>
+
+        <!-- Groups List -->
+        <div id="groupsList">
+          <div class="hint">Loading groups...</div>
+        </div>
+      </div>
     </div>
 
     <!-- Device Detail Drawer -->
