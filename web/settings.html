@@ -3,26 +3,70 @@
   <head>
     <meta charset="utf-8"/>
     <meta name="viewport" content="width=device-width, initial-scale=1"/>
-    <title>Settings • IoT Security Platform</title>
-    <link rel="stylesheet" href="/assets/app.css"/>
+    <title>Account Settings | IoT Security Platform - Manage Your Profile</title>
+    <meta name="description" content="Manage your IoT Security Platform account settings, notification preferences, subscription, password, and multi-factor authentication."/>
+    <meta name="robots" content="noindex, follow"/>
+    <link rel="canonical" href="https://iot-security-platform.com/settings"/>
+    <link rel="stylesheet" href="/assets/app.css?v=10"/>
     <script defer src="/assets/app.js?v=11"></script>
   </head>
   <body>
-    <div class="wrap" id="settingsRoot">
-      <div class="nav">
-        <div class="brand">
-          <div class="logo" aria-hidden="true"></div>
-          <div>
-            <h1>Account Settings</h1>
-            <p><span id="who">Loading profile…</span></p>
+    <div class="app-layout">
+      <!-- Sidebar Navigation -->
+      <aside class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+          <div class="sidebar-logo">
+            <div class="logo" aria-hidden="true"></div>
+            <h1>IoT Security</h1>
+          </div>
+          <div class="sidebar-user">
+            <div id="who">Loading profile…</div>
           </div>
         </div>
-        <div class="row">
-          <a class="btn" href="/dashboard">Dashboard</a>
-          <a class="btn" href="/">Home</a>
+        
+        <nav class="sidebar-nav">
+          <a href="/dashboard" class="sidebar-nav-item">
+            <span class="icon">📊</span>
+            <span>Dashboard</span>
+          </a>
+          <a href="/family" class="sidebar-nav-item">
+            <span class="icon">👨‍👩‍👧‍👦</span>
+            <span>Family</span>
+          </a>
+          <a href="/settings" class="sidebar-nav-item active">
+            <span class="icon">⚙️</span>
+            <span>Settings</span>
+          </a>
+          <a href="/pricing" class="sidebar-nav-item">
+            <span class="icon">💳</span>
+            <span>Pricing</span>
+          </a>
+          <a href="/docs" class="sidebar-nav-item">
+            <span class="icon">📚</span>
+            <span>API Docs</span>
+          </a>
+          <a href="/" class="sidebar-nav-item">
+            <span class="icon">🏠</span>
+            <span>Home</span>
+          </a>
+        </nav>
+        
+        <div class="sidebar-footer">
           <button class="btn danger" id="logoutBtn" type="button">Logout</button>
         </div>
-      </div>
+      </aside>
+
+      <!-- Mobile Menu Toggle -->
+      <button class="mobile-menu-toggle" id="mobileMenuToggle" onclick="toggleSidebar()">☰</button>
+
+      <!-- Main Content -->
+      <main class="main-content">
+        <div id="settingsRoot">
+          <!-- Page Header -->
+          <div style="margin-bottom: 24px;">
+            <h1 style="font-size: 28px; margin: 0 0 8px 0; font-weight: 600;">Account Settings</h1>
+            <p style="color: var(--muted); margin: 0;">Manage your account, security, and preferences</p>
+          </div>
 
       <div class="grid">
         <!-- Change Password Card -->
@@ -141,6 +185,53 @@
             Sign out of all devices
           </button>
         </div>
+        <div class="card">
+          <h2>🔐 Multi-Factor Authentication</h2>
+          <p class="sub">Add an authenticator app for stronger sign-in security.</p>
+          <div class="hint" id="mfaStatus" style="margin: 12px 0;"></div>
+          <div id="mfaSetupPanel" style="display: none; margin-top: 12px;">
+            <div style="margin-bottom: 16px; padding: 12px; background: rgba(47,107,255,.08); border: 1px solid rgba(47,107,255,.2); border-radius: 8px;">
+              <div class="hint" style="margin-bottom: 8px; font-weight: 600; color: var(--primary);">📱 How to set up:</div>
+              <ol style="margin: 0; padding-left: 20px; font-size: 13px; color: var(--muted); line-height: 1.8;">
+                <li>Install an authenticator app: <strong>Google Authenticator</strong>, <strong>Microsoft Authenticator</strong>, or <strong>Authy</strong></li>
+                <li>Open the app and tap <strong>"Add account"</strong> or <strong>"Set up account"</strong></li>
+                <li>Choose <strong>"Scan QR code"</strong></li>
+                <li>Scan the QR code below with your phone's camera</li>
+                <li>Enter the 6-digit code shown in the app</li>
+              </ol>
+            </div>
+            <div class="hint" style="margin-bottom: 12px; font-weight: 600;">Scan this QR code with your authenticator app:</div>
+            <div id="mfaQrCodeContainer" style="text-align: center; margin-bottom: 16px; padding: 16px; background: white; border-radius: 12px; min-height: 300px; display: flex; align-items: center; justify-content: center;">
+              <img id="mfaQrCode" src="" alt="MFA QR Code" style="max-width: 256px; width: 100%; height: auto; display: none;"/>
+              <div id="mfaQrCodeLoading" class="hint" style="display: block;">Loading QR code...</div>
+            </div>
+            <details style="margin-bottom: 12px;">
+              <summary style="cursor: pointer; color: var(--primary); font-size: 13px; margin-bottom: 8px;">Manual entry (if you can't scan)</summary>
+              <div style="margin-top: 8px;">
+                <div class="hint" style="margin-bottom: 6px; font-size: 12px;">Secret key:</div>
+                <input id="mfaSecret" readonly style="width: 100%; padding: 10px; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-size: 12px; margin-bottom: 8px; font-family: monospace;"/>
+                <div class="hint" style="margin-bottom: 6px; font-size: 12px;">Or use this URI:</div>
+                <input id="mfaOtpauth" readonly style="width: 100%; padding: 10px; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-size: 11px; margin-bottom: 8px; font-family: monospace; word-break: break-all;"/>
+              </div>
+            </details>
+            <div style="margin-top: 16px; padding: 12px; background: rgba(251, 191, 36, 0.1); border: 1px solid rgba(251, 191, 36, 0.3); border-radius: 8px;">
+              <div class="hint" style="margin-bottom: 8px; font-weight: 600; color: var(--warning);">⚠️ Backup Codes (store securely):</div>
+              <div id="mfaBackupCodes" class="hint" style="margin-bottom: 8px; font-family: monospace; font-size: 13px; word-break: break-all; line-height: 1.8;"></div>
+              <div class="hint" style="font-size: 11px; color: var(--muted);">These codes can be used to access your account if you lose access to your authenticator app. Save them in a safe place.</div>
+            </div>
+            <input id="mfaVerifyCode" type="text" inputmode="numeric" placeholder="Enter 6-digit code" style="width: 100%; padding: 10px; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; color: var(--text); margin-bottom: 10px;"/>
+            <button type="button" class="btn" id="mfaVerifyBtn" style="background: var(--primary); color: white;">Verify & Enable MFA</button>
+          </div>
+          <div id="mfaManagePanel" style="display: none; margin-top: 12px;">
+            <input id="mfaManageCode" type="text" inputmode="numeric" placeholder="Enter code to confirm" style="width: 100%; padding: 10px; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; color: var(--text); margin-bottom: 10px;"/>
+            <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+              <button type="button" class="btn" id="mfaDisableBtn" style="background: var(--danger); color: white;">Disable MFA</button>
+              <button type="button" class="btn" id="mfaBackupBtn" style="background: var(--primary); color: white;">Regenerate Backup Codes</button>
+            </div>
+            <div id="mfaBackupResult" class="hint" style="margin-top: 10px;"></div>
+          </div>
+          <button type="button" class="btn" id="mfaSetupBtn" style="background: var(--primary); color: white; margin-top: 12px;">Enable MFA</button>
+        </div>
         <div class="card" id="adminUnlockCard" style="display: none;">
           <h2>🧰 Admin: Unlock Account</h2>
           <p class="sub">Unlock a user who was locked out after failed logins.</p>
@@ -205,6 +296,9 @@
         <p class="sub">Configure how you receive alerts</p>
 
         <div id="notificationmsg" class="hint" style="margin: 16px 0;"></div>
+        <div id="smsComplianceBanner" class="msg bad" style="display: none; padding: 10px 12px; border: 1px solid rgba(239,68,68,.35); background: rgba(239,68,68,.08); border-radius: 10px; margin-bottom: 12px;">
+          SMS sending is blocked due to UK geo permissions or regulatory requirements.
+        </div>
 
         <div id="notificationPrefs" style="margin-top: 20px;">
           <div style="text-align: center; padding: 40px 20px;">
@@ -214,12 +308,28 @@
         </div>
       </div>
 
-      <div class="footer" style="text-align: center; padding: 20px;">
-        <a href="/privacy" style="color: var(--primary); text-decoration: none; margin: 0 12px;">Privacy Policy</a>
-        <span style="color: var(--muted);">•</span>
-        <a href="/terms" style="color: var(--primary); text-decoration: none; margin: 0 12px;">Terms of Service</a>
-      </div>
+        </div>
+      </main>
     </div>
+
+    <script>
+      // Mobile sidebar toggle
+      function toggleSidebar() {
+        const sidebar = document.getElementById('sidebar');
+        sidebar.classList.toggle('open');
+      }
+
+      // Close sidebar when clicking outside on mobile
+      document.addEventListener('click', (e) => {
+        const sidebar = document.getElementById('sidebar');
+        const toggle = document.getElementById('mobileMenuToggle');
+        if (window.innerWidth <= 768 && sidebar.classList.contains('open')) {
+          if (!sidebar.contains(e.target) && !toggle.contains(e.target)) {
+            sidebar.classList.remove('open');
+          }
+        }
+      });
+    </script>
 
     <script>
       // Load user info
@@ -252,6 +362,7 @@
           await loadSubscription();
           await loadUsage();
           await loadNotificationPreferences();
+          await loadMfaStatus();
         } catch(e) {
           // Not logged in
           clearAuth();
@@ -350,23 +461,23 @@
               <div style="background: rgba(47,107,255,.08); border: 1px solid rgba(47,107,255,.2); border-radius: 8px; padding: 16px; margin-bottom: 20px;">
                 <h4 style="margin: 0 0 12px 0; font-size: 14px; color: var(--primary);">Test Your Notifications</h4>
                 <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-                  <button type="button" onclick="testNotification('email')" class="btn-sm" style="background: var(--primary); color: white;">
+                  <button type="button" id="testEmailBtn" onclick="testNotification('email')" class="btn-sm" style="background: var(--primary); color: white;">
                     Test Email
                   </button>
-                  <button type="button" onclick="testNotification('sms')" class="btn-sm" style="background: var(--primary); color: white;">
+                  <button type="button" id="testSmsBtn" onclick="testNotification('sms')" class="btn-sm" style="background: var(--primary); color: white;">
                     Test SMS
                   </button>
-                  <button type="button" onclick="testNotification('whatsapp')" class="btn-sm" style="background: var(--primary); color: white;">
+                  <button type="button" id="testWhatsappBtn" onclick="testNotification('whatsapp')" class="btn-sm" style="background: var(--primary); color: white;">
                     Test WhatsApp
                   </button>
-                  <button type="button" onclick="testNotification('voice')" class="btn-sm" style="background: var(--primary); color: white;">
+                  <button type="button" id="testVoiceBtn" onclick="testNotification('voice')" class="btn-sm" style="background: var(--primary); color: white;">
                     Test Voice Call
                   </button>
                 </div>
               </div>
 
               <!-- Save Button -->
-              <button type="submit" class="btn" style="background: var(--primary); color: white; padding: 12px 24px; width: 100%;">
+              <button type="submit" id="saveNotificationBtn" class="btn" style="background: var(--primary); color: white; padding: 12px 24px; width: 100%;">
                 Save Notification Preferences
               </button>
             </form>
@@ -390,17 +501,53 @@
       // Save notification preferences
       async function saveNotificationPreferences() {
         const msg = document.querySelector("#notificationmsg");
+        const saveBtn = document.querySelector("#saveNotificationBtn");
         
         try {
+          hideSmsComplianceBanner();
+          const phoneInput = document.getElementById("phoneNumber");
+          const whatsappInput = document.getElementById("whatsappNumber");
+          const phoneValue = normalizePhone(phoneInput?.value || "");
+          const whatsappValue = normalizePhone(whatsappInput?.value || "");
+          const smsEnabled = document.getElementById("smsEnabled").checked;
+          const voiceEnabled = document.getElementById("voiceEnabled").checked;
+          const whatsappEnabled = document.getElementById("whatsappEnabled").checked;
+
+          if((smsEnabled || voiceEnabled) && !phoneValue){
+            msg.className = "msg bad";
+            msg.textContent = "✗ Phone number is required for SMS or voice notifications.";
+            showToast("Add a phone number in E.164 format.", "warning");
+            return;
+          }
+          if(phoneValue && !isValidE164(phoneValue)){
+            msg.className = "msg bad";
+            msg.textContent = "✗ Phone number must be in E.164 format (e.g., +44123456789).";
+            showToast("Invalid phone number format.", "warning");
+            return;
+          }
+          if(whatsappEnabled && !whatsappValue){
+            msg.className = "msg bad";
+            msg.textContent = "✗ WhatsApp number is required when WhatsApp is enabled.";
+            showToast("Add a WhatsApp number in E.164 format.", "warning");
+            return;
+          }
+          if(whatsappValue && !isValidE164(whatsappValue)){
+            msg.className = "msg bad";
+            msg.textContent = "✗ WhatsApp number must be in E.164 format (e.g., +44123456789).";
+            showToast("Invalid WhatsApp number format.", "warning");
+            return;
+          }
+
           const prefs = {
             email_enabled: document.getElementById("emailEnabled").checked,
-            sms_enabled: document.getElementById("smsEnabled").checked,
-            whatsapp_enabled: document.getElementById("whatsappEnabled").checked,
-            voice_enabled: document.getElementById("voiceEnabled").checked,
-            phone_number: document.getElementById("phoneNumber").value || null,
-            whatsapp_number: document.getElementById("whatsappNumber").value || null
+            sms_enabled: smsEnabled,
+            whatsapp_enabled: whatsappEnabled,
+            voice_enabled: voiceEnabled,
+            phone_number: phoneValue || null,
+            whatsapp_number: whatsappValue || null
           };
 
+          setButtonLoading(saveBtn, true, "Saving...");
           await api("/api/notification-preferences/", {
             method: "PUT",
             body: prefs
@@ -408,6 +555,7 @@
 
           msg.className = "msg ok";
           msg.textContent = "✓ Notification preferences saved successfully!";
+          showToast("Notification preferences saved.", "success");
           
           setTimeout(() => {
             msg.textContent = "";
@@ -417,6 +565,12 @@
         } catch(e) {
           msg.className = "msg bad";
           msg.textContent = `✗ ${e.message}`;
+          showToast(e.message || "Failed to save notification preferences.", "error");
+          if(String(e.message || "").includes("SMS disabled")){
+            showSmsComplianceBanner("SMS is currently disabled by server configuration.");
+          }
+        } finally {
+          setButtonLoading(saveBtn, false);
         }
       }
 
@@ -439,13 +593,225 @@
         }
       }
 
+      async function loadMfaStatus(){
+        const status = document.querySelector("#mfaStatus");
+        const setupBtn = document.querySelector("#mfaSetupBtn");
+        const setupPanel = document.querySelector("#mfaSetupPanel");
+        const managePanel = document.querySelector("#mfaManagePanel");
+        if(!status || !setupBtn || !setupPanel || !managePanel) return;
+        status.className = "msg";
+        status.textContent = "Loading MFA status...";
+        try{
+          const res = await api("/api/auth/mfa/status");
+          if(res.mfa_enabled){
+            status.className = "msg ok";
+            status.textContent = `MFA enabled. Backup codes remaining: ${res.backup_codes_remaining}`;
+            setupBtn.style.display = "none";
+            setupPanel.style.display = "none";
+            managePanel.style.display = "block";
+          } else {
+            status.className = "msg";
+            status.textContent = "MFA is not enabled.";
+            setupBtn.style.display = "inline-flex";
+            setupPanel.style.display = "none";
+            managePanel.style.display = "none";
+          }
+        }catch(e){
+          status.className = "msg bad";
+          status.textContent = `Failed to load MFA status: ${e.message}`;
+        }
+      }
+
+      async function startMfaSetup(){
+        const status = document.querySelector("#mfaStatus");
+        const setupBtn = document.querySelector("#mfaSetupBtn");
+        const setupPanel = document.querySelector("#mfaSetupPanel");
+        const qrCodeImg = document.querySelector("#mfaQrCode");
+        const otpauth = document.querySelector("#mfaOtpauth");
+        const secret = document.querySelector("#mfaSecret");
+        const codes = document.querySelector("#mfaBackupCodes");
+        if(!status || !setupBtn || !setupPanel || !qrCodeImg || !otpauth || !secret || !codes) return;
+        setButtonLoading(setupBtn, true, "Starting...");
+        try{
+          const res = await api("/api/auth/mfa/setup", { method: "POST" });
+          console.log("MFA setup response keys:", Object.keys(res || {}));
+          const qrContainer = document.querySelector("#mfaQrCodeContainer");
+          const qrLoading = document.querySelector("#mfaQrCodeLoading");
+          if(res && res.qr_code_image && qrCodeImg){
+            // Hide loading, show container
+            if(qrLoading) qrLoading.style.display = "none";
+            if(qrContainer) qrContainer.style.display = "flex";
+            // Set image source
+            qrCodeImg.src = res.qr_code_image;
+            qrCodeImg.style.display = "block";
+            console.log("QR code image source set, length:", res.qr_code_image.length);
+            qrCodeImg.onload = function(){
+              console.log("QR code image loaded successfully");
+            };
+            qrCodeImg.onerror = function(e){
+              console.error("Failed to load QR code image", e);
+              if(qrLoading) qrLoading.textContent = "Failed to load QR code";
+              if(qrCodeImg) qrCodeImg.style.display = "none";
+              status.className = "msg bad";
+              status.textContent = "QR code failed to load. Use manual entry instead.";
+            };
+          } else {
+            console.warn("No QR code image in response. Response:", res);
+            if(qrLoading) qrLoading.textContent = "QR code not available";
+            if(qrCodeImg) qrCodeImg.style.display = "none";
+            if(!res || !res.qr_code_image){
+              status.className = "msg bad";
+              status.textContent = "QR code not available. Please use manual entry method.";
+            }
+          }
+          otpauth.value = res.otpauth_uri || "";
+          secret.value = res.secret || "";
+          codes.textContent = (res.backup_codes || []).join("  ");
+          setupPanel.style.display = "block";
+          setupBtn.style.display = "none";
+          status.className = "msg";
+          status.className = "msg";
+          status.innerHTML = "✅ QR code generated! <strong>Open your authenticator app</strong> (Google Authenticator, Microsoft Authenticator, or Authy), scan the QR code above, then enter the 6-digit code below to enable MFA.";
+        }catch(e){
+          status.className = "msg bad";
+          status.textContent = `Failed to start MFA setup: ${e.message}`;
+        }finally{
+          setButtonLoading(setupBtn, false);
+        }
+      }
+
+      async function verifyMfaSetup(){
+        const status = document.querySelector("#mfaStatus");
+        const code = document.querySelector("#mfaVerifyCode");
+        const verifyBtn = document.querySelector("#mfaVerifyBtn");
+        if(!status || !code || !verifyBtn) return;
+        const value = code.value.trim();
+        if(!value){
+          status.className = "msg bad";
+          status.textContent = "Enter the MFA code to verify.";
+          return;
+        }
+        setButtonLoading(verifyBtn, true, "Verifying...");
+        try{
+          await api("/api/auth/mfa/verify", { method: "POST", body: { code: value } });
+          status.className = "msg ok";
+          status.textContent = "MFA enabled successfully.";
+          code.value = "";
+          await loadMfaStatus();
+        }catch(e){
+          status.className = "msg bad";
+          status.textContent = `Failed to verify MFA: ${e.message}`;
+        }finally{
+          setButtonLoading(verifyBtn, false);
+        }
+      }
+
+      async function disableMfa(){
+        const status = document.querySelector("#mfaStatus");
+        const code = document.querySelector("#mfaManageCode");
+        const btn = document.querySelector("#mfaDisableBtn");
+        if(!status || !code || !btn) return;
+        const value = code.value.trim();
+        if(!value){
+          status.className = "msg bad";
+          status.textContent = "Enter your MFA code to disable.";
+          return;
+        }
+        setButtonLoading(btn, true, "Disabling...");
+        try{
+          await api("/api/auth/mfa/disable", { method: "POST", body: { code: value } });
+          status.className = "msg ok";
+          status.textContent = "MFA disabled.";
+          code.value = "";
+          await loadMfaStatus();
+        }catch(e){
+          status.className = "msg bad";
+          status.textContent = `Failed to disable MFA: ${e.message}`;
+        }finally{
+          setButtonLoading(btn, false);
+        }
+      }
+
+      async function regenerateBackupCodes(){
+        const status = document.querySelector("#mfaStatus");
+        const code = document.querySelector("#mfaManageCode");
+        const btn = document.querySelector("#mfaBackupBtn");
+        const result = document.querySelector("#mfaBackupResult");
+        if(!status || !code || !btn || !result) return;
+        const value = code.value.trim();
+        if(!value){
+          status.className = "msg bad";
+          status.textContent = "Enter your MFA code to regenerate backup codes.";
+          return;
+        }
+        setButtonLoading(btn, true, "Regenerating...");
+        try{
+          const res = await api("/api/auth/mfa/backup-codes", { method: "POST", body: { code: value } });
+          result.textContent = (res.backup_codes || []).join("  ");
+          status.className = "msg ok";
+          status.textContent = "Backup codes regenerated. Store them securely.";
+          await loadMfaStatus();
+        }catch(e){
+          status.className = "msg bad";
+          status.textContent = `Failed to regenerate backup codes: ${e.message}`;
+        }finally{
+          setButtonLoading(btn, false);
+        }
+      }
+
       // Test notification
       async function testNotification(channel) {
         const msg = document.querySelector("#notificationmsg");
+        const buttonMap = {
+          email: "#testEmailBtn",
+          sms: "#testSmsBtn",
+          whatsapp: "#testWhatsappBtn",
+          voice: "#testVoiceBtn"
+        };
+        const btn = document.querySelector(buttonMap[channel]);
+        hideSmsComplianceBanner();
         msg.className = "msg";
         msg.textContent = `Sending test ${channel} notification...`;
 
         try {
+          const smsEnabled = document.getElementById("smsEnabled")?.checked;
+          const whatsappEnabled = document.getElementById("whatsappEnabled")?.checked;
+          const voiceEnabled = document.getElementById("voiceEnabled")?.checked;
+          const phoneValue = normalizePhone(document.getElementById("phoneNumber")?.value || "");
+          const whatsappValue = normalizePhone(document.getElementById("whatsappNumber")?.value || "");
+
+          if(channel === "sms" && !smsEnabled){
+            msg.className = "msg bad";
+            msg.textContent = "✗ SMS notifications are disabled.";
+            showToast("Enable SMS to run a test.", "warning");
+            return;
+          }
+          if(channel === "voice" && !voiceEnabled){
+            msg.className = "msg bad";
+            msg.textContent = "✗ Voice notifications are disabled.";
+            showToast("Enable voice notifications to run a test.", "warning");
+            return;
+          }
+          if(channel === "whatsapp" && !whatsappEnabled){
+            msg.className = "msg bad";
+            msg.textContent = "✗ WhatsApp notifications are disabled.";
+            showToast("Enable WhatsApp to run a test.", "warning");
+            return;
+          }
+          if((channel === "sms" || channel === "voice") && (!phoneValue || !isValidE164(phoneValue))){
+            msg.className = "msg bad";
+            msg.textContent = "✗ A valid phone number in E.164 format is required.";
+            showToast("Enter a valid phone number (e.g., +44123456789).", "warning");
+            return;
+          }
+          if(channel === "whatsapp" && (!whatsappValue || !isValidE164(whatsappValue))){
+            msg.className = "msg bad";
+            msg.textContent = "✗ A valid WhatsApp number in E.164 format is required.";
+            showToast("Enter a valid WhatsApp number (e.g., +44123456789).", "warning");
+            return;
+          }
+
+          setButtonLoading(btn, true, "Sending...");
           const response = await api(`/api/notification-preferences/test/${channel}`, {
             method: "POST"
           });
@@ -456,6 +822,12 @@
           } else {
             msg.className = "msg bad";
             msg.textContent = `✗ ${response.detail || "Failed to send test notification."}`;
+            const detail = String(response.detail || "");
+            if(response.error_code === "21612" || detail.includes("21612")){
+              showSmsComplianceBanner("SMS sending is blocked in the UK without geo-permissions or a UK regulatory bundle.");
+            } else if(detail.toLowerCase().includes("sms disabled")){
+              showSmsComplianceBanner("SMS is currently disabled by server configuration.");
+            }
           }
           
           setTimeout(() => {
@@ -466,6 +838,15 @@
         } catch(e) {
           msg.className = "msg bad";
           msg.textContent = `✗ Failed to send test ${channel}: ${e.message}`;
+          const detail = String(e.message || "");
+          if(detail.includes("21612")){
+            showSmsComplianceBanner("SMS sending is blocked in the UK without geo-permissions or a UK regulatory bundle.");
+          } else if(detail.toLowerCase().includes("sms disabled")){
+            showSmsComplianceBanner("SMS is currently disabled by server configuration.");
+          }
+          showToast(detail || "Test notification failed.", "error");
+        } finally {
+          setButtonLoading(btn, false);
         }
       }
 
@@ -646,6 +1027,19 @@
 
         if(document.querySelector("#settingsRoot")){
           loadSettings();
+          
+          // Check if MFA setup was requested from signup
+          const urlParams = new URLSearchParams(window.location.search);
+          if(urlParams.get("setupMfa") === "true"){
+            setTimeout(() => {
+              const setupBtn = document.querySelector("#mfaSetupBtn");
+              if(setupBtn && setupBtn.style.display !== "none"){
+                setupBtn.click();
+                // Update URL to remove query param
+                window.history.replaceState({}, document.title, window.location.pathname);
+              }
+            }, 1000);
+          }
         }
 
         if(document.querySelector("#logoutAllBtn")){
@@ -714,6 +1108,19 @@
               }
             }
           });
+        }
+
+        if(document.querySelector("#mfaSetupBtn")){
+          document.querySelector("#mfaSetupBtn").addEventListener("click", startMfaSetup);
+        }
+        if(document.querySelector("#mfaVerifyBtn")){
+          document.querySelector("#mfaVerifyBtn").addEventListener("click", verifyMfaSetup);
+        }
+        if(document.querySelector("#mfaDisableBtn")){
+          document.querySelector("#mfaDisableBtn").addEventListener("click", disableMfa);
+        }
+        if(document.querySelector("#mfaBackupBtn")){
+          document.querySelector("#mfaBackupBtn").addEventListener("click", regenerateBackupCodes);
         }
 
         if(document.querySelector("#changePasswordForm")){

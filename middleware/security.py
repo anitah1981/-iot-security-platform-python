@@ -4,7 +4,7 @@ Implements comprehensive security measures for the API
 """
 
 from fastapi import Request, HTTPException, status
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, RedirectResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
@@ -105,6 +105,39 @@ class InputSanitizationMiddleware(BaseHTTPMiddleware):
         
         response = await call_next(request)
         return response
+
+
+class HttpsRedirectMiddleware(BaseHTTPMiddleware):
+    """Force HTTPS in production behind a proxy."""
+    
+    def __init__(self, app, allowed_hosts: list = None):
+        super().__init__(app)
+        self.allowed_hosts = allowed_hosts or []
+
+    async def dispatch(self, request: Request, call_next: Callable):
+        # Check if we should enforce HTTPS
+        # Skip for health checks and internal endpoints
+        if request.url.path in ["/api/health", "/health"]:
+            return await call_next(request)
+        
+        # Check host header if allowed_hosts specified
+        host = request.headers.get("host", "").split(":")[0]
+        if self.allowed_hosts and host not in self.allowed_hosts:
+            return JSONResponse(
+                status_code=status.HTTP_403_FORBIDDEN,
+                content={"detail": "Forbidden"}
+            )
+        
+        # Check protocol via X-Forwarded-Proto (when behind proxy) or direct scheme
+        forwarded_proto = request.headers.get("x-forwarded-proto", "").lower()
+        scheme = forwarded_proto or request.url.scheme
+        
+        if scheme != "https":
+            # Build HTTPS URL
+            https_url = request.url.replace(scheme="https", port=443 if request.url.port else None)
+            return RedirectResponse(url=str(https_url), status_code=307)
+        
+        return await call_next(request)
 
 
 def setup_rate_limiting(app):

@@ -6,7 +6,10 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"/>
     <meta http-equiv="Pragma" content="no-cache"/>
     <meta http-equiv="Expires" content="0"/>
-    <title>Sign in • IoT Security Platform</title>
+    <title>Sign In | IoT Security Platform - Device Monitoring Dashboard</title>
+    <meta name="description" content="Sign in to your IoT Security Platform account to access real-time device monitoring, security alerts, and smart home security management dashboard."/>
+    <meta name="robots" content="noindex, follow"/>
+    <link rel="canonical" href="https://iot-security-platform.com/login"/>
     <link rel="stylesheet" href="/assets/app.css?v=9"/>
     <script defer src="/assets/app.js?v=11"></script>
   </head>
@@ -38,6 +41,11 @@
             <div class="field">
               <label for="password">Password</label>
               <input id="password" type="password" autocomplete="current-password" placeholder="••••••••" required/>
+            </div>
+            <div class="field" id="mfaField" style="display: none;">
+              <label for="mfaCode">MFA Code</label>
+              <input id="mfaCode" type="text" inputmode="numeric" autocomplete="one-time-code" placeholder="123456"/>
+              <div class="hint">Enter the 6-digit code from your authenticator app.</div>
             </div>
             
             <div style="text-align: right; margin-top: 8px; margin-bottom: 16px;">

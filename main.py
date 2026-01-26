@@ -2,7 +2,7 @@ from fastapi import FastAPI, Request, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
 from contextlib import asynccontextmanager
 from datetime import datetime
 import os
@@ -16,6 +16,7 @@ from middleware.security import (
     SecurityHeadersMiddleware,
     RequestLoggingMiddleware,
     InputSanitizationMiddleware,
+    HttpsRedirectMiddleware,
     setup_rate_limiting
 )
 
@@ -113,10 +114,21 @@ limiter = setup_rate_limiting(app)
 
 # Trusted hosts (enable only outside local/dev)
 app_env = os.getenv("APP_ENV", "local").lower()
+force_https = os.getenv("FORCE_HTTPS", "true").lower() == "true"
+if app_env == "production" and force_https:
+    allowed_hosts = os.getenv("ALLOWED_HOSTS", "").split(",")
+    allowed_hosts = [h.strip() for h in allowed_hosts if h.strip()]
+    app.add_middleware(HttpsRedirectMiddleware, allowed_hosts=allowed_hosts if allowed_hosts else None)
 if app_env not in ["local", "development"]:
     allowed_hosts = os.getenv("ALLOWED_HOSTS", "localhost,127.0.0.1").split(",")
     allowed_hosts = [h.strip() for h in allowed_hosts if h.strip()]
     app.add_middleware(TrustedHostMiddleware, allowed_hosts=allowed_hosts)
+
+if app_env == "production":
+    @app.exception_handler(Exception)
+    async def production_exception_handler(request: Request, exc: Exception):
+        print(f"[ERROR] Unhandled exception: {exc}")
+        return JSONResponse(status_code=500, content={"detail": "Internal server error"})
 
 # CORS - Allow frontend to connect (set CORS_ORIGINS in prod)
 cors_origins = _parse_cors_origins(os.getenv("CORS_ORIGINS"))
@@ -128,6 +140,20 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+@app.get("/cybersecurity-threats")
+async def cybersecurity_threats_page():
+    f = WEB_DIR / "cybersecurity-threats.html"
+    if not f.exists():
+        return JSONResponse(status_code=404, content={"detail": f"File not found: {f}"})
+    return FileResponse(str(f), media_type="text/html")
+
+@app.get("/security-threats")  # Alternative shorter route
+async def security_threats_page():
+    f = WEB_DIR / "cybersecurity-threats.html"
+    if not f.exists():
+        return JSONResponse(status_code=404, content={"detail": f"File not found: {f}"})
+    return FileResponse(str(f), media_type="text/html")
 
 @app.get("/")
 def root():

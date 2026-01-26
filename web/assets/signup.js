@@ -25,6 +25,51 @@ document.querySelectorAll('input[name="plan"]').forEach(radio => {
   });
 });
 
+// Handle MFA setup checkbox
+document.getElementById('setupMfa')?.addEventListener('change', (e) => {
+  const mfaSection = document.getElementById('mfaSetupSection');
+  if(mfaSection){
+    mfaSection.style.display = e.target.checked ? 'block' : 'none';
+    if(!e.target.checked){
+      // Reset MFA setup
+      document.getElementById('mfaSecretValue').value = '';
+      document.getElementById('mfaVerified').value = 'false';
+      document.getElementById('mfaVerifyCodeSignup').value = '';
+      document.getElementById('mfaQrCodeSignup').style.display = 'none';
+      document.getElementById('mfaQrCodeLoadingSignup').style.display = 'block';
+      document.getElementById('mfaQrCodeLoadingSignup').textContent = 'Click "Generate QR Code" to continue';
+    }
+  }
+});
+
+// Generate MFA QR code during signup
+document.getElementById('generateMfaBtn')?.addEventListener('click', async () => {
+  const btn = document.getElementById('generateMfaBtn');
+  const qrContainer = document.getElementById('mfaQrCodeContainerSignup');
+  const qrImg = document.getElementById('mfaQrCodeSignup');
+  const qrLoading = document.getElementById('mfaQrCodeLoadingSignup');
+  const secretInput = document.getElementById('mfaSecretSignup');
+  const secretValueInput = document.getElementById('mfaSecretValue');
+  
+  if(!btn || !qrContainer || !qrImg || !qrLoading) return;
+  
+  btn.disabled = true;
+  btn.textContent = 'Generating...';
+  qrLoading.textContent = 'Loading QR code...';
+  
+  try {
+    // We need to be logged in to generate MFA, so we'll do this after signup
+    // For now, show a message that MFA will be set up after account creation
+    qrLoading.innerHTML = '<div style="color: var(--primary);">MFA will be set up after your account is created. You can enable it in Settings or we\'ll prompt you on first login.</div>';
+    btn.textContent = 'Will be set up after signup';
+    btn.disabled = true;
+  } catch(e) {
+    qrLoading.textContent = 'Error: ' + (e.message || 'Failed to generate QR code');
+    btn.disabled = false;
+    btn.textContent = 'Generate QR Code';
+  }
+});
+
 // Handle signup form
 document.getElementById('signupForm')?.addEventListener('submit', async (e) => {
   e.preventDefault();
@@ -64,8 +109,30 @@ document.getElementById('signupForm')?.addEventListener('submit', async (e) => {
       }
     });
     
-    // Save tokens (only if verification not required)
+    // Store plan selection for later use
+    localStorage.setItem('selected_plan', plan);
+    
+    // Check if email verification is required
     const verificationRequired = response.verification_required === true;
+    
+    // Handle MFA setup if requested
+    const setupMfa = document.getElementById('setupMfa')?.checked;
+    if(setupMfa && response.token && !verificationRequired){
+      // Save tokens for authenticated MFA setup
+      setToken(response.token);
+      if(response.refresh_token) setRefreshToken(response.refresh_token);
+      
+      // User wants to set up MFA - redirect to settings with auto-trigger
+      msg.className = 'msg ok';
+      msg.innerHTML = 'Account created! Redirecting to set up MFA...';
+      showToast("Setting up MFA for your account...", "info");
+      setTimeout(() => {
+        window.location.href = '/settings?setupMfa=true';
+      }, 1500);
+      return;
+    }
+    
+    // Save tokens (only if verification not required)
     if(!verificationRequired){
       setToken(response.token);
       if(response.refresh_token) setRefreshToken(response.refresh_token);
@@ -73,9 +140,6 @@ document.getElementById('signupForm')?.addEventListener('submit', async (e) => {
       setToken(null);
       setRefreshToken(null);
     }
-    
-    // Store plan selection for later use
-    localStorage.setItem('selected_plan', plan);
     
     if(verificationRequired){
       msg.className = 'msg ok';

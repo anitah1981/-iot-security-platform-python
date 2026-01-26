@@ -406,10 +406,19 @@ window.addEventListener('DOMContentLoaded', () => {
     // Wait for app.js to load and page to render
     setTimeout(() => {
       if (typeof api !== 'undefined') {
-        initializeCharts();
+        // Only initialize if analytics tab is active or if we're on the analytics tab
+        const analyticsTab = document.getElementById('tab-analytics');
+        if (analyticsTab && analyticsTab.classList.contains('active')) {
+          initializeCharts();
+        }
       } else {
         // Retry if api function not ready
-        setTimeout(initializeCharts, 1000);
+        setTimeout(() => {
+          const analyticsTab = document.getElementById('tab-analytics');
+          if (analyticsTab && analyticsTab.classList.contains('active')) {
+            initializeCharts();
+          }
+        }, 1000);
       }
     }, 1000);
   }

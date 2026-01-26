@@ -12,7 +12,7 @@ import hashlib
 import os
 
 from database import get_database
-from routes.auth import hash_password
+from routes.auth import hash_password, _revoke_all_refresh_tokens
 from services.notification_service import NotificationService
 
 router = APIRouter(prefix="/api/auth", tags=["password-reset"])
@@ -233,6 +233,9 @@ async def reset_password(request: ResetPasswordRequest):
             "reset_token_expires": ""
         }}
     )
+    
+    # Revoke all refresh tokens on password reset (security best practice)
+    await _revoke_all_refresh_tokens(db, str(user["_id"]))
     
     print(f"[OK] Password reset successful for user {user.get('email')}")
     

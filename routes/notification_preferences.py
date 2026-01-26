@@ -28,6 +28,15 @@ DEFAULT_PREFS = {
     "escalationDelayMinutes": 15,
 }
 
+
+def _is_valid_e164(value: str) -> bool:
+    """Basic E.164 validation (+ followed by 8-15 digits)."""
+    value = value.strip()
+    if not value.startswith("+"):
+        return False
+    digits = value[1:]
+    return digits.isdigit() and 8 <= len(digits) <= 15
+
 @router.get("/", response_model=NotificationPreferencesResponse)
 async def get_notification_preferences(current_user = Depends(get_current_user)):
     """
@@ -126,6 +135,8 @@ async def test_notification_channel(
         )
         result = NotificationResult(success, "email", "Sent" if success else "Failed")
     elif channel == "sms":
+        if not service.sms_enabled:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="SMS disabled by server configuration")
         phone_number = prefs.get("phoneNumber")
         if not phone_number:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Phone number is required for SMS")
@@ -142,7 +153,12 @@ async def test_notification_channel(
         twiml = "<Response><Say>This is a test call from IoT Security Platform.</Say></Response>"
         result = service.make_voice_call(phone_number, twiml)
 
-    return {"ok": result.ok, "channel": result.channel, "detail": result.detail}
+    return {
+        "ok": result.ok,
+        "channel": result.channel,
+        "detail": result.detail,
+        "error_code": result.error_code,
+    }
 
 @router.put("/", response_model=NotificationPreferencesResponse)
 async def update_notification_preferences(
@@ -155,6 +171,34 @@ async def update_notification_preferences(
     """
     db = await get_database()
     user_id = ObjectId(current_user["_id"])
+    service = get_notification_service()
+
+    if preferences.sms_enabled and not service.sms_enabled:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="SMS is disabled by server configuration. Keep it off until UK regulatory requirements are complete."
+        )
+
+    if (preferences.sms_enabled or preferences.voice_enabled) and not preferences.phone_number:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Phone number is required for SMS or voice notifications"
+        )
+    if preferences.phone_number and not _is_valid_e164(preferences.phone_number):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Phone number must be in E.164 format (e.g., +44123456789)"
+        )
+    if preferences.whatsapp_enabled and not preferences.whatsapp_number:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="WhatsApp number is required for WhatsApp notifications"
+        )
+    if preferences.whatsapp_number and not _is_valid_e164(preferences.whatsapp_number):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="WhatsApp number must be in E.164 format (e.g., +44123456789)"
+        )
     
     # Build preferences document
     prefs_doc = {

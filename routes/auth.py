@@ -8,8 +8,25 @@ import os
 import bcrypt as bcrypt_lib
 import hashlib
 import secrets
+import pyotp
+import qrcode
+from io import BytesIO
+import base64
 
-from models import UserCreate, UserLogin, UserResponse, TokenResponse, PasswordChange, RefreshTokenRequest, LogoutRequest, ResendVerificationRequest
+from models import (
+    UserCreate,
+    UserLogin,
+    UserResponse,
+    TokenResponse,
+    PasswordChange,
+    RefreshTokenRequest,
+    LogoutRequest,
+    ResendVerificationRequest,
+    MfaSetupResponse,
+    MfaVerifyRequest,
+    MfaDisableRequest,
+    MfaBackupCodesResponse,
+)
 from database import get_database
 from middleware.security import limiter
 from services.notification_service import NotificationService
@@ -48,6 +65,9 @@ REQUIRE_EMAIL_VERIFICATION = os.getenv("REQUIRE_EMAIL_VERIFICATION", "false").lo
 EMAIL_VERIFICATION_ENABLED = os.getenv("EMAIL_VERIFICATION_ENABLED", "").lower()
 VERIFICATION_EXPIRES_HOURS = int(os.getenv("VERIFICATION_EXPIRES_HOURS", "24"))
 APP_BASE_URL = os.getenv("APP_BASE_URL", "http://localhost:8000")
+MFA_ISSUER = os.getenv("MFA_ISSUER", "IoT Security Platform")
+MFA_BACKUP_CODES = int(os.getenv("MFA_BACKUP_CODES", "8"))
+MFA_BACKUP_CODE_LENGTH = int(os.getenv("MFA_BACKUP_CODE_LENGTH", "10"))
 if os.getenv("APP_ENV", "local").lower() == "production" and JWT_SECRET == "your-super-secret-key-change-in-production":
     raise RuntimeError("JWT_SECRET must be set in production")
 
@@ -99,6 +119,39 @@ def _hash_verification_token(token: str) -> str:
 
 def _generate_verification_token() -> str:
     return secrets.token_urlsafe(32)
+
+def _normalize_mfa_code(code: str) -> str:
+    return "".join(str(code or "").split()).strip()
+
+def _hash_backup_code(code: str) -> str:
+    return hashlib.sha256(code.encode("utf-8")).hexdigest()
+
+def _generate_backup_codes() -> list[str]:
+    alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
+    return [
+        "".join(secrets.choice(alphabet) for _ in range(MFA_BACKUP_CODE_LENGTH))
+        for _ in range(MFA_BACKUP_CODES)
+    ]
+
+async def _verify_mfa_code(db, user: dict, code: str) -> bool:
+    code = _normalize_mfa_code(code)
+    if not code:
+        return False
+    secret = user.get("mfa_secret")
+    if secret:
+        totp = pyotp.TOTP(secret)
+        if totp.verify(code, valid_window=1):
+            return True
+    backup_codes = user.get("mfa_backup_codes", []) or []
+    code_hash = _hash_backup_code(code)
+    if code_hash in backup_codes:
+        updated = [c for c in backup_codes if c != code_hash]
+        await db.users.update_one(
+            {"_id": user["_id"]},
+            {"$set": {"mfa_backup_codes": updated, "updatedAt": datetime.utcnow()}}
+        )
+        return True
+    return False
 
 async def _send_verification_email(email: str, token: str, user_name: str):
     verify_link = f"{APP_BASE_URL}/verify-email?token={token}"
@@ -250,6 +303,11 @@ async def signup(user_data: UserCreate, request: Request, background_tasks: Back
         "email_verified": False,
         "email_verification_token": verification_token_hash,
         "email_verification_expires": verification_expires,
+        "mfa_enabled": False,
+        "mfa_secret": None,
+        "mfa_backup_codes": [],
+        "mfa_pending_secret": None,
+        "mfa_pending_backup_codes": [],
         "createdAt": datetime.utcnow(),
         "updatedAt": datetime.utcnow()
     }
@@ -270,6 +328,7 @@ async def signup(user_data: UserCreate, request: Request, background_tasks: Back
         subscription_id=user_doc.get("subscription_id"),
         subscription_status=user_doc.get("subscription_status"),
         stripe_customer_id=user_doc.get("stripe_customer_id"),
+        mfa_enabled=user_doc.get("mfa_enabled", False),
         created_at=user_doc["createdAt"]
     )
     
@@ -350,6 +409,27 @@ async def login(credentials: UserLogin, request: Request):
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Email not verified. Please check your inbox."
         )
+
+    # MFA check - REQUIRED if user has MFA enabled
+    if user.get("mfa_enabled"):
+        if not credentials.mfa_code:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail={"message": "MFA code required. Please enter the 6-digit code from your authenticator app.", "mfa_required": True}
+            )
+        valid = await _verify_mfa_code(db, user, credentials.mfa_code)
+        if not valid:
+            # Increment failed attempts for MFA too
+            failed_count = int(user.get("failed_login_count", 0)) + 1
+            update = {"failed_login_count": failed_count, "updatedAt": datetime.utcnow()}
+            if failed_count >= MAX_LOGIN_ATTEMPTS:
+                update["lock_until"] = datetime.utcnow() + timedelta(minutes=LOCKOUT_MINUTES)
+                update["failed_login_count"] = 0
+            await db.users.update_one({"_id": user["_id"]}, {"$set": update})
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail={"message": "Invalid MFA code. Please try again.", "mfa_required": True}
+            )
     
     # Get organization details if user belongs to one
     org = None
@@ -377,6 +457,7 @@ async def login(credentials: UserLogin, request: Request):
         subscription_id=user.get("subscription_id"),
         subscription_status=user.get("subscription_status"),
         stripe_customer_id=user.get("stripe_customer_id"),
+        mfa_enabled=user.get("mfa_enabled", False),
         created_at=user.get("createdAt", datetime.utcnow())
     )
     
@@ -422,8 +503,138 @@ async def get_current_user_info(current_user = Depends(get_current_user)):
         role=current_user["role"],
         organization=org,
         organization_role=current_user.get("organizationRole"),
+        mfa_enabled=current_user.get("mfa_enabled", False),
         created_at=current_user.get("createdAt", datetime.utcnow())
     )
+
+@router.get("/mfa/status")
+@limiter.limit("10/minute")
+async def get_mfa_status(request: Request, current_user = Depends(get_current_user)):
+    backup_codes = current_user.get("mfa_backup_codes", []) or []
+    return {
+        "mfa_enabled": bool(current_user.get("mfa_enabled", False)),
+        "backup_codes_remaining": len(backup_codes)
+    }
+
+@router.post("/mfa/setup", response_model=MfaSetupResponse)
+@limiter.limit("5/minute")
+async def setup_mfa(request: Request, current_user = Depends(get_current_user)):
+    if current_user.get("mfa_enabled"):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="MFA is already enabled")
+    db = await get_database()
+    secret = pyotp.random_base32()
+    backup_codes = _generate_backup_codes()
+    hashed_codes = [_hash_backup_code(c) for c in backup_codes]
+
+    await db.users.update_one(
+        {"_id": current_user["_id"]},
+        {"$set": {
+            "mfa_pending_secret": secret,
+            "mfa_pending_backup_codes": hashed_codes,
+            "mfa_pending_created_at": datetime.utcnow(),
+            "updatedAt": datetime.utcnow()
+        }}
+    )
+    totp = pyotp.TOTP(secret)
+    otpauth_uri = totp.provisioning_uri(name=current_user["email"], issuer_name=MFA_ISSUER)
+    
+    # Generate QR code image
+    qr = qrcode.QRCode(
+        version=1,
+        error_correction=qrcode.constants.ERROR_CORRECT_L,
+        box_size=10,
+        border=4,
+    )
+    qr.add_data(otpauth_uri)
+    qr.make(fit=True)
+    
+    # Create QR code image
+    img = qr.make_image(fill_color="black", back_color="white")
+    
+    # Convert to base64 data URI
+    buffered = BytesIO()
+    img.save(buffered, format="PNG")
+    img_str = base64.b64encode(buffered.getvalue()).decode()
+    qr_code_data_uri = f"data:image/png;base64,{img_str}"
+    
+    return MfaSetupResponse(
+        secret=secret,
+        otpauth_uri=otpauth_uri,
+        qr_code_image=qr_code_data_uri,
+        backup_codes=backup_codes
+    )
+
+@router.post("/mfa/verify")
+@limiter.limit("5/minute")
+async def verify_mfa(body: MfaVerifyRequest, request: Request, current_user = Depends(get_current_user)):
+    pending_secret = current_user.get("mfa_pending_secret")
+    pending_codes = current_user.get("mfa_pending_backup_codes", []) or []
+    if not pending_secret:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No MFA setup in progress")
+    code = _normalize_mfa_code(body.code)
+    totp = pyotp.TOTP(pending_secret)
+    if not totp.verify(code, valid_window=1):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid MFA code")
+    db = await get_database()
+    await db.users.update_one(
+        {"_id": current_user["_id"]},
+        {"$set": {
+            "mfa_enabled": True,
+            "mfa_secret": pending_secret,
+            "mfa_backup_codes": pending_codes,
+            "updatedAt": datetime.utcnow()
+        }, "$unset": {
+            "mfa_pending_secret": "",
+            "mfa_pending_backup_codes": "",
+            "mfa_pending_created_at": ""
+        }}
+    )
+    # Revoke all refresh tokens when MFA is enabled (force re-authentication)
+    await _revoke_all_refresh_tokens(db, str(current_user["_id"]))
+    return {"ok": True}
+
+@router.post("/mfa/disable")
+@limiter.limit("5/minute")
+async def disable_mfa(body: MfaDisableRequest, request: Request, current_user = Depends(get_current_user)):
+    if not current_user.get("mfa_enabled"):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="MFA is not enabled")
+    db = await get_database()
+    valid = await _verify_mfa_code(db, current_user, body.code)
+    if not valid:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid MFA code")
+    await db.users.update_one(
+        {"_id": current_user["_id"]},
+        {"$set": {
+            "mfa_enabled": False,
+            "mfa_secret": None,
+            "mfa_backup_codes": [],
+            "updatedAt": datetime.utcnow()
+        }, "$unset": {
+            "mfa_pending_secret": "",
+            "mfa_pending_backup_codes": "",
+            "mfa_pending_created_at": ""
+        }}
+    )
+    # Revoke all refresh tokens when MFA is disabled (security best practice)
+    await _revoke_all_refresh_tokens(db, str(current_user["_id"]))
+    return {"ok": True}
+
+@router.post("/mfa/backup-codes", response_model=MfaBackupCodesResponse)
+@limiter.limit("5/minute")
+async def regenerate_backup_codes(body: MfaVerifyRequest, request: Request, current_user = Depends(get_current_user)):
+    if not current_user.get("mfa_enabled"):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="MFA is not enabled")
+    db = await get_database()
+    valid = await _verify_mfa_code(db, current_user, body.code)
+    if not valid:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid MFA code")
+    backup_codes = _generate_backup_codes()
+    hashed_codes = [_hash_backup_code(c) for c in backup_codes]
+    await db.users.update_one(
+        {"_id": current_user["_id"]},
+        {"$set": {"mfa_backup_codes": hashed_codes, "updatedAt": datetime.utcnow()}}
+    )
+    return MfaBackupCodesResponse(backup_codes=backup_codes)
 
 @router.post("/refresh", response_model=TokenResponse)
 @limiter.limit("10/minute")
@@ -466,6 +677,7 @@ async def refresh_token(body: RefreshTokenRequest, request: Request):
         subscription_id=user.get("subscription_id"),
         subscription_status=user.get("subscription_status"),
         stripe_customer_id=user.get("stripe_customer_id"),
+        mfa_enabled=user.get("mfa_enabled", False),
         created_at=user.get("createdAt", datetime.utcnow())
     )
 
@@ -608,6 +820,9 @@ async def change_password(password_data: PasswordChange, request: Request, user:
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail='Failed to update password'
         )
+    
+    # Revoke all refresh tokens on password change (security best practice)
+    await _revoke_all_refresh_tokens(db, str(user['_id']))
     
     return {
         'message': 'Password changed successfully',

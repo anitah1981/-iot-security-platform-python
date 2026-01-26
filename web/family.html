@@ -3,27 +3,71 @@
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <title>Family Sharing • IoT Security Platform</title>
-  <link rel="stylesheet" href="/assets/app.css?v=4"/>
-  <script defer src="/assets/app.js?v=4"></script>
+  <title>Family Sharing | IoT Security Platform - Share Device Access</title>
+  <meta name="description" content="Share IoT device monitoring and security alerts with your family members. Invite household members to access your smart home security dashboard and receive alerts."/>
+  <meta name="robots" content="noindex, follow"/>
+  <link rel="canonical" href="https://iot-security-platform.com/family"/>
+  <link rel="stylesheet" href="/assets/app.css?v=10"/>
+  <script defer src="/assets/app.js?v=11"></script>
   <script defer src="/assets/family.js?v=4"></script>
 </head>
 <body>
-  <div class="wrap" id="familyRoot">
-    <div class="nav">
-      <div class="brand">
-        <div class="logo" aria-hidden="true"></div>
-        <div>
-          <h1>👨‍👩‍👧‍👦 Family Sharing</h1>
-          <p><span id="who">Loading...</span></p>
+  <div class="app-layout">
+    <!-- Sidebar Navigation -->
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-header">
+        <div class="sidebar-logo">
+          <div class="logo" aria-hidden="true"></div>
+          <h1>IoT Security</h1>
+        </div>
+        <div class="sidebar-user">
+          <div id="who">Loading...</div>
         </div>
       </div>
-      <div class="row">
-        <a class="btn" href="/dashboard">Dashboard</a>
-        <a class="btn" href="/settings">Settings</a>
+      
+      <nav class="sidebar-nav">
+        <a href="/dashboard" class="sidebar-nav-item">
+          <span class="icon">📊</span>
+          <span>Dashboard</span>
+        </a>
+        <a href="/family" class="sidebar-nav-item active">
+          <span class="icon">👨‍👩‍👧‍👦</span>
+          <span>Family</span>
+        </a>
+        <a href="/settings" class="sidebar-nav-item">
+          <span class="icon">⚙️</span>
+          <span>Settings</span>
+        </a>
+        <a href="/pricing" class="sidebar-nav-item">
+          <span class="icon">💳</span>
+          <span>Pricing</span>
+        </a>
+        <a href="/docs" class="sidebar-nav-item">
+          <span class="icon">📚</span>
+          <span>API Docs</span>
+        </a>
+        <a href="/" class="sidebar-nav-item">
+          <span class="icon">🏠</span>
+          <span>Home</span>
+        </a>
+      </nav>
+      
+      <div class="sidebar-footer">
         <button class="btn danger" id="logoutBtn" type="button">Logout</button>
       </div>
-    </div>
+    </aside>
+
+    <!-- Mobile Menu Toggle -->
+    <button class="mobile-menu-toggle" id="mobileMenuToggle" onclick="toggleSidebar()">☰</button>
+
+    <!-- Main Content -->
+    <main class="main-content">
+      <div id="familyRoot">
+        <!-- Page Header -->
+        <div style="margin-bottom: 24px;">
+          <h1 style="font-size: 28px; margin: 0 0 8px 0; font-weight: 600;">👨‍👩‍👧‍👦 Family Sharing</h1>
+          <p style="color: var(--muted); margin: 0;">Share devices and alerts with your household</p>
+        </div>
 
     <div class="grid">
       <!-- No Family State -->
@@ -178,11 +222,27 @@
       </div>
     </div>
 
-    <div class="footer" style="text-align: center; padding: 20px;">
-      <a href="/privacy" style="color: var(--primary); text-decoration: none; margin: 0 12px;">Privacy Policy</a>
-      <span style="color: var(--muted);">•</span>
-      <a href="/terms" style="color: var(--primary); text-decoration: none; margin: 0 12px;">Terms of Service</a>
-    </div>
+      </div>
+    </main>
   </div>
+
+  <script>
+    // Mobile sidebar toggle
+    function toggleSidebar() {
+      const sidebar = document.getElementById('sidebar');
+      sidebar.classList.toggle('open');
+    }
+
+    // Close sidebar when clicking outside on mobile
+    document.addEventListener('click', (e) => {
+      const sidebar = document.getElementById('sidebar');
+      const toggle = document.getElementById('mobileMenuToggle');
+      if (window.innerWidth <= 768 && sidebar.classList.contains('open')) {
+        if (!sidebar.contains(e.target) && !toggle.contains(e.target)) {
+          sidebar.classList.remove('open');
+        }
+      }
+    });
+  </script>
 </body>
 </html>

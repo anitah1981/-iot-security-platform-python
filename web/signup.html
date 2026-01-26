@@ -3,7 +3,10 @@
   <head>
     <meta charset="utf-8"/>
     <meta name="viewport" content="width=device-width, initial-scale=1"/>
-    <title>Sign Up • IoT Security Platform</title>
+    <title>Sign Up | IoT Security Platform - Start Free Trial</title>
+    <meta name="description" content="Create your free IoT Security Platform account. Start monitoring your smart home devices with 14-day free trial. No credit card required. Choose from Free, Pro, or Business plans."/>
+    <meta name="keywords" content="IoT security signup, smart home monitoring signup, device security free trial, IoT platform registration"/>
+    <link rel="canonical" href="https://iot-security-platform.com/signup"/>
     <link rel="stylesheet" href="/assets/app.css?v=9"/>
     <link rel="stylesheet" href="/assets/landing.css?v=2"/>
     <script defer src="/assets/app.js?v=11"></script>
@@ -99,7 +102,43 @@
                 <input type="password" id="confirm-password" name="confirm-password" required placeholder="Re-enter password"/>
               </div>
 
+              <div style="margin-top: 20px; padding: 16px; background: rgba(47,107,255,.08); border: 1px solid rgba(47,107,255,.2); border-radius: 8px;">
+                <label style="display: flex; align-items: flex-start; gap: 10px; cursor: pointer;">
+                  <input type="checkbox" id="setupMfa" style="margin-top: 4px;"/>
+                  <div style="flex: 1;">
+                    <div style="font-weight: 600; color: var(--primary); margin-bottom: 4px;">🔐 Enable Multi-Factor Authentication (Recommended)</div>
+                    <div style="font-size: 12px; color: var(--muted); line-height: 1.5;">
+                      Add an extra layer of security by setting up an authenticator app. You can set this up now or later in Settings.
+                    </div>
+                  </div>
+                </label>
+              </div>
+
+              <!-- MFA Setup Panel (shown when checkbox is checked) -->
+              <div id="mfaSetupSection" style="display: none; margin-top: 16px; padding: 16px; background: var(--surface); border: 1px solid var(--border); border-radius: 8px;">
+                <div class="hint" style="margin-bottom: 12px; font-weight: 600;">📱 Set up your authenticator app:</div>
+                <div id="mfaQrCodeContainerSignup" style="text-align: center; margin-bottom: 16px; padding: 16px; background: white; border-radius: 12px; min-height: 200px; display: flex; align-items: center; justify-content: center;">
+                  <div id="mfaQrCodeLoadingSignup" class="hint">Click "Generate QR Code" to continue</div>
+                  <img id="mfaQrCodeSignup" src="" alt="MFA QR Code" style="max-width: 200px; width: 100%; height: auto; display: none;"/>
+                </div>
+                <button type="button" id="generateMfaBtn" class="btn" style="background: var(--primary); color: white; width: 100%; margin-bottom: 12px;">Generate QR Code</button>
+                <details style="margin-bottom: 12px;">
+                  <summary style="cursor: pointer; color: var(--primary); font-size: 13px; margin-bottom: 8px;">Manual entry (if you can't scan)</summary>
+                  <div style="margin-top: 8px;">
+                    <div class="hint" style="margin-bottom: 6px; font-size: 12px;">Secret key:</div>
+                    <input id="mfaSecretSignup" readonly style="width: 100%; padding: 8px; background: var(--surface); border: 1px solid var(--border); border-radius: 6px; color: var(--text); font-size: 11px; margin-bottom: 8px; font-family: monospace;"/>
+                  </div>
+                </details>
+                <div class="field">
+                  <label for="mfaVerifyCodeSignup">Enter 6-digit code to verify</label>
+                  <input type="text" id="mfaVerifyCodeSignup" inputmode="numeric" placeholder="000000" maxlength="6" style="width: 100%; padding: 10px; text-align: center; font-size: 18px; letter-spacing: 8px; font-family: monospace;"/>
+                  <div class="hint">Enter the code from your authenticator app to verify setup</div>
+                </div>
+              </div>
+
               <input type="hidden" id="selected-plan" name="plan" value="home_plus"/>
+              <input type="hidden" id="mfaSecretValue" name="mfaSecretValue" value=""/>
+              <input type="hidden" id="mfaVerified" name="mfaVerified" value="false"/>
 
               <div class="field" style="margin-top: 24px;">
                 <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">

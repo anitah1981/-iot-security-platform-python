@@ -19,6 +19,7 @@ class UserCreate(UserBase):
 class UserLogin(BaseModel):
     email: EmailStr
     password: str
+    mfa_code: Optional[str] = None
 
 class PasswordChange(BaseModel):
     current_password: str
@@ -33,6 +34,7 @@ class UserResponse(UserBase):
     subscription_id: Optional[str] = None
     subscription_status: Optional[str] = None  # active, cancelled, past_due, etc.
     stripe_customer_id: Optional[str] = None
+    mfa_enabled: bool = False
     created_at: datetime
 
 class TokenResponse(BaseModel):
@@ -51,6 +53,21 @@ class LogoutRequest(BaseModel):
 
 class ResendVerificationRequest(BaseModel):
     email: EmailStr
+
+class MfaSetupResponse(BaseModel):
+    secret: str
+    otpauth_uri: str
+    qr_code_image: str  # Base64 data URI of the QR code image
+    backup_codes: List[str]
+
+class MfaVerifyRequest(BaseModel):
+    code: str
+
+class MfaDisableRequest(BaseModel):
+    code: str
+
+class MfaBackupCodesResponse(BaseModel):
+    backup_codes: List[str]
 
 # ============================================================
 # DEVICE MODELS

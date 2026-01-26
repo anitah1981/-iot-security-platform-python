@@ -46,6 +46,43 @@ function showToast(message, type="info", timeout=3200){
   }, timeout);
 }
 
+function normalizePhone(value){
+  return String(value || "").replace(/\s+/g, "");
+}
+
+function isValidE164(value){
+  const cleaned = normalizePhone(value);
+  return /^\+[1-9]\d{7,14}$/.test(cleaned);
+}
+
+function setButtonLoading(btn, loading, text){
+  if(!btn) return;
+  if(loading){
+    btn.dataset.originalText = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = text || "Working...";
+  } else {
+    btn.disabled = false;
+    if(btn.dataset.originalText){
+      btn.textContent = btn.dataset.originalText;
+      delete btn.dataset.originalText;
+    }
+  }
+}
+
+function showSmsComplianceBanner(message){
+  const banner = document.getElementById("smsComplianceBanner");
+  if(!banner) return;
+  banner.textContent = message;
+  banner.style.display = "block";
+}
+
+function hideSmsComplianceBanner(){
+  const banner = document.getElementById("smsComplianceBanner");
+  if(!banner) return;
+  banner.style.display = "none";
+}
+
 async function api(path, { method="GET", body, auth=true, retry=true } = {}){
   const headers = { "Content-Type": "application/json" };
   if(auth){
@@ -79,8 +116,14 @@ async function api(path, { method="GET", body, auth=true, retry=true } = {}){
   }
   if(!res.ok){
     if(res.status === 429){
-      const error = new Error("Too many requests. Please wait a moment and try again.");
+      const msg = data?.detail || "Too many requests. Please wait a moment and try again.";
+      const error = new Error(msg);
       error.rateLimited = true;
+      throw error;
+    }
+    if(data?.mfa_required){
+      const error = new Error(data?.detail || "MFA required");
+      error.mfa_required = true;
       throw error;
     }
     // Handle both string and object error details
@@ -88,6 +131,9 @@ async function api(path, { method="GET", body, auth=true, retry=true } = {}){
       // If detail is an object (like password validation errors), throw the whole object
       const error = new Error(data.detail.message || `Request failed (${res.status})`);
       error.detail = data.detail.errors || data.detail;
+      if(data.detail.mfa_required){
+        error.mfa_required = true;
+      }
       throw error;
     }
     const msg = data?.detail || data?.message || `Request failed (${res.status})`;
@@ -99,11 +145,15 @@ async function api(path, { method="GET", body, auth=true, retry=true } = {}){
 async function loginFlow(){
   const email = qs("#email")?.value?.trim();
   const password = qs("#password")?.value;
+  const mfaCodeInput = qs("#mfaCode");
+  const mfaCode = mfaCodeInput?.value?.trim();
   const msg = qs("#msg");
   msg.className = "msg";
   msg.textContent = "Signing in…";
   try{
-    const data = await api("/api/auth/login", { method:"POST", auth:false, body:{ email, password } });
+    const body = { email, password };
+    if(mfaCode) body.mfa_code = mfaCode;
+    const data = await api("/api/auth/login", { method:"POST", auth:false, body });
     setToken(data.token);
     if(data.refresh_token) setRefreshToken(data.refresh_token);
     msg.className = "msg ok";
@@ -119,6 +169,16 @@ async function loginFlow(){
     } else if(lowerMsg.includes("temporarily locked")){
       msg.textContent = e.message;
       showToast("Account temporarily locked. Try again later.", "warning");
+    } else if(e.mfa_required){
+      msg.className = "msg";
+      msg.textContent = e.message || "MFA required. Enter the 6-digit code from your authenticator app.";
+      if(mfaCodeInput){
+        const mfaField = mfaCodeInput.parentElement;
+        mfaField.style.display = "block";
+        mfaCodeInput.required = true;
+        mfaCodeInput.focus();
+      }
+      showToast("Enter your MFA code to continue.", "info");
     } else {
       msg.textContent = e.message;
     }
@@ -149,6 +209,19 @@ async function loadDashboard(){
     updateLastRefreshTime();
 
     if (msg) msg.textContent = "";
+    
+    // Auto-expand resolved alerts section if there are resolved alerts
+    const resolvedContent = qs("#resolvedAlertsContent");
+    const resolvedTable = qs("#resolvedAlerts");
+    if(resolvedContent && resolvedTable && resolvedTable.children.length > 0) {
+      // Check if first child is not the "No resolved alerts" message
+      const firstChild = resolvedTable.firstElementChild;
+      if(firstChild && !firstChild.textContent.includes("No resolved alerts")) {
+        resolvedContent.style.display = 'block';
+        const toggle = qs("#resolvedToggle");
+        if(toggle) toggle.textContent = '▼';
+      }
+    }
   }catch(e){
     console.error("Dashboard load error:", e);
     if (msg) {
@@ -253,8 +326,10 @@ async function loadDevices(){
 }
 
 async function loadAlerts(){
-  const data = await api("/api/alerts?limit=25&page=1");
-  renderAlerts(data.alerts || []);
+  const data = await api("/api/alerts?limit=100&page=1"); // Load more to get resolved alerts too
+  const allAlerts = data.alerts || [];
+  renderAlerts(allAlerts); // Only show unresolved in main table
+  renderResolvedAlerts(allAlerts); // Show resolved in separate section
   return data;
 }
 
@@ -321,17 +396,16 @@ function renderAlerts(alerts){
   const tbody = qs("#alerts");
   if(!tbody) return;
   
-  // Filter out resolved alerts or show them dimmed
+  // Only show unresolved alerts in the main table
   const unresolvedAlerts = alerts.filter(a => !a.resolved);
-  const resolvedAlerts = alerts.filter(a => a.resolved);
   
-  if(!alerts.length){
-    tbody.innerHTML = `<tr><td colspan="6" class="hint">No alerts yet.</td></tr>`;
+  if(!unresolvedAlerts.length){
+    tbody.innerHTML = `<tr><td colspan="6" class="hint">No active alerts. All clear! 🎉</td></tr>`;
     return;
   }
   
-  // Render unresolved alerts first
-  let html = unresolvedAlerts.map(a => `
+  // Render only unresolved alerts
+  const html = unresolvedAlerts.map(a => `
     <tr class="alert-row" data-alert-id="${a.id || a._id}">
       <td><span class="${badgeForSeverity(a.severity)}">${esc(a.severity)}</span></td>
       <td>${esc(a.type)}</td>
@@ -344,24 +418,43 @@ function renderAlerts(alerts){
     </tr>
   `).join("");
   
-  // Optionally show resolved alerts (dimmed)
-  if(resolvedAlerts.length > 0){
-    html += `<tr class="resolved-alerts-header"><td colspan="6" style="padding: 8px; font-weight: 600; color: var(--muted); font-size: 12px; border-top: 1px solid var(--border);">Resolved (${resolvedAlerts.length})</td></tr>`;
-    html += resolvedAlerts.slice(0, 5).map(a => `
-      <tr class="resolved-alert" data-alert-id="${a.id || a._id}" style="opacity: 0.6;">
-        <td><span class="${badgeForSeverity(a.severity)}">${esc(a.severity)}</span></td>
-        <td>${esc(a.type)}</td>
-        <td>${esc(a.message)}</td>
-        <td>${a.device?.name ? esc(a.device.name) : esc(a.device_id)}</td>
-        <td>${esc((a.created_at || "").toString().slice(0,19).replace("T"," "))}</td>
-        <td class="alert-action">
-          <span class="badge b-ok">Resolved</span>
-        </td>
-      </tr>
-    `).join("");
+  tbody.innerHTML = html;
+}
+
+// Render resolved alerts in a separate section
+function renderResolvedAlerts(alerts){
+  const tbody = qs("#resolvedAlerts");
+  if(!tbody) return;
+  
+  const resolvedAlerts = alerts.filter(a => a.resolved);
+  
+  if(!resolvedAlerts.length){
+    tbody.innerHTML = `<tr><td colspan="6" class="hint">No resolved alerts yet.</td></tr>`;
+    return;
   }
   
+  // Show resolved alerts with resolved date
+  const html = resolvedAlerts.map(a => `
+    <tr class="resolved-alert" data-alert-id="${a.id || a._id}">
+      <td><span class="${badgeForSeverity(a.severity)}" style="opacity: 0.7;">${esc(a.severity)}</span></td>
+      <td>${esc(a.type)}</td>
+      <td>${esc(a.message)}</td>
+      <td>${a.device?.name ? esc(a.device.name) : esc(a.device_id)}</td>
+      <td>${esc((a.created_at || "").toString().slice(0,19).replace("T"," "))}</td>
+      <td class="alert-action">
+        <span class="badge b-ok">Resolved</span>
+        ${a.resolved_at ? `<div style="font-size: 11px; color: var(--muted); margin-top: 4px;">${esc((a.resolved_at || "").toString().slice(0,19).replace("T"," "))}</div>` : ''}
+      </td>
+    </tr>
+  `).join("");
+  
   tbody.innerHTML = html;
+  
+  // Update resolved count
+  const countElement = qs("#resolvedAlertsCount");
+  if(countElement) {
+    countElement.textContent = `(${resolvedAlerts.length})`;
+  }
 }
 
 async function resolveAlert(alertId){
@@ -372,27 +465,28 @@ async function resolveAlert(alertId){
     msg.textContent = "Resolving alert...";
     await api(`/api/alerts/${alertId}/resolve`, { method: "POST" });
     
-    // Immediately hide/update the alert in UI
+    // Remove the alert from the active alerts table immediately
     if(alertRow){
-      alertRow.classList.add('resolved-alert');
-      const actionCell = alertRow.querySelector('.alert-action');
-      if(actionCell){
-        actionCell.innerHTML = '<span class="badge b-ok">Resolved</span>';
-      }
-      // Optionally fade out and remove after a delay
-      setTimeout(() => {
-        alertRow.style.opacity = '0.5';
-        alertRow.style.transition = 'opacity 0.3s';
-      }, 500);
+      alertRow.remove();
     }
     
     msg.className = "msg ok";
     msg.textContent = "Alert resolved!";
     setTimeout(() => { msg.textContent = ""; msg.className = "msg"; }, 2000);
     
-    // Reload alerts to refresh the list
-    const alerts = await api("/api/alerts?limit=25&page=1");
-    renderAlerts(alerts.alerts || []);
+    // Reload all alerts to update both active and resolved sections
+    const alerts = await api("/api/alerts?limit=100&page=1");
+    const allAlerts = alerts.alerts || [];
+    renderAlerts(allAlerts);
+    renderResolvedAlerts(allAlerts);
+    
+    // Show resolved alerts section if it was hidden
+    const resolvedContent = qs("#resolvedAlertsContent");
+    if(resolvedContent && !resolvedContent.style.display || resolvedContent.style.display === 'none') {
+      resolvedContent.style.display = 'block';
+      const toggle = qs("#resolvedToggle");
+      if(toggle) toggle.textContent = '▼';
+    }
   }catch(e){
     msg.className = "msg bad";
     msg.textContent = "Failed to resolve alert: " + e.message;
@@ -412,11 +506,13 @@ function logout(){
   window.location.href = "/";
 }
 
-// Alerts section toggle
-function toggleAlertsSection(){
-  const content = document.getElementById('alertsContent');
-  const toggle = document.getElementById('alertsToggle');
-  if(content.style.display === 'none'){
+// Resolved alerts section toggle
+function toggleResolvedAlerts(){
+  const content = document.getElementById('resolvedAlertsContent');
+  const toggle = document.getElementById('resolvedToggle');
+  if(!content || !toggle) return;
+  
+  if(content.style.display === 'none' || !content.style.display){
     content.style.display = 'block';
     toggle.textContent = '▼';
   } else {

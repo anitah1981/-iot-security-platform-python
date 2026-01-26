@@ -23,6 +23,7 @@ class NotificationResult:
     ok: bool
     channel: str
     detail: str
+    error_code: Optional[str] = None
 
 
 # Helper function for simple email sending
@@ -47,6 +48,7 @@ class NotificationService:
         self.twilio_auth_token = os.getenv("TWILIO_AUTH_TOKEN")
         self.twilio_phone_number = os.getenv("TWILIO_PHONE_NUMBER")
         self.twilio_whatsapp_number = os.getenv("TWILIO_WHATSAPP_NUMBER")
+        self.sms_enabled = os.getenv("SMS_ENABLED", "false").lower() in {"1", "true", "yes", "on"}
 
     def _smtp_ready(self) -> bool:
         return bool(self.smtp_user and self.smtp_password and self.from_email)
@@ -55,7 +57,7 @@ class NotificationService:
         return bool(self.twilio_account_sid and self.twilio_auth_token)
 
     def _sms_ready(self) -> bool:
-        return bool(self._twilio_base_ready() and self.twilio_phone_number)
+        return bool(self.sms_enabled and self._twilio_base_ready() and self.twilio_phone_number)
 
     def _voice_ready(self) -> bool:
         return bool(self._twilio_base_ready() and self.twilio_phone_number)
@@ -166,6 +168,13 @@ class NotificationService:
             return NotificationResult(False, "email", f"Send failed: {e}")
 
     def send_sms(self, to_number: str, body: str) -> NotificationResult:
+        if not self.sms_enabled:
+            return NotificationResult(
+                False,
+                "sms",
+                "SMS disabled by server configuration (SMS_ENABLED=false)",
+                "SMS_DISABLED",
+            )
         if not self._sms_ready():
             return NotificationResult(
                 False,
@@ -180,6 +189,10 @@ class NotificationService:
             client.messages.create(from_=self.twilio_phone_number, to=to_number, body=body)
             return NotificationResult(True, "sms", "Sent")
         except Exception as e:
+            error_code = getattr(e, "code", None)
+            if error_code:
+                detail = f"Twilio error {error_code}: {getattr(e, 'msg', str(e))}"
+                return NotificationResult(False, "sms", detail, str(error_code))
             return NotificationResult(False, "sms", f"Send failed: {e}")
 
     def send_whatsapp(self, to_number: str, body: str) -> NotificationResult:

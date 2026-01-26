@@ -1,0 +1,385 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <title>IoT Cybersecurity Threats | Smart Home Security Risks & Protection Guide</title>
+    <meta name="description" content="Learn about common IoT cybersecurity threats, smart home hacking incidents, and how cybercriminals access your devices. Real-world examples of IoT security breaches, data theft, and protection strategies."/>
+    <meta name="keywords" content="IoT cybersecurity threats, smart home hacking, IoT device security risks, cybercriminals IoT attacks, smart home data theft, IoT security breaches, WiFi hacking, device vulnerability, IoT privacy risks, home network security"/>
+    <link rel="canonical" href="https://iot-security-platform.com/cybersecurity-threats"/>
+    
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="article"/>
+    <meta property="og:url" content="https://iot-security-platform.com/cybersecurity-threats"/>
+    <meta property="og:title" content="IoT Cybersecurity Threats | Smart Home Security Risks & Protection Guide"/>
+    <meta property="og:description" content="Learn about common IoT cybersecurity threats, smart home hacking incidents, and how cybercriminals access your devices."/>
+    
+    <!-- Twitter -->
+    <meta property="twitter:card" content="summary_large_image"/>
+    <meta property="twitter:url" content="https://iot-security-platform.com/cybersecurity-threats"/>
+    <meta property="twitter:title" content="IoT Cybersecurity Threats | Smart Home Security Risks"/>
+    <meta property="twitter:description" content="Learn about common IoT cybersecurity threats and how to protect your smart home devices."/>
+    
+    <!-- Structured Data -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "Article",
+      "headline": "IoT Cybersecurity Threats and Smart Home Security Risks",
+      "description": "Comprehensive guide to IoT cybersecurity threats, smart home hacking incidents, and protection strategies",
+      "author": {
+        "@type": "Organization",
+        "name": "IoT Security Platform"
+      },
+      "publisher": {
+        "@type": "Organization",
+        "name": "IoT Security Platform",
+        "logo": {
+          "@type": "ImageObject",
+          "url": "https://iot-security-platform.com/assets/logo.png"
+        }
+      },
+      "datePublished": "2026-01-26",
+      "dateModified": "2026-01-26"
+    }
+    </script>
+    
+    <link rel="stylesheet" href="/assets/app.css?v=10"/>
+  </head>
+  <body>
+    <div class="app-layout">
+      <!-- Sidebar Navigation -->
+      <aside class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+          <div class="sidebar-logo">
+            <div class="logo" aria-hidden="true"></div>
+            <h1>IoT Security</h1>
+          </div>
+        </div>
+        
+        <nav class="sidebar-nav">
+          <a href="/dashboard" class="sidebar-nav-item">
+            <span class="icon">📊</span>
+            <span>Dashboard</span>
+          </a>
+          <a href="/family" class="sidebar-nav-item">
+            <span class="icon">👨‍👩‍👧‍👦</span>
+            <span>Family</span>
+          </a>
+          <a href="/settings" class="sidebar-nav-item">
+            <span class="icon">⚙️</span>
+            <span>Settings</span>
+          </a>
+          <a href="/pricing" class="sidebar-nav-item">
+            <span class="icon">💳</span>
+            <span>Pricing</span>
+          </a>
+          <a href="/cybersecurity-threats" class="sidebar-nav-item active">
+            <span class="icon">🛡️</span>
+            <span>Security Threats</span>
+          </a>
+          <a href="/docs" class="sidebar-nav-item">
+            <span class="icon">📚</span>
+            <span>API Docs</span>
+          </a>
+          <a href="/" class="sidebar-nav-item">
+            <span class="icon">🏠</span>
+            <span>Home</span>
+          </a>
+        </nav>
+        
+        <div class="sidebar-footer">
+          <button class="btn danger" id="logoutBtn" type="button" style="display:none;">Logout</button>
+        </div>
+      </aside>
+
+      <!-- Mobile Menu Toggle -->
+      <button class="mobile-menu-toggle" id="mobileMenuToggle" onclick="toggleSidebar()">☰</button>
+
+      <!-- Main Content -->
+      <main class="main-content">
+        <div style="max-width: 900px; margin: 0 auto;">
+          <!-- Page Header -->
+          <div style="margin-bottom: 32px;">
+            <h1 style="font-size: 36px; margin: 0 0 12px 0; font-weight: 700; line-height: 1.2;">IoT Cybersecurity Threats: Understanding Smart Home Security Risks</h1>
+            <p style="color: var(--muted); font-size: 18px; margin: 0; line-height: 1.6;">
+              Learn about the most common cybersecurity threats facing IoT devices and smart homes. Real-world examples of how cybercriminals exploit vulnerabilities to access your devices, steal data, and compromise your privacy.
+            </p>
+          </div>
+
+          <!-- Introduction -->
+          <div class="card" style="margin-bottom: 24px; background: linear-gradient(135deg, rgba(239,68,68,0.1) 0%, rgba(239,68,68,0.05) 100%); border-left: 4px solid var(--danger);">
+            <h2 style="color: var(--danger); margin-top: 0;">⚠️ Why IoT Security Matters</h2>
+            <p style="font-size: 16px; line-height: 1.7;">
+              As smart home devices become increasingly common, cybercriminals are targeting IoT vulnerabilities more than ever. 
+              Unsecured smart cameras, doorbells, thermostats, and other connected devices can provide hackers with entry points 
+              into your entire home network, leading to data theft, privacy violations, and even physical security breaches.
+            </p>
+          </div>
+
+          <!-- Common Threats Section -->
+          <section style="margin-bottom: 40px;">
+            <h2 style="font-size: 28px; margin-bottom: 24px; font-weight: 600;">Common IoT Cybersecurity Threats</h2>
+            
+            <!-- Threat 1: Default Passwords -->
+            <div class="card" style="margin-bottom: 20px;">
+              <h3 style="font-size: 22px; margin-top: 0; color: var(--danger);">1. Default Password Exploitation</h3>
+              <p style="line-height: 1.7; margin-bottom: 16px;">
+                <strong>How Cybercriminals Access Devices:</strong> Many IoT devices ship with default usernames and passwords 
+                (like "admin/admin" or "user/password") that users never change. Hackers use automated tools to scan the internet 
+                for devices with default credentials and gain instant access.
+              </p>
+              <div style="background: rgba(239,68,68,0.1); padding: 16px; border-radius: 8px; border-left: 3px solid var(--danger); margin-bottom: 16px;">
+                <strong style="color: var(--danger);">Real-World Example:</strong>
+                <p style="margin: 8px 0 0 0;">
+                  In 2016, the Mirai botnet infected over 600,000 IoT devices worldwide by exploiting default passwords. 
+                  The botnet was used to launch massive DDoS attacks that took down major websites including Twitter, Netflix, 
+                  and Reddit. Many victims had never changed their device passwords from factory defaults.
+                </p>
+              </div>
+              <p style="line-height: 1.7;">
+                <strong>Protection:</strong> Always change default passwords immediately after setup. Use strong, unique passwords 
+                for each device (minimum 12 characters with uppercase, lowercase, numbers, and symbols).
+              </p>
+            </div>
+
+            <!-- Threat 2: Unencrypted Data Transmission -->
+            <div class="card" style="margin-bottom: 20px;">
+              <h3 style="font-size: 22px; margin-top: 0; color: var(--danger);">2. Unencrypted Data Transmission</h3>
+              <p style="line-height: 1.7; margin-bottom: 16px;">
+                <strong>How Cybercriminals Steal Information:</strong> Many IoT devices transmit data over unencrypted connections, 
+                allowing hackers on the same network (or using WiFi sniffing tools) to intercept video feeds, sensor data, 
+                passwords, and personal information in plain text.
+              </p>
+              <div style="background: rgba(239,68,68,0.1); padding: 16px; border-radius: 8px; border-left: 3px solid var(--danger); margin-bottom: 16px;">
+                <strong style="color: var(--danger);">Real-World Example:</strong>
+                <p style="margin: 8px 0 0 0;">
+                  Security researchers discovered that thousands of smart home security cameras were streaming unencrypted video 
+                  feeds that could be accessed by anyone with the device's IP address. Cybercriminals created search engines 
+                  that indexed these vulnerable cameras, allowing strangers to watch live feeds from homes, offices, and even 
+                  baby monitors worldwide.
+                </p>
+              </div>
+              <p style="line-height: 1.7;">
+                <strong>Protection:</strong> Only use IoT devices that support encrypted connections (HTTPS, WPA3 for WiFi). 
+                Monitor your network for unusual data transmission patterns that could indicate unauthorized access.
+              </p>
+            </div>
+
+            <!-- Threat 3: WiFi Network Vulnerabilities -->
+            <div class="card" style="margin-bottom: 20px;">
+              <h3 style="font-size: 22px; margin-top: 0; color: var(--danger);">3. WiFi Network Hacking & Jamming</h3>
+              <p style="line-height: 1.7; margin-bottom: 16px;">
+                <strong>How Cybercriminals Access Your Network:</strong> Weak WiFi passwords, outdated encryption (WEP/WPA), 
+                and unsecured guest networks provide easy entry points. Hackers can also use WiFi jamming devices to disrupt 
+                connections, causing security systems to fail and allowing physical access.
+              </p>
+              <div style="background: rgba(239,68,68,0.1); padding: 16px; border-radius: 8px; border-left: 3px solid var(--danger); margin-bottom: 16px;">
+                <strong style="color: var(--danger);">Real-World Example:</strong>
+                <p style="margin: 8px 0 0 0;">
+                  In 2019, a sophisticated burglary ring used WiFi jammers to disable smart security systems before breaking into 
+                  homes. The jammers blocked signals from security cameras, motion sensors, and alarm systems, allowing thieves 
+                  to enter undetected. The criminals specifically targeted homes with smart locks and security systems, knowing 
+                  they could disable them remotely.
+                </p>
+              </div>
+              <p style="line-height: 1.7;">
+                <strong>Protection:</strong> Use WPA3 encryption, strong WiFi passwords, and separate guest networks. Monitor 
+                for WiFi jamming attacks that cause unexpected device disconnections - this could indicate an active security threat.
+              </p>
+            </div>
+
+            <!-- Threat 4: Firmware Vulnerabilities -->
+            <div class="card" style="margin-bottom: 20px;">
+              <h3 style="font-size: 22px; margin-top: 0; color: var(--danger);">4. Outdated Firmware & Security Patches</h3>
+              <p style="line-height: 1.7; margin-bottom: 16px;">
+                <strong>How Cybercriminals Exploit Vulnerabilities:</strong> IoT devices with outdated firmware often contain 
+                known security vulnerabilities that hackers can exploit. Many manufacturers stop providing security updates after 
+                a few years, leaving devices permanently vulnerable to new attack methods.
+              </p>
+              <div style="background: rgba(239,68,68,0.1); padding: 16px; border-radius: 8px; border-left: 3px solid var(--danger); margin-bottom: 16px;">
+                <strong style="color: var(--danger);">Real-World Example:</strong>
+                <p style="margin: 8px 0 0 0;">
+                  The "VPNFilter" malware infected over 500,000 routers and network-attached storage devices by exploiting 
+                  firmware vulnerabilities. The malware allowed cybercriminals to steal website credentials, intercept network 
+                  traffic, and even destroy device firmware, permanently disabling security systems. Many affected devices 
+                  were running firmware that was years out of date.
+                </p>
+              </div>
+              <p style="line-height: 1.7;">
+                <strong>Protection:</strong> Regularly update device firmware and choose manufacturers with a track record of 
+                providing long-term security support. Monitor devices for unexpected behavior that could indicate malware infection.
+              </p>
+            </div>
+
+            <!-- Threat 5: Physical Theft & Device Tampering -->
+            <div class="card" style="margin-bottom: 20px;">
+              <h3 style="font-size: 22px; margin-top: 0; color: var(--danger);">5. Physical Device Theft & Tampering</h3>
+              <p style="line-height: 1.7; margin-bottom: 16px;">
+                <strong>How Cybercriminals Steal Devices:</strong> Outdoor IoT devices like security cameras, smart doorbells, 
+                and sensors can be physically stolen or tampered with. Once in possession of a device, hackers can extract 
+                stored credentials, network information, and encryption keys.
+              </p>
+              <div style="background: rgba(239,68,68,0.1); padding: 16px; border-radius: 8px; border-left: 3px solid var(--danger); margin-bottom: 16px;">
+                <strong style="color: var(--danger);">Real-World Example:</strong>
+                <p style="margin: 8px 0 0 0;">
+                  Thieves in multiple cities have been targeting smart doorbell cameras, stealing them to access stored WiFi 
+                  passwords and home network credentials. Once they have network access, they can disable other security devices, 
+                  unlock smart locks, and gain entry to homes. In some cases, the stolen devices were resold with the original 
+                  owner's network credentials still intact.
+                </p>
+              </div>
+              <p style="line-height: 1.7;">
+                <strong>Protection:</strong> Use tamper-resistant mounting, enable device tampering alerts, and ensure devices 
+                don't store sensitive credentials. Monitor for unexpected device offline events that could indicate theft or tampering.
+              </p>
+            </div>
+
+            <!-- Threat 6: Man-in-the-Middle Attacks -->
+            <div class="card" style="margin-bottom: 20px;">
+              <h3 style="font-size: 22px; margin-top: 0; color: var(--danger);">6. Man-in-the-Middle (MITM) Attacks</h3>
+              <p style="line-height: 1.7; margin-bottom: 16px;">
+                <strong>How Cybercriminals Intercept Communications:</strong> Hackers position themselves between your IoT device 
+                and its server, intercepting and potentially modifying data transmissions. This allows them to steal login credentials, 
+                inject malicious commands, or spy on device communications.
+              </p>
+              <div style="background: rgba(239,68,68,0.1); padding: 16px; border-radius: 8px; border-left: 3px solid var(--danger); margin-bottom: 16px;">
+                <strong style="color: var(--danger);">Real-World Example:</strong>
+                <p style="margin: 8px 0 0 0;">
+                  Security researchers demonstrated how hackers could use fake WiFi hotspots (evil twins) to trick smart home 
+                  devices into connecting. Once connected, all device communications passed through the attacker's network, 
+                  allowing them to steal passwords, modify device settings, and even take control of smart locks and security 
+                  systems. This attack is particularly effective in apartment buildings where multiple WiFi networks are visible.
+                </p>
+              </div>
+              <p style="line-height: 1.7;">
+                <strong>Protection:</strong> Use VPNs for remote device access, verify SSL certificates, and avoid connecting 
+                devices to public or unknown WiFi networks. Monitor for suspicious network activity and unexpected device behavior.
+              </p>
+            </div>
+
+            <!-- Threat 7: Data Theft & Privacy Violations -->
+            <div class="card" style="margin-bottom: 20px;">
+              <h3 style="font-size: 22px; margin-top: 0; color: var(--danger);">7. Data Theft & Privacy Violations</h3>
+              <p style="line-height: 1.7; margin-bottom: 16px;">
+                <strong>How Cybercriminals Steal Personal Information:</strong> Compromised IoT devices can leak sensitive data 
+                including video recordings, location information, daily routines, and personal habits. This information is often 
+                sold on dark web marketplaces or used for targeted attacks, stalking, or identity theft.
+              </p>
+              <div style="background: rgba(239,68,68,0.1); padding: 16px; border-radius: 8px; border-left: 3px solid var(--danger); margin-bottom: 16px;">
+                <strong style="color: var(--danger);">Real-World Example:</strong>
+                <p style="margin: 8px 0 0 0;">
+                  A major smart home device manufacturer suffered a data breach that exposed millions of user accounts, including 
+                  email addresses, passwords, and device usage patterns. Cybercriminals used this information to identify high-value 
+                  targets (homes with expensive security systems) and plan burglaries. The stolen data also included video recordings 
+                  from security cameras, which were used for blackmail and stalking in multiple cases.
+                </p>
+              </div>
+              <p style="line-height: 1.7;">
+                <strong>Protection:</strong> Enable two-factor authentication, use strong unique passwords, review device privacy 
+                settings, and monitor for unauthorized access attempts. Regularly audit which devices have access to your data.
+              </p>
+            </div>
+          </section>
+
+          <!-- Protection Strategies -->
+          <section style="margin-bottom: 40px;">
+            <h2 style="font-size: 28px; margin-bottom: 24px; font-weight: 600;">How to Protect Your Smart Home from Cyber Threats</h2>
+            
+            <div class="card" style="margin-bottom: 16px;">
+              <h3 style="font-size: 20px; margin-top: 0; color: var(--ok);">✓ Change All Default Passwords</h3>
+              <p style="line-height: 1.7;">Use strong, unique passwords for every device. Consider using a password manager to generate and store complex passwords securely.</p>
+            </div>
+
+            <div class="card" style="margin-bottom: 16px;">
+              <h3 style="font-size: 20px; margin-top: 0; color: var(--ok);">✓ Keep Firmware Updated</h3>
+              <p style="line-height: 1.7;">Regularly check for and install firmware updates. Enable automatic updates when available to ensure you receive security patches promptly.</p>
+            </div>
+
+            <div class="card" style="margin-bottom: 16px;">
+              <h3 style="font-size: 20px; margin-top: 0; color: var(--ok);">✓ Secure Your WiFi Network</h3>
+              <p style="line-height: 1.7;">Use WPA3 encryption, strong WiFi passwords, and separate guest networks. Disable WPS (WiFi Protected Setup) which has known vulnerabilities.</p>
+            </div>
+
+            <div class="card" style="margin-bottom: 16px;">
+              <h3 style="font-size: 20px; margin-top: 0; color: var(--ok);">✓ Monitor Device Activity</h3>
+              <p style="line-height: 1.7;">Use IoT security monitoring tools to track device status, detect unusual activity, and receive alerts when devices go offline unexpectedly (which could indicate jamming or tampering).</p>
+            </div>
+
+            <div class="card" style="margin-bottom: 16px;">
+              <h3 style="font-size: 20px; margin-top: 0; color: var(--ok);">✓ Enable Multi-Factor Authentication</h3>
+              <p style="line-height: 1.7;">Add an extra layer of security by requiring a second form of verification (like a code from your phone) when accessing device settings or accounts.</p>
+            </div>
+
+            <div class="card" style="margin-bottom: 16px;">
+              <h3 style="font-size: 20px; margin-top: 0; color: var(--ok);">✓ Use Network Segmentation</h3>
+              <p style="line-height: 1.7;">Isolate IoT devices on a separate network segment to prevent compromised devices from accessing your main network and sensitive data.</p>
+            </div>
+
+            <div class="card" style="margin-bottom: 16px;">
+              <h3 style="font-size: 20px; margin-top: 0; color: var(--ok);">✓ Research Before Buying</h3>
+              <p style="line-height: 1.7;">Choose devices from manufacturers with strong security track records and long-term update support. Avoid devices with known security vulnerabilities.</p>
+            </div>
+          </section>
+
+          <!-- CTA Section -->
+          <div class="card" style="background: linear-gradient(135deg, rgba(47,107,255,0.15) 0%, rgba(20,184,166,0.1) 100%); border: 2px solid var(--primary); text-align: center; padding: 40px;">
+            <h2 style="font-size: 28px; margin-top: 0; margin-bottom: 16px;">Protect Your Smart Home Today</h2>
+            <p style="font-size: 18px; line-height: 1.7; margin-bottom: 24px; color: var(--text);">
+              Don't wait until you become a victim. Start monitoring your IoT devices with real-time alerts, 
+              threat detection, and comprehensive security monitoring.
+            </p>
+            <div style="display: flex; gap: 16px; justify-content: center; flex-wrap: wrap;">
+              <a href="/signup" class="btn primary" style="padding: 14px 28px; font-size: 16px; font-weight: 600;">Start Free Trial</a>
+              <a href="/dashboard" class="btn" style="padding: 14px 28px; font-size: 16px; font-weight: 600;">View Dashboard</a>
+            </div>
+          </div>
+
+          <!-- Footer -->
+          <div style="text-align: center; padding: 40px 20px; color: var(--muted);">
+            <p style="margin-bottom: 16px;">
+              <a href="/privacy" style="color: var(--primary); text-decoration: none; margin: 0 12px;">Privacy Policy</a>
+              <span>•</span>
+              <a href="/terms" style="color: var(--primary); text-decoration: none; margin: 0 12px;">Terms of Service</a>
+              <span>•</span>
+              <a href="/" style="color: var(--primary); text-decoration: none; margin: 0 12px;">Home</a>
+            </p>
+            <p style="font-size: 14px;">© 2026 IoT Security Platform. All rights reserved.</p>
+          </div>
+        </div>
+      </main>
+    </div>
+
+    <script>
+      // Mobile sidebar toggle
+      function toggleSidebar() {
+        const sidebar = document.getElementById('sidebar');
+        sidebar.classList.toggle('open');
+      }
+
+      // Close sidebar when clicking outside on mobile
+      document.addEventListener('click', (e) => {
+        const sidebar = document.getElementById('sidebar');
+        const toggle = document.getElementById('mobileMenuToggle');
+        if (window.innerWidth <= 768 && sidebar.classList.contains('open')) {
+          if (!sidebar.contains(e.target) && !toggle.contains(e.target)) {
+            sidebar.classList.remove('open');
+          }
+        }
+      });
+
+      // Check auth and show/hide logout button
+      if (typeof api !== 'undefined') {
+        api("/api/auth/me").then(() => {
+          document.querySelector("#logoutBtn").style.display = "block";
+          if (document.querySelector("#logoutBtn")) {
+            document.querySelector("#logoutBtn").addEventListener("click", logout);
+          }
+        }).catch(() => {
+          document.querySelector("#logoutBtn").style.display = "none";
+        });
+      }
+    </script>
+    <script defer src="/assets/app.js?v=11"></script>
+  </body>
+</html>
