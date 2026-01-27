@@ -45,10 +45,13 @@
       ]
     ],
     "extra": {
-      "apiUrl": "http://localhost:8000"
+      "apiUrl": "https://nonspectrally-unindignant-alivia.ngrok-free.dev",
+      "eas": {
+        "projectId": "iot-security-platform"
+      }
     },
     "env": {
-      "API_URL": "http://localhost:8000"
+      "API_URL": "https://nonspectrally-unindignant-alivia.ngrok-free.dev"
     },
     "scheme": "iot-security",
     "updates": {
