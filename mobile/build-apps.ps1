@@ -54,8 +54,19 @@ if (-not (Test-Path "eas.json")) {
 }
 Write-Host ""
 
-# Step 4: Build
-Write-Host "[4/4] Ready to build!" -ForegroundColor Yellow
+# Step 4: Pre-build validation
+Write-Host "[4/5] Running pre-build checks..." -ForegroundColor Yellow
+& "$PSScriptRoot\pre-build-check.ps1"
+if ($LASTEXITCODE -ne 0) {
+    Write-Host ""
+    Write-Host "Pre-build checks failed. Please fix issues above." -ForegroundColor Red
+    Read-Host "Press Enter to exit"
+    exit 1
+}
+Write-Host ""
+
+# Step 5: Build
+Write-Host "[5/5] Ready to build!" -ForegroundColor Yellow
 Write-Host ""
 Write-Host "Choose platform:" -ForegroundColor Cyan
 Write-Host "  1. iOS (iPhone)"

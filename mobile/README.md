@@ -1,179 +1,172 @@
-# 📱 IoT Security Platform - Mobile App
+# 📱 IoT Security Mobile App
 
-React Native mobile application for iOS and Android using Expo.
+**React Native mobile app for IoT Security Platform**
 
 ---
 
-## 🚀 Quick Start
+## 🚀 **Quick Start**
 
-### **Prerequisites**
-- Node.js 18+ installed
-- Expo CLI: `npm install -g expo-cli` (or use npx)
-- For iOS: Xcode (Mac only)
-- For Android: Android Studio
+### **Build Standalone Apps (Recommended)**
 
-### **Installation**
+Skip Expo Go - build real apps:
 
 ```bash
 cd mobile
+.\build-apps.ps1
+```
+
+**Or manually:**
+```bash
+npm install -g eas-cli
+eas login
+eas build:configure
+eas build --platform ios --profile preview
+eas build --platform android --profile preview
+```
+
+---
+
+## 📋 **Before Building**
+
+1. **Update API URL** in `app.json`:
+   ```json
+   "apiUrl": "https://your-backend-url.com"
+   ```
+   *(See UPDATE_API_URL.md for options)*
+
+2. **Create Expo account** at https://expo.dev (free)
+
+3. **Run pre-build check:**
+   ```bash
+   .\pre-build-check.ps1
+   ```
+
+---
+
+## 🛠️ **Development**
+
+### **Install Dependencies**
+```bash
 npm install
 ```
 
-### **Configure API URL**
-
-Edit `app.json`:
-```json
-{
-  "expo": {
-    "extra": {
-      "apiUrl": "https://your-api-domain.com"
-    }
-  }
-}
-```
-
-### **Run**
-
+### **Start Development Server**
 ```bash
 npm start
 ```
 
-Then:
-- Press `i` for iOS simulator
-- Press `a` for Android emulator
-- Scan QR code with Expo Go app
+### **Run on Device (Expo Go)**
+```bash
+npm run start:lan
+```
+*(Then scan QR code with Expo Go app)*
 
 ---
 
-## 📁 Project Structure
+## 📚 **Documentation**
+
+- **QUICK_BUILD.md** - Fastest way to build
+- **START_BUILDING.md** - Complete build guide
+- **UPDATE_API_URL.md** - Backend URL configuration
+- **READY_TO_BUILD.md** - Build readiness checklist
+
+---
+
+## 📁 **Project Structure**
 
 ```
 mobile/
-├── App.js                    # Main entry point
-├── app.json                 # Expo configuration
-├── package.json             # Dependencies
 ├── src/
-│   ├── config/
-│   │   └── api.js          # API client
-│   ├── context/
-│   │   ├── AuthContext.js  # Authentication state
-│   │   └── NetworkContext.js # Network status
-│   ├── navigation/
-│   │   └── MainTabs.js     # Bottom tab navigation
-│   ├── screens/
-│   │   ├── LoginScreen.js
-│   │   ├── SignupScreen.js
-│   │   ├── DashboardScreen.js
-│   │   ├── DevicesScreen.js
-│   │   ├── AlertsScreen.js
-│   │   └── SettingsScreen.js
-│   └── components/
-│       ├── DeviceCard.js
-│       ├── AlertCard.js
-│       └── StatsCard.js
-└── assets/                  # Images, icons
+│   ├── screens/       # App screens
+│   ├── components/    # Reusable components
+│   ├── navigation/   # Navigation setup
+│   ├── context/      # React contexts
+│   ├── config/       # API configuration
+│   ├── services/     # API services
+│   └── utils/        # Utilities
+├── assets/            # Images, icons
+├── App.js            # Root component
+├── app.json          # Expo configuration
+├── eas.json          # EAS build configuration
+└── package.json      # Dependencies
 ```
 
 ---
 
-## ✅ **Current Status**
+## ✅ **Features**
 
-### **Completed:**
-- ✅ Project setup with Expo
-- ✅ Authentication screens (Login, Signup, Forgot Password, Reset Password)
-- ✅ Navigation structure
-- ✅ Dashboard screen
-- ✅ Device list screen
-- ✅ Alert list screen
-- ✅ Settings screen
-- ✅ Network status detection
-- ✅ Offline mode handling
-
-### **In Progress:**
-- ⏳ Device detail screen
-- ⏳ Alert detail screen
-- ⏳ Push notifications
-- ⏳ Charts/analytics
-- ⏳ Notification preferences
+- ✅ Device monitoring dashboard
+- ✅ Real-time alerts
+- ✅ Offline support
+- ✅ Push notifications
+- ✅ Authentication
+- ✅ Dark theme
 
 ---
 
-## 🔧 **Features**
+## 🔧 **Configuration**
 
-### **Authentication**
-- Login with email/password
-- Signup with validation
-- Forgot password flow
-- Reset password
-- Secure token storage
+### **API URL**
+Set in `app.json`:
+```json
+"extra": {
+  "apiUrl": "https://your-backend.com"
+}
+```
 
-### **Dashboard**
-- Device overview
-- Alert summary
-- Quick stats
-- Pull to refresh
-
-### **Devices**
-- List all devices
-- Device status (online/offline)
-- Filter and search
-- Device details
-
-### **Alerts**
-- List all alerts
-- Filter by severity
-- Filter by status
-- Alert details
-
-### **Settings**
-- Account information
-- Plan details
-- Logout
+### **Build Profiles**
+Configured in `eas.json`:
+- `preview` - Internal testing
+- `production` - App store builds
 
 ---
 
-## 📦 **Building for Production**
+## 📱 **Building**
 
 ### **iOS**
 ```bash
-eas build --platform ios
+eas build --platform ios --profile preview
 ```
 
 ### **Android**
 ```bash
-eas build --platform android
+eas build --platform android --profile preview
 ```
 
 ---
 
 ## 🐛 **Troubleshooting**
 
-### **Metro bundler issues**
+### **Build Fails**
+- Check API URL is correct
+- Verify backend is accessible
+- Run `pre-build-check.ps1`
+
+### **Can't Install on iPhone**
+- Trust developer certificate in Settings
+- Use HTTPS download link
+
+### **API Connection Issues**
+- Verify backend URL is correct
+- Check backend is running
+- Ensure CORS is configured
+
+---
+
+## 📝 **Notes**
+
+- **First build:** Takes 10-15 minutes
+- **Free tier:** Limited builds per month
+- **No Mac needed:** EAS builds iOS in cloud
+- **Assets:** Default icons used if custom icons not provided
+
+---
+
+## 🎯 **Ready to Build?**
+
+Run the build script:
 ```bash
-npm start -- --reset-cache
+.\build-apps.ps1
 ```
 
-### **iOS simulator not opening**
-- Install Xcode Command Line Tools: `xcode-select --install`
-- Open Xcode and accept license
-
-### **Android emulator issues**
-- Make sure Android Studio is installed
-- Create an AVD (Android Virtual Device)
-- Start emulator before running `npm start`
-
----
-
-## 📝 **Next Steps**
-
-1. Add device detail screen
-2. Add alert detail screen
-3. Implement push notifications
-4. Add charts/analytics
-5. Add notification preferences
-6. Test on physical devices
-7. Submit to App Store / Play Store
-
----
-
-**Happy coding!** 🚀
+**Or see QUICK_BUILD.md for step-by-step guide**
