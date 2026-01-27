@@ -1,61 +1,57 @@
 {
-    "expo":  {
-                 "name":  "IoT Security",
-                 "slug":  "iot-security-platform",
-                 "version":  "1.0.0",
-                 "orientation":  "portrait",
-                 "icon":  "./assets/icon.png",
-                 "userInterfaceStyle":  "dark",
-                 "splash":  {
-                                "image":  "./assets/splash.png",
-                                "resizeMode":  "contain",
-                                "backgroundColor":  "#1a1a1a"
-                            },
-                 "assetBundlePatterns":  [
-                                             "**/*"
-                                         ],
-                 "ios":  {
-                             "supportsTablet":  true,
-                             "bundleIdentifier":  "com.iotsecurity.platform",
-                             "infoPlist":  {
-                                               "NSLocationWhenInUseUsageDescription":  "This app uses location to help monitor your IoT devices."
-                                           }
-                         },
-                 "android":  {
-                                 "adaptiveIcon":  {
-                                                      "foregroundImage":  "./assets/adaptive-icon.png",
-                                                      "backgroundColor":  "#1a1a1a"
-                                                  },
-                                 "package":  "com.iotsecurity.platform",
-                                 "permissions":  [
-                                                     "INTERNET",
-                                                     "ACCESS_NETWORK_STATE"
-                                                 ]
-                             },
-                 "web":  {
-                             "favicon":  "./assets/favicon.png"
-                         },
-                 "plugins":  [
-                                 [
-                                     "expo-notifications",
-                                     {
-                                         "icon":  "./assets/notification-icon.png",
-                                         "color":  "#3b82f6"
-                                     }
-                                 ]
-                             ],
-                 "extra":  {
-                               "apiUrl":  "https://nonspectrally-unindignant-alivia.ngrok-free.dev"
-                           },
-                 "env":  {
-                             "API_URL":  "https://nonspectrally-unindignant-alivia.ngrok-free.dev"
-                         },
-                 "scheme":  "iot-security",
-                 "updates":  {
-                                 "fallbackToCacheTimeout":  0
-                             },
-                 "runtimeVersion":  {
-                                        "policy":  "appVersion"
-                                    }
-             }
+  "expo": {
+    "name": "IoT Security",
+    "slug": "iot-security-platform",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "dark",
+    "splash": {
+      "resizeMode": "contain",
+      "backgroundColor": "#1a1a1a"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.iotsecurity.platform",
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "This app uses location to help monitor your IoT devices."
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#1a1a1a"
+      },
+      "package": "com.iotsecurity.platform",
+      "permissions": [
+        "INTERNET",
+        "ACCESS_NETWORK_STATE"
+      ]
+    },
+    "web": {
+    },
+    "plugins": [
+      "expo-font",
+      [
+        "expo-notifications",
+        {
+          "color": "#3b82f6"
+        }
+      ]
+    ],
+    "extra": {
+      "apiUrl": "https://nonspectrally-unindignant-alivia.ngrok-free.dev",
+      "eas": {
+        "projectId": "217e28ef-7185-442c-9983-53eec6f29fe3"
+      }
+    },
+    "scheme": "iot-security",
+    "updates": {
+      "fallbackToCacheTimeout": 0
+    },
+    "runtimeVersion": {
+      "policy": "sdkVersion"
+    }
+  }
 }
