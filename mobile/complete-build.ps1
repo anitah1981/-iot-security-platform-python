@@ -176,4 +176,6 @@ if ($errors.Count -eq 0 -and $warnings.Count -eq 0 -and $isLoggedIn) {
 }
 
 Write-Host "========================================" -ForegroundColor Cyan
-Read-Host "Press Enter to exit"
+if ([Environment]::UserInteractive) {
+    Read-Host "Press Enter to exit"
+}
