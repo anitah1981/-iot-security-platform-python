@@ -1,0 +1,19 @@
+========================================
+EXACT COMMANDS TO RUN - COPY & PASTE
+========================================
+
+1. Open terminal in Cursor (Ctrl+`)
+
+2. Run these commands in order:
+
+cd mobile
+eas build:configure
+(When asked "Would you like to automatically create an EAS project?", type: y)
+
+eas build --platform android --profile preview
+
+eas build --platform ios --profile preview
+
+========================================
+That's it! Just copy and paste the commands above.
+========================================

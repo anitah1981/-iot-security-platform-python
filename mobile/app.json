@@ -45,10 +45,7 @@
                                  ]
                              ],
                  "extra":  {
-                               "apiUrl":  "https://nonspectrally-unindignant-alivia.ngrok-free.dev",
-                               "eas":  {
-
-                                       }
+                               "apiUrl":  "https://nonspectrally-unindignant-alivia.ngrok-free.dev"
                            },
                  "env":  {
                              "API_URL":  "https://nonspectrally-unindignant-alivia.ngrok-free.dev"
