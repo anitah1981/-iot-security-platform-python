@@ -47,6 +47,9 @@
     "extra": {
       "apiUrl": "http://localhost:8000"
     },
+    "env": {
+      "API_URL": "http://localhost:8000"
+    },
     "scheme": "iot-security",
     "updates": {
       "fallbackToCacheTimeout": 0
