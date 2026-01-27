@@ -1,5 +1,5 @@
 # routes/groups.py - Device Grouping/Tags
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 from typing import List
 from bson import ObjectId
 from datetime import datetime
@@ -7,6 +7,7 @@ from datetime import datetime
 from database import get_database
 from routes.auth import get_current_user
 from models import DeviceGroupCreate, DeviceGroupUpdate, DeviceGroupResponse
+from services.audit_logger import AuditLogger
 
 router = APIRouter()
 
@@ -62,6 +63,22 @@ async def create_group(
     result = await db.device_groups.insert_one(group_doc)
     group_doc["_id"] = result.inserted_id
     
+    # Log group creation
+    try:
+        user = await db.users.find_one({"_id": user_id})
+        await AuditLogger.log(
+            db=db,
+            user_id=user_id,
+            user_email=user.get("email", "") if user else "",
+            user_name=user.get("name", "") if user else "",
+            action="group_create",
+            resource_type="group",
+            resource_id=str(group_doc["_id"]),
+            details={"group_name": group_doc["name"]}
+        )
+    except Exception as e:
+        print(f"Failed to log group creation: {e}")
+    
     return DeviceGroupResponse(
         id=str(group_doc["_id"]),
         user_id=str(user_id),
@@ -116,6 +133,22 @@ async def update_group(
         "groups": group_obj_id
     })
     
+    # Log group update
+    try:
+        user = await db.users.find_one({"_id": user_id})
+        await AuditLogger.log(
+            db=db,
+            user_id=user_id,
+            user_email=user.get("email", "") if user else "",
+            user_name=user.get("name", "") if user else "",
+            action="group_update",
+            resource_type="group",
+            resource_id=str(group_obj_id),
+            details={"group_name": updated_group["name"], "changes": update_data}
+        )
+    except Exception as e:
+        print(f"Failed to log group update: {e}")
+    
     return DeviceGroupResponse(
         id=str(updated_group["_id"]),
         user_id=str(user_id),
@@ -159,6 +192,22 @@ async def delete_group(
         {"$pull": {"groups": group_obj_id}}
     )
     
+    # Log group deletion before deleting
+    try:
+        user = await db.users.find_one({"_id": user_id})
+        await AuditLogger.log(
+            db=db,
+            user_id=user_id,
+            user_email=user.get("email", "") if user else "",
+            user_name=user.get("name", "") if user else "",
+            action="group_delete",
+            resource_type="group",
+            resource_id=str(group_obj_id),
+            details={"group_name": group.get("name", "")}
+        )
+    except Exception as e:
+        print(f"Failed to log group deletion: {e}")
+    
     # Delete group
     await db.device_groups.delete_one({"_id": group_obj_id})
     
@@ -199,6 +248,26 @@ async def add_device_to_group(
         {"$addToSet": {"groups": group_obj_id}}
     )
     
+    # Log device added to group
+    try:
+        user = await db.users.find_one({"_id": user_id})
+        await AuditLogger.log(
+            db=db,
+            user_id=user_id,
+            user_email=user.get("email", "") if user else "",
+            user_name=user.get("name", "") if user else "",
+            action="device_add_to_group",
+            resource_type="device",
+            resource_id=str(device_obj_id),
+            details={
+                "device_name": device.get("name", ""),
+                "group_id": str(group_obj_id),
+                "group_name": group.get("name", "")
+            }
+        )
+    except Exception as e:
+        print(f"Failed to log device added to group: {e}")
+    
     return {"message": "Device added to group"}
 
 
@@ -221,10 +290,34 @@ async def remove_device_from_group(
             detail="Invalid ID"
         )
     
+    # Get device and group info for logging
+    device = await db.devices.find_one({"_id": device_obj_id, "user_id": user_id})
+    group = await db.device_groups.find_one({"_id": group_obj_id, "user_id": user_id})
+    
     # Remove from group
     await db.devices.update_one(
         {"_id": device_obj_id, "user_id": user_id},
         {"$pull": {"groups": group_obj_id}}
     )
+    
+    # Log device removed from group
+    try:
+        user = await db.users.find_one({"_id": user_id})
+        await AuditLogger.log(
+            db=db,
+            user_id=user_id,
+            user_email=user.get("email", "") if user else "",
+            user_name=user.get("name", "") if user else "",
+            action="device_remove_from_group",
+            resource_type="device",
+            resource_id=str(device_obj_id),
+            details={
+                "device_name": device.get("name", "") if device else "",
+                "group_id": str(group_obj_id),
+                "group_name": group.get("name", "") if group else ""
+            }
+        )
+    except Exception as e:
+        print(f"Failed to log device removed from group: {e}")
     
     return {"message": "Device removed from group"}

@@ -1,0 +1,259 @@
+import React, { useState, useEffect } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  ActivityIndicator,
+  TouchableOpacity,
+} from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import api from '../config/api';
+
+const severityColors = {
+  critical: '#ef4444',
+  high: '#f59e0b',
+  medium: '#3b82f6',
+  low: '#10b981',
+};
+
+export default function AlertDetailScreen({ route }) {
+  const { alertId } = route?.params || {};
+  const [alert, setAlert] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [resolving, setResolving] = useState(false);
+
+  useEffect(() => {
+    if (alertId) {
+      loadAlert();
+    }
+  }, [alertId]);
+
+  const loadAlert = async () => {
+    try {
+      const response = await api.get(`/api/alerts/${alertId}`);
+      setAlert(response.data);
+    } catch (error) {
+      console.error('Error loading alert:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleResolve = async () => {
+    if (!alert || alert.resolved) return;
+
+    setResolving(true);
+    try {
+      await api.put(`/api/alerts/${alertId}/resolve`);
+      await loadAlert(); // Reload to get updated status
+    } catch (error) {
+      console.error('Error resolving alert:', error);
+    } finally {
+      setResolving(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <View style={styles.centerContainer}>
+        <ActivityIndicator size="large" color="#3b82f6" />
+      </View>
+    );
+  }
+
+  if (!alert) {
+    return (
+      <View style={styles.centerContainer}>
+        <Text style={styles.errorText}>Alert not found</Text>
+      </View>
+    );
+  }
+
+  const severityColor = severityColors[alert.severity] || '#666';
+
+  return (
+    <ScrollView style={styles.container}>
+      <View style={styles.header}>
+        <View style={[styles.severityBadge, { backgroundColor: severityColor + '20' }]}>
+          <Ionicons
+            name={
+              alert.severity === 'critical'
+                ? 'warning'
+                : alert.severity === 'high'
+                ? 'alert-circle'
+                : 'information-circle'
+            }
+            size={24}
+            color={severityColor}
+          />
+          <Text style={[styles.severityText, { color: severityColor }]}>
+            {alert.severity?.toUpperCase() || 'UNKNOWN'}
+          </Text>
+        </View>
+        <Text style={styles.alertMessage}>{alert.message || 'No message'}</Text>
+        <Text style={styles.alertType}>Type: {alert.type || 'N/A'}</Text>
+      </View>
+
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Alert Information</Text>
+        <View style={styles.infoCard}>
+          <InfoRow label="Status" value={alert.resolved ? 'Resolved' : 'Active'} />
+          <InfoRow
+            label="Created"
+            value={new Date(alert.created_at).toLocaleString()}
+          />
+          {alert.resolved_at && (
+            <InfoRow
+              label="Resolved"
+              value={new Date(alert.resolved_at).toLocaleString()}
+            />
+          )}
+          {alert.device && (
+            <InfoRow label="Device" value={alert.device.name || 'Unknown Device'} />
+          )}
+        </View>
+      </View>
+
+      {alert.context && Object.keys(alert.context).length > 0 && (
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Context</Text>
+          <View style={styles.infoCard}>
+            {Object.entries(alert.context).map(([key, value]) => (
+              <InfoRow
+                key={key}
+                label={key}
+                value={typeof value === 'object' ? JSON.stringify(value) : String(value)}
+              />
+            ))}
+          </View>
+        </View>
+      )}
+
+      {!alert.resolved && (
+        <View style={styles.section}>
+          <TouchableOpacity
+            style={[styles.resolveButton, resolving && styles.buttonDisabled]}
+            onPress={handleResolve}
+            disabled={resolving}
+          >
+            {resolving ? (
+              <ActivityIndicator color="#ffffff" />
+            ) : (
+              <>
+                <Ionicons name="checkmark-circle" size={20} color="#ffffff" />
+                <Text style={styles.resolveButtonText}>Mark as Resolved</Text>
+              </>
+            )}
+          </TouchableOpacity>
+        </View>
+      )}
+    </ScrollView>
+  );
+}
+
+function InfoRow({ label, value }) {
+  return (
+    <View style={styles.infoRow}>
+      <Text style={styles.infoLabel}>{label}</Text>
+      <Text style={styles.infoValue}>{value}</Text>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#1a1a1a',
+  },
+  centerContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#1a1a1a',
+  },
+  errorText: {
+    fontSize: 16,
+    color: '#ef4444',
+  },
+  header: {
+    padding: 24,
+    alignItems: 'center',
+  },
+  severityBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    marginBottom: 16,
+    gap: 8,
+  },
+  severityText: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  alertMessage: {
+    fontSize: 20,
+    fontWeight: '600',
+    color: '#ffffff',
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  alertType: {
+    fontSize: 14,
+    color: '#999',
+  },
+  section: {
+    marginBottom: 24,
+    paddingHorizontal: 24,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#ffffff',
+    marginBottom: 12,
+  },
+  infoCard: {
+    backgroundColor: '#2a2a2a',
+    borderRadius: 12,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#333',
+  },
+  infoRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#333',
+  },
+  infoLabel: {
+    fontSize: 14,
+    color: '#999',
+  },
+  infoValue: {
+    fontSize: 14,
+    color: '#ffffff',
+    fontWeight: '500',
+    flex: 1,
+    textAlign: 'right',
+  },
+  resolveButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#10b981',
+    padding: 16,
+    borderRadius: 12,
+    gap: 8,
+  },
+  buttonDisabled: {
+    opacity: 0.6,
+  },
+  resolveButtonText: {
+    color: '#ffffff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+});

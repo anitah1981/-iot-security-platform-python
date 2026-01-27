@@ -6,9 +6,9 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"/>
     <meta http-equiv="Pragma" content="no-cache"/>
     <meta http-equiv="Expires" content="0"/>
-    <title>IoT Security Dashboard | Real-Time Device Monitoring & Security Alerts</title>
-    <meta name="description" content="Monitor your IoT devices in real-time. View device status, security alerts, analytics, and network health. Comprehensive dashboard for smart home security management."/>
-    <meta name="keywords" content="IoT dashboard, device monitoring dashboard, smart home security dashboard, IoT device management, real-time monitoring, security alerts dashboard"/>
+    <title>IoT Security Dashboard | Real-Time Smart Home Device Monitoring & Security Alerts</title>
+    <meta name="description" content="Monitor your IoT devices in real-time with comprehensive security alerts, device status tracking, network health monitoring, and advanced analytics. Professional smart home security dashboard for device management, threat detection, and instant notifications."/>
+    <meta name="keywords" content="IoT dashboard, smart home security dashboard, device monitoring dashboard, IoT device management, real-time monitoring, security alerts dashboard, smart home device tracking, IoT security platform, home automation security, device status monitoring, network security dashboard"/>
     <link rel="canonical" href="https://iot-security-platform.com/dashboard"/>
     <link rel="stylesheet" href="/assets/app.css?v=10"/>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
@@ -45,6 +45,18 @@
             <span class="icon">⚙️</span>
             <span>Settings</span>
           </a>
+          <a href="/audit-logs" class="sidebar-nav-item">
+            <span class="icon">📋</span>
+            <span>Audit Logs</span>
+          </a>
+          <a href="/incidents" class="sidebar-nav-item">
+            <span class="icon">🔍</span>
+            <span>Incidents</span>
+          </a>
+          <a href="/cybersecurity-threats" class="sidebar-nav-item">
+            <span class="icon">🛡️</span>
+            <span>Security Threats</span>
+          </a>
           <a href="/pricing" class="sidebar-nav-item">
             <span class="icon">💳</span>
             <span>Pricing</span>
@@ -73,7 +85,7 @@
           <!-- Page Header -->
           <div style="margin-bottom: 24px;">
             <h1 style="font-size: 28px; margin: 0 0 8px 0; font-weight: 600;">IoT Security Dashboard</h1>
-            <p style="color: var(--muted); margin: 0;">Real-time monitoring of your smart home devices, security cameras, and IoT sensors with instant alerts and comprehensive analytics</p>
+            <p style="color: var(--muted); margin: 0;">Real-time monitoring of your smart home devices, security cameras, and IoT sensors with instant security alerts, comprehensive analytics, and advanced threat detection capabilities</p>
           </div>
 
           <!-- Tabs -->
@@ -444,6 +456,22 @@
             <div class="detail-value" id="deviceDetailSignal"></div>
           </div>
         </div>
+        
+        <!-- Device Groups Section -->
+        <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid var(--border);">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+            <strong style="font-size: 14px;">Groups</strong>
+          </div>
+          <div id="deviceDetailGroups" style="margin-bottom: 12px;">
+            <div class="hint">Loading groups...</div>
+          </div>
+          <div>
+            <select id="deviceDetailAddGroup" style="width: 100%; padding: 8px; border-radius: 6px; border: 1px solid var(--border); background: var(--bg); color: var(--text); font-size: 14px;">
+              <option value="">Add to group...</option>
+            </select>
+          </div>
+        </div>
+        
         <div class="drawer-actions">
           <button class="btn-sm" id="deviceDetailEdit" type="button">Edit</button>
           <button class="btn-sm danger" id="deviceDetailDelete" type="button">Delete</button>

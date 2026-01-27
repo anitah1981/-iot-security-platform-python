@@ -316,9 +316,8 @@ async def send_alert_notification(
                 
                 # Skip non-critical alerts during quiet hours
                 if in_quiet_hours and alert_severity != "critical":
-                    # Store alert for digest instead of sending immediately
-                    # TODO: Queue for digest
-                    return NotificationResult(True, "email", "Queued for digest (quiet hours)")
+                    # Suppress non-critical alerts during quiet hours
+                    return NotificationResult(True, "email", "Suppressed (quiet hours)")
             except (ValueError, AttributeError):
                 # Invalid time format, skip quiet hours check
                 pass

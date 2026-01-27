@@ -30,6 +30,7 @@ from models import (
 from database import get_database
 from middleware.security import limiter
 from services.notification_service import NotificationService
+from services.audit_logger import AuditLogger
 try:
     from utils.password_validator import password_validator
 except ImportError:
@@ -823,6 +824,24 @@ async def change_password(password_data: PasswordChange, request: Request, user:
     
     # Revoke all refresh tokens on password change (security best practice)
     await _revoke_all_refresh_tokens(db, str(user['_id']))
+    
+    # Log password change
+    try:
+        client_ip = request.client.host if request.client else None
+        user_agent = request.headers.get("user-agent")
+        await AuditLogger.log(
+            db=db,
+            user_id=user['_id'],
+            user_email=user.get('email', ''),
+            user_name=user.get('name', ''),
+            action="password_change",
+            resource_type="user",
+            resource_id=str(user['_id']),
+            ip_address=client_ip,
+            user_agent=user_agent
+        )
+    except Exception as e:
+        print(f"Failed to log password change: {e}")
     
     return {
         'message': 'Password changed successfully',

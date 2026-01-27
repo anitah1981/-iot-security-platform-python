@@ -105,6 +105,7 @@ class DeviceResponse(DeviceBase):
     signal_strength: Optional[int] = None
     ip_address_history: Optional[List[str]] = []
     organization: Optional[str] = None
+    groups: Optional[List[str]] = []  # List of group IDs this device belongs to
     created_at: datetime
     updated_at: datetime
     # Keep ip_address for backward compatibility but it's now device_ip
@@ -242,11 +243,6 @@ class NotificationPreferences(BaseModel):
     quiet_hours_start: Optional[str] = None  # e.g., "22:00"
     quiet_hours_end: Optional[str] = None    # e.g., "07:00"
     
-    # Notification digest
-    digest_enabled: bool = False
-    digest_frequency: Optional[Literal["daily", "weekly"]] = None  # "daily" or "weekly"
-    digest_time: Optional[str] = None  # e.g., "09:00" - time to send digest
-    
     # Escalation settings
     escalation_enabled: bool = True
     escalation_delay_minutes: int = 15  # Wait time before escalating
@@ -370,3 +366,66 @@ class AuditLogEntry(BaseModel):
     ip_address: Optional[str] = None
     user_agent: Optional[str] = None
     created_at: datetime
+
+# ============================================================
+# INCIDENT MODELS
+# ============================================================
+
+class IncidentNote(BaseModel):
+    """Note/comment on an incident"""
+    id: str
+    incident_id: str
+    user_id: str
+    user_name: str
+    content: str
+    created_at: datetime
+
+class IncidentBase(BaseModel):
+    """Base incident model"""
+    title: str = Field(..., min_length=1, max_length=200)
+    description: Optional[str] = None
+    severity: Literal["low", "medium", "high", "critical"] = "medium"
+    status: Literal["open", "investigating", "resolved", "closed"] = "open"
+
+class IncidentCreate(IncidentBase):
+    """Create incident request"""
+    alert_ids: Optional[List[str]] = []  # Alerts to associate with this incident
+
+class IncidentUpdate(BaseModel):
+    """Update incident request"""
+    title: Optional[str] = None
+    description: Optional[str] = None
+    severity: Optional[Literal["low", "medium", "high", "critical"]] = None
+    status: Optional[Literal["open", "investigating", "resolved", "closed"]] = None
+
+class IncidentResponse(IncidentBase):
+    """Incident response model"""
+    id: str
+    user_id: str
+    alert_ids: List[str] = []
+    notes: List[IncidentNote] = []
+    created_at: datetime
+    updated_at: datetime
+    resolved_at: Optional[datetime] = None
+    time_to_resolution_minutes: Optional[int] = None
+
+class IncidentNoteCreate(BaseModel):
+    """Create incident note request"""
+    content: str = Field(..., min_length=1, max_length=5000)
+
+class IncidentListResponse(BaseModel):
+    """Paginated incident list response"""
+    page: int
+    total: int
+    incidents: List[IncidentResponse]
+
+class TimelineEvent(BaseModel):
+    """Timeline event for incident visualization"""
+    id: str
+    type: str  # alert, note, status_change, etc.
+    timestamp: datetime
+    title: str
+    description: Optional[str] = None
+    severity: Optional[str] = None
+    user_name: Optional[str] = None
+    metadata: Dict[str, Any] = {}

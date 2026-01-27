@@ -1,5 +1,5 @@
 # routes/notification_preferences.py - User Notification Preferences
-from fastapi import APIRouter, HTTPException, status, Depends
+from fastapi import APIRouter, HTTPException, status, Depends, Request
 from datetime import datetime
 from bson import ObjectId
 
@@ -7,6 +7,7 @@ from models import NotificationPreferences, NotificationPreferencesResponse
 from services.notification_service import get_notification_service, NotificationResult
 from routes.auth import get_current_user
 from database import get_database
+from services.audit_logger import AuditLogger
 
 router = APIRouter()
 
@@ -66,9 +67,6 @@ async def get_notification_preferences(current_user = Depends(get_current_user))
             quiet_hours_enabled=False,
             quiet_hours_start=None,
             quiet_hours_end=None,
-            digest_enabled=False,
-            digest_frequency=None,
-            digest_time=None,
             escalation_enabled=True,
             escalation_delay_minutes=15,
             updated_at=datetime.utcnow()
@@ -90,9 +88,6 @@ async def get_notification_preferences(current_user = Depends(get_current_user))
         quiet_hours_enabled=prefs.get("quietHoursEnabled", False),
         quiet_hours_start=prefs.get("quietHoursStart"),
         quiet_hours_end=prefs.get("quietHoursEnd"),
-        digest_enabled=prefs.get("digestEnabled", False),
-        digest_frequency=prefs.get("digestFrequency"),
-        digest_time=prefs.get("digestTime"),
         escalation_enabled=prefs.get("escalationEnabled", True),
         escalation_delay_minutes=prefs.get("escalationDelayMinutes", 15),
         updated_at=prefs.get("updatedAt", datetime.utcnow())
@@ -222,9 +217,6 @@ async def update_notification_preferences(
         "quietHoursEnabled": preferences.quiet_hours_enabled,
         "quietHoursStart": preferences.quiet_hours_start,
         "quietHoursEnd": preferences.quiet_hours_end,
-        "digestEnabled": preferences.digest_enabled,
-        "digestFrequency": preferences.digest_frequency,
-        "digestTime": preferences.digest_time,
         "escalationEnabled": preferences.escalation_enabled,
         "escalationDelayMinutes": preferences.escalation_delay_minutes,
         "updatedAt": datetime.utcnow()
@@ -236,6 +228,28 @@ async def update_notification_preferences(
         {"$set": prefs_doc},
         upsert=True
     )
+    
+    # Log notification preferences change
+    try:
+        user = await db.users.find_one({"_id": user_id})
+        await AuditLogger.log(
+            db=db,
+            user_id=user_id,
+            user_email=user.get("email", "") if user else current_user.get("email", ""),
+            user_name=user.get("name", "") if user else current_user.get("name", ""),
+            action="notification_preferences_update",
+            resource_type="settings",
+            resource_id=str(user_id),
+            details={
+                "email_enabled": preferences.email_enabled,
+                "sms_enabled": preferences.sms_enabled,
+                "whatsapp_enabled": preferences.whatsapp_enabled,
+                "voice_enabled": preferences.voice_enabled,
+                "quiet_hours_enabled": preferences.quiet_hours_enabled
+            }
+        )
+    except Exception as e:
+        print(f"Failed to log notification preferences update: {e}")
     
     return NotificationPreferencesResponse(
         user_id=str(user_id),

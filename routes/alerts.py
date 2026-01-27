@@ -180,6 +180,7 @@ async def get_alerts(
     device_id: Optional[str] = Query(None, description="Filter by device MongoDB ObjectId"),
     severity: Optional[str] = Query(None, description="Filter by severity"),
     type: Optional[str] = Query(None, description="Filter by alert type"),
+    resolved: Optional[bool] = Query(None, description="Filter by resolved status (True/False). If not specified, returns all alerts"),
     since: Optional[datetime] = Query(None, description="Only alerts after this timestamp"),
     page: int = Query(1, ge=1, description="Page number"),
     limit: int = Query(10, ge=1, le=100, description="Items per page")
@@ -228,6 +229,8 @@ async def get_alerts(
         filter_query["severity"] = severity
     if type:
         filter_query["type"] = type
+    if resolved is not None:
+        filter_query["resolved"] = resolved
     
     # Calculate skip
     skip = (page - 1) * limit

@@ -420,6 +420,21 @@ async function refreshCharts() {
   await initializeCharts();
 }
 
+// Handle window resize for charts with debouncing
+let resizeTimeout;
+window.addEventListener('resize', () => {
+  // Debounce resize to avoid excessive calls
+  clearTimeout(resizeTimeout);
+  resizeTimeout = setTimeout(() => {
+    // Resize all chart instances when window is resized
+    Object.values(chartInstances).forEach(chart => {
+      if (chart && typeof chart.resize === 'function') {
+        chart.resize();
+      }
+    });
+  }, 150);
+});
+
 // Initialize charts when dashboard loads (after app.js has loaded)
 window.addEventListener('DOMContentLoaded', () => {
   if (document.getElementById('dashboardRoot')) {

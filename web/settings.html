@@ -37,6 +37,14 @@
             <span class="icon">⚙️</span>
             <span>Settings</span>
           </a>
+          <a href="/audit-logs" class="sidebar-nav-item">
+            <span class="icon">📋</span>
+            <span>Audit Logs</span>
+          </a>
+          <a href="/incidents" class="sidebar-nav-item">
+            <span class="icon">🔍</span>
+            <span>Incidents</span>
+          </a>
           <a href="/pricing" class="sidebar-nav-item">
             <span class="icon">💳</span>
             <span>Pricing</span>
@@ -319,23 +327,15 @@
         sidebar.classList.toggle('open');
       }
 
-      // Toggle quiet hours settings visibility
-      function toggleQuietHours() {
-        const enabled = document.getElementById("quietHoursEnabled").checked;
+      // Toggle quiet hours settings visibility (make globally accessible)
+      window.toggleQuietHours = function() {
+        const enabled = document.getElementById("quietHoursEnabled");
         const settings = document.getElementById("quietHoursSettings");
-        if (settings) {
-          settings.style.display = enabled ? 'block' : 'none';
+        if (enabled && settings) {
+          settings.style.display = enabled.checked ? 'block' : 'none';
         }
       }
 
-      // Toggle digest settings visibility
-      function toggleDigest() {
-        const enabled = document.getElementById("digestEnabled").checked;
-        const settings = document.getElementById("digestSettings");
-        if (settings) {
-          settings.style.display = enabled ? 'block' : 'none';
-        }
-      }
 
       // Close sidebar when clicking outside on mobile
       document.addEventListener('click', (e) => {
@@ -396,6 +396,14 @@
         try {
           const prefs = await api("/api/notification-preferences/");
           
+          // Ensure all fields exist with defaults
+          const safePrefs = {
+            ...prefs,
+            quiet_hours_enabled: prefs.quiet_hours_enabled ?? false,
+            quiet_hours_start: prefs.quiet_hours_start || null,
+            quiet_hours_end: prefs.quiet_hours_end || null
+          };
+          
           container.innerHTML = `
             <form id="notificationForm">
               <!-- Email Notifications -->
@@ -406,12 +414,12 @@
                     <p style="margin: 4px 0 0 0; font-size: 13px; color: var(--muted);">Receive alerts via email</p>
                   </div>
                   <label class="toggle">
-                    <input type="checkbox" id="emailEnabled" ${prefs.email_enabled ? 'checked' : ''}>
+                    <input type="checkbox" id="emailEnabled" ${safePrefs.email_enabled ? 'checked' : ''}>
                     <span class="slider"></span>
                   </label>
                 </div>
                 <div style="margin-left: 20px; font-size: 13px; color: var(--muted);">
-                  Severities: ${prefs.email_severities.join(', ')}
+                  Severities: ${safePrefs.email_severities ? safePrefs.email_severities.join(', ') : 'low, medium, high, critical'}
                 </div>
               </div>
 
@@ -423,15 +431,15 @@
                     <p style="margin: 4px 0 0 0; font-size: 13px; color: var(--muted);">Receive alerts via text message</p>
                   </div>
                   <label class="toggle">
-                    <input type="checkbox" id="smsEnabled" ${prefs.sms_enabled ? 'checked' : ''}>
+                    <input type="checkbox" id="smsEnabled" ${safePrefs.sms_enabled ? 'checked' : ''}>
                     <span class="slider"></span>
                   </label>
                 </div>
-                ${prefs.phone_number ? 
-                  `<div style="margin-left: 20px; font-size: 13px; color: var(--muted);">Phone: ${prefs.phone_number}</div>` :
+                ${safePrefs.phone_number ? 
+                  `<div style="margin-left: 20px; font-size: 13px; color: var(--muted);">Phone: ${safePrefs.phone_number}</div>` :
                   `<div style="margin-left: 20px; font-size: 13px; color: var(--warning);">⚠️ No phone number configured</div>`
                 }
-                <input type="tel" id="phoneNumber" placeholder="+44123456789" value="${prefs.phone_number || ''}"
+                <input type="tel" id="phoneNumber" placeholder="+44123456789" value="${safePrefs.phone_number || ''}"
                        style="width: 100%; margin-top: 12px; padding: 10px; background: var(--surface); border: 1px solid var(--border); border-radius: 6px; color: var(--text);">
                 <div style="margin-top: 8px; font-size: 12px; color: var(--muted);">
                   Trial Twilio accounts can only send SMS to verified numbers. UK SMS may require UK regulatory approval.
@@ -446,15 +454,15 @@
                     <p style="margin: 4px 0 0 0; font-size: 13px; color: var(--muted);">Receive alerts via WhatsApp</p>
                   </div>
                   <label class="toggle">
-                    <input type="checkbox" id="whatsappEnabled" ${prefs.whatsapp_enabled ? 'checked' : ''}>
+                    <input type="checkbox" id="whatsappEnabled" ${safePrefs.whatsapp_enabled ? 'checked' : ''}>
                     <span class="slider"></span>
                   </label>
                 </div>
-                ${prefs.whatsapp_number ? 
-                  `<div style="margin-left: 20px; font-size: 13px; color: var(--muted);">WhatsApp: ${prefs.whatsapp_number}</div>` :
+                ${safePrefs.whatsapp_number ? 
+                  `<div style="margin-left: 20px; font-size: 13px; color: var(--muted);">WhatsApp: ${safePrefs.whatsapp_number}</div>` :
                   `<div style="margin-left: 20px; font-size: 13px; color: var(--warning);">⚠️ No WhatsApp number configured</div>`
                 }
-                <input type="tel" id="whatsappNumber" placeholder="+44123456789" value="${prefs.whatsapp_number || ''}"
+                <input type="tel" id="whatsappNumber" placeholder="+44123456789" value="${safePrefs.whatsapp_number || ''}"
                        style="width: 100%; margin-top: 12px; padding: 10px; background: var(--surface); border: 1px solid var(--border); border-radius: 6px; color: var(--text);">
               </div>
 
@@ -466,7 +474,7 @@
                     <p style="margin: 4px 0 0 0; font-size: 13px; color: var(--muted);">Receive critical alerts via phone call</p>
                   </div>
                   <label class="toggle">
-                    <input type="checkbox" id="voiceEnabled" ${prefs.voice_enabled ? 'checked' : ''}>
+                    <input type="checkbox" id="voiceEnabled" ${safePrefs.voice_enabled ? 'checked' : ''}>
                     <span class="slider"></span>
                   </label>
                 </div>
@@ -483,58 +491,25 @@
                     <p style="margin: 4px 0 0 0; font-size: 13px; color: var(--muted);">Suppress non-critical alerts during specified hours</p>
                   </div>
                   <label class="toggle">
-                    <input type="checkbox" id="quietHoursEnabled" ${prefs.quiet_hours_enabled ? 'checked' : ''} onchange="toggleQuietHours()">
+                    <input type="checkbox" id="quietHoursEnabled" ${safePrefs.quiet_hours_enabled ? 'checked' : ''} onchange="toggleQuietHours()">
                     <span class="slider"></span>
                   </label>
                 </div>
-                <div id="quietHoursSettings" style="margin-top: 16px; ${prefs.quiet_hours_enabled ? '' : 'display: none;'}">
+                <div id="quietHoursSettings" style="margin-top: 16px; ${safePrefs.quiet_hours_enabled ? '' : 'display: none;'}">
                   <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
                     <div>
                       <label style="display: block; margin-bottom: 6px; font-size: 13px; font-weight: 500;">Start Time</label>
-                      <input type="time" id="quietHoursStart" value="${prefs.quiet_hours_start || '22:00'}"
+                      <input type="time" id="quietHoursStart" value="${safePrefs.quiet_hours_start || '22:00'}"
                              style="width: 100%; padding: 10px; background: var(--surface); border: 1px solid var(--border); border-radius: 6px; color: var(--text);">
                     </div>
                     <div>
                       <label style="display: block; margin-bottom: 6px; font-size: 13px; font-weight: 500;">End Time</label>
-                      <input type="time" id="quietHoursEnd" value="${prefs.quiet_hours_end || '07:00'}"
+                      <input type="time" id="quietHoursEnd" value="${safePrefs.quiet_hours_end || '07:00'}"
                              style="width: 100%; padding: 10px; background: var(--surface); border: 1px solid var(--border); border-radius: 6px; color: var(--text);">
                     </div>
                   </div>
                   <div style="margin-top: 8px; font-size: 12px; color: var(--muted);">
-                    Critical alerts will still be sent during quiet hours. Other alerts will be queued for digest.
-                  </div>
-                </div>
-              </div>
-
-              <!-- Notification Digest -->
-              <div style="padding: 20px; background: var(--surface-alt); border-radius: 8px; margin-bottom: 24px;">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-                  <div>
-                    <h3 style="margin: 0; font-size: 16px;">📬 Notification Digest</h3>
-                    <p style="margin: 4px 0 0 0; font-size: 13px; color: var(--muted);">Receive a summary of alerts instead of individual notifications</p>
-                  </div>
-                  <label class="toggle">
-                    <input type="checkbox" id="digestEnabled" ${prefs.digest_enabled ? 'checked' : ''} onchange="toggleDigest()">
-                    <span class="slider"></span>
-                  </label>
-                </div>
-                <div id="digestSettings" style="margin-top: 16px; ${prefs.digest_enabled ? '' : 'display: none;'}">
-                  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px;">
-                    <div>
-                      <label style="display: block; margin-bottom: 6px; font-size: 13px; font-weight: 500;">Frequency</label>
-                      <select id="digestFrequency" style="width: 100%; padding: 10px; background: var(--surface); border: 1px solid var(--border); border-radius: 6px; color: var(--text);">
-                        <option value="daily" ${prefs.digest_frequency === 'daily' ? 'selected' : ''}>Daily</option>
-                        <option value="weekly" ${prefs.digest_frequency === 'weekly' ? 'selected' : ''}>Weekly</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label style="display: block; margin-bottom: 6px; font-size: 13px; font-weight: 500;">Send Time</label>
-                      <input type="time" id="digestTime" value="${prefs.digest_time || '09:00'}"
-                             style="width: 100%; padding: 10px; background: var(--surface); border: 1px solid var(--border); border-radius: 6px; color: var(--text);">
-                    </div>
-                  </div>
-                  <div style="font-size: 12px; color: var(--muted);">
-                    You'll receive a summary email with all alerts from the selected period.
+                    Critical alerts will still be sent during quiet hours. Other alerts will be suppressed until quiet hours end.
                   </div>
                 </div>
               </div>
@@ -630,9 +605,6 @@
             quiet_hours_enabled: document.getElementById("quietHoursEnabled").checked,
             quiet_hours_start: document.getElementById("quietHoursEnabled").checked ? document.getElementById("quietHoursStart").value : null,
             quiet_hours_end: document.getElementById("quietHoursEnabled").checked ? document.getElementById("quietHoursEnd").value : null,
-            digest_enabled: document.getElementById("digestEnabled").checked,
-            digest_frequency: document.getElementById("digestEnabled").checked ? document.getElementById("digestFrequency").value : null,
-            digest_time: document.getElementById("digestEnabled").checked ? document.getElementById("digestTime").value : null
           };
 
           setButtonLoading(saveBtn, true, "Saving...");

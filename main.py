@@ -220,6 +220,16 @@ def family_page():
     f = WEB_DIR / "family.html"
     return FileResponse(str(f))
 
+@app.get("/audit-logs")
+def audit_logs_page():
+    f = WEB_DIR / "audit-logs.html"
+    return FileResponse(str(f))
+
+@app.get("/incidents")
+def incidents_page():
+    f = WEB_DIR / "incidents.html"
+    return FileResponse(str(f))
+
 @app.get("/api/health")
 def health():
     return {
@@ -305,6 +315,9 @@ app.include_router(groups_router, prefix="/api/groups", tags=["Device Groups"])
 # 12) Audit Logs
 from routes.audit import router as audit_router
 app.include_router(audit_router, prefix="/api/audit", tags=["Audit Logs"])
+
+from routes.incidents import router as incidents_router
+app.include_router(incidents_router, prefix="/api/incidents", tags=["Incidents"])
 
 # Network monitoring routes
 from routes.network import router as network_router

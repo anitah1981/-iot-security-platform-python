@@ -128,6 +128,10 @@ async def get_devices(
                 created_at = d.get("createdAt") or d.get("created_at") or datetime.utcnow()
                 updated_at = d.get("updatedAt") or d.get("updated_at") or datetime.utcnow()
                 
+                # Get groups (convert ObjectIds to strings)
+                groups = d.get("groups", [])
+                groups_list = [str(g) if hasattr(g, '__str__') else g for g in groups] if groups else []
+                
                 devices.append(DeviceResponse(
                 id=str(d["_id"]),
                 device_id=d.get("deviceId", d.get("device_id", "")),
@@ -143,6 +147,7 @@ async def get_devices(
                 signal_strength=d.get("signalStrength") or d.get("signal_strength"),
                 ip_address_history=d.get("ipAddressHistory", d.get("ip_address_history", [])),
                 organization=str(d["organization"]) if d.get("organization") else None,
+                groups=groups_list,
                 created_at=created_at,
                 updated_at=updated_at
             ))
@@ -315,6 +320,10 @@ async def create_device(device: DeviceCreate, user: dict = Depends(get_current_u
         user_agent=user_agent
     )
     
+    # Get groups (convert ObjectIds to strings)
+    groups = device_doc.get("groups", [])
+    groups_list = [str(g) if hasattr(g, '__str__') else g for g in groups] if groups else []
+    
     return DeviceResponse(
         id=str(result.inserted_id),
         device_id=device.device_id,
@@ -330,6 +339,7 @@ async def create_device(device: DeviceCreate, user: dict = Depends(get_current_u
         signal_strength=None,
         ip_address_history=[device.device_ip] if device.device_ip else [],
         organization=device.organization,
+        groups=groups_list,
         created_at=device_doc["createdAt"],
         updated_at=device_doc["updatedAt"]
     )
@@ -435,6 +445,10 @@ async def update_device(device_id: str, updates: DeviceUpdate, user: dict = Depe
     # Get updated device
     updated_device = await db.devices.find_one(filter_query)
     
+    # Get groups (convert ObjectIds to strings)
+    groups = updated_device.get("groups", [])
+    groups_list = [str(g) if hasattr(g, '__str__') else g for g in groups] if groups else []
+    
     return DeviceResponse(
         id=str(updated_device["_id"]),
         device_id=updated_device["deviceId"],
@@ -450,6 +464,7 @@ async def update_device(device_id: str, updates: DeviceUpdate, user: dict = Depe
         signal_strength=updated_device.get("signalStrength"),
         ip_address_history=updated_device.get("ipAddressHistory", []),
         organization=str(updated_device["organization"]) if updated_device.get("organization") else None,
+        groups=groups_list,
         created_at=updated_device.get("createdAt", datetime.utcnow()),
         updated_at=updated_device["updatedAt"]
     )

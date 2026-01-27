@@ -1,0 +1,202 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"/>
+    <meta http-equiv="Pragma" content="no-cache"/>
+    <meta http-equiv="Expires" content="0"/>
+    <title>Audit Logs | IoT Security Platform - Activity History & Compliance</title>
+    <meta name="description" content="View comprehensive audit logs of all user actions, device operations, and system changes. Business plan feature for compliance and security monitoring."/>
+    <meta name="keywords" content="audit logs, activity history, compliance logs, security audit, user activity tracking, IoT security audit"/>
+    <link rel="canonical" href="https://iot-security-platform.com/audit-logs"/>
+    <link rel="stylesheet" href="/assets/app.css?v=10"/>
+    <script defer src="/assets/app.js?v=11"></script>
+    <script defer src="/assets/audit.js?v=1"></script>
+  </head>
+  <body>
+    <div class="app-layout">
+      <!-- Sidebar Navigation -->
+      <aside class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+          <div class="sidebar-logo">
+            <div class="logo" aria-hidden="true"></div>
+            <h1>IoT Security</h1>
+          </div>
+          <div class="sidebar-user">
+            <div id="who">Loading profile…</div>
+            <div id="wsStatus" class="ws-status" style="font-size: 11px; margin-top: 4px;">Connecting...</div>
+          </div>
+        </div>
+        
+        <nav class="sidebar-nav">
+          <a href="/dashboard" class="sidebar-nav-item">
+            <span class="icon">📊</span>
+            <span>Dashboard</span>
+          </a>
+          <a href="/family" class="sidebar-nav-item">
+            <span class="icon">👨‍👩‍👧‍👦</span>
+            <span>Family</span>
+          </a>
+          <a href="/settings" class="sidebar-nav-item">
+            <span class="icon">⚙️</span>
+            <span>Settings</span>
+          </a>
+          <a href="/audit-logs" class="sidebar-nav-item active">
+            <span class="icon">📋</span>
+            <span>Audit Logs</span>
+          </a>
+          <a href="/pricing" class="sidebar-nav-item">
+            <span class="icon">💳</span>
+            <span>Pricing</span>
+          </a>
+          <a href="/docs" class="sidebar-nav-item">
+            <span class="icon">📚</span>
+            <span>API Docs</span>
+          </a>
+        </nav>
+        
+        <div class="sidebar-footer">
+          <a href="/" class="sidebar-nav-item">
+            <span class="icon">🏠</span>
+            <span>Home</span>
+          </a>
+          <button id="logoutBtn" class="sidebar-nav-item" style="width: 100%; text-align: left; border: none; background: transparent; color: inherit; cursor: pointer; padding: 12px 16px;">
+            <span class="icon">🚪</span>
+            <span>Logout</span>
+          </button>
+        </div>
+      </aside>
+
+      <!-- Main Content -->
+      <main class="main-content">
+        <div class="page-header">
+          <div>
+            <h1>Audit Logs</h1>
+            <p class="page-subtitle">Complete activity history for compliance and security monitoring</p>
+          </div>
+        </div>
+
+        <div id="auditLogsRoot">
+          <!-- Plan Check Message -->
+          <div id="planCheckMessage" class="card" style="text-align: center; padding: 40px;">
+            <div class="hint">Checking plan access...</div>
+          </div>
+
+          <!-- Audit Logs Content (hidden until plan verified) -->
+          <div id="auditLogsContent" style="display: none;">
+            <!-- Filters -->
+            <div class="card" style="margin-bottom: 20px;">
+              <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 16px;">
+                <div>
+                  <label style="display: block; margin-bottom: 6px; font-size: 13px; font-weight: 500;">Action</label>
+                  <select id="actionFilter" style="width: 100%; padding: 10px; background: var(--surface); border: 1px solid var(--border); border-radius: 6px; color: var(--text);">
+                    <option value="">All Actions</option>
+                    <option value="login">Login</option>
+                    <option value="logout">Logout</option>
+                    <option value="password_change">Password Change</option>
+                    <option value="device_create">Device Created</option>
+                    <option value="device_update">Device Updated</option>
+                    <option value="device_delete">Device Deleted</option>
+                    <option value="device_add_to_group">Device Added to Group</option>
+                    <option value="device_remove_from_group">Device Removed from Group</option>
+                    <option value="group_create">Group Created</option>
+                    <option value="group_update">Group Updated</option>
+                    <option value="group_delete">Group Deleted</option>
+                    <option value="alert_resolve">Alert Resolved</option>
+                    <option value="notification_preferences_update">Notification Settings Changed</option>
+                    <option value="subscription_update">Subscription Changed</option>
+                  </select>
+                </div>
+                <div>
+                  <label style="display: block; margin-bottom: 6px; font-size: 13px; font-weight: 500;">Resource Type</label>
+                  <select id="resourceTypeFilter" style="width: 100%; padding: 10px; background: var(--surface); border: 1px solid var(--border); border-radius: 6px; color: var(--text);">
+                    <option value="">All Types</option>
+                    <option value="user">User</option>
+                    <option value="device">Device</option>
+                    <option value="group">Group</option>
+                    <option value="alert">Alert</option>
+                    <option value="settings">Settings</option>
+                    <option value="subscription">Subscription</option>
+                  </select>
+                </div>
+                <div>
+                  <label style="display: block; margin-bottom: 6px; font-size: 13px; font-weight: 500;">Time Period</label>
+                  <select id="daysFilter" style="width: 100%; padding: 10px; background: var(--surface); border: 1px solid var(--border); border-radius: 6px; color: var(--text);">
+                    <option value="7">Last 7 days</option>
+                    <option value="30" selected>Last 30 days</option>
+                    <option value="90">Last 90 days</option>
+                    <option value="180">Last 180 days</option>
+                    <option value="365">Last year</option>
+                  </select>
+                </div>
+                <div style="display: flex; align-items: end; gap: 8px;">
+                  <button class="btn-sm" onclick="loadAuditLogs()" style="background: var(--primary); color: white; flex: 1;">Apply Filters</button>
+                  <button class="btn-sm" onclick="exportAuditLogs()" style="background: var(--ok); color: white;">📥 Export</button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Statistics -->
+            <div id="auditStats" class="card" style="margin-bottom: 20px; display: none;">
+              <h3 style="margin: 0 0 16px 0; font-size: 16px;">Statistics</h3>
+              <div id="statsContent"></div>
+            </div>
+
+            <!-- Audit Logs Table -->
+            <div class="card">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                <h3 style="margin: 0; font-size: 16px;">Activity Log</h3>
+                <div id="auditLogsCount" class="hint"></div>
+              </div>
+              
+              <div style="overflow-x: auto;">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Timestamp</th>
+                      <th>User</th>
+                      <th>Action</th>
+                      <th>Resource</th>
+                      <th>Details</th>
+                      <th>IP Address</th>
+                    </tr>
+                  </thead>
+                  <tbody id="auditLogsTable">
+                    <tr>
+                      <td colspan="6" class="hint">Loading audit logs...</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+
+              <!-- Pagination -->
+              <div id="auditPagination" style="display: none; margin-top: 20px; display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                  <button class="btn-sm" id="prevPageBtn" onclick="changePage(-1)" disabled>Previous</button>
+                  <span style="margin: 0 16px; color: var(--muted);">
+                    Page <span id="currentPage">1</span> of <span id="totalPages">1</span>
+                  </span>
+                  <button class="btn-sm" id="nextPageBtn" onclick="changePage(1)" disabled>Next</button>
+                </div>
+                <div class="hint" id="auditLogsInfo"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+
+    <script>
+      // Initialize on page load
+      document.addEventListener('DOMContentLoaded', () => {
+        if (typeof loadDashboard === 'function') {
+          loadDashboard();
+        }
+        if (typeof loadAuditLogs === 'function') {
+          loadAuditLogs();
+        }
+      });
+    </script>
+  </body>
+</html>

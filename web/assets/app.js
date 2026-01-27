@@ -326,11 +326,17 @@ async function loadDevices(){
 }
 
 async function loadAlerts(){
-  const data = await api("/api/alerts?limit=100&page=1"); // Load more to get resolved alerts too
-  const allAlerts = data.alerts || [];
-  renderAlerts(allAlerts); // Only show unresolved in main table
-  renderResolvedAlerts(allAlerts); // Show resolved in separate section
-  return data;
+  // Load unresolved alerts for main table
+  const unresolvedData = await api("/api/alerts?limit=100&page=1&resolved=false");
+  const unresolvedAlerts = unresolvedData.alerts || [];
+  renderAlerts(unresolvedAlerts);
+  
+  // Load resolved alerts separately for the resolved section
+  const resolvedData = await api("/api/alerts?limit=100&page=1&resolved=true");
+  const resolvedAlerts = resolvedData.alerts || [];
+  renderResolvedAlerts(resolvedAlerts);
+  
+  return { alerts: unresolvedAlerts };
 }
 
 function scheduleDeviceFilterUpdate(){
@@ -502,11 +508,11 @@ async function resolveAlert(alertId){
     msg.textContent = "Alert resolved!";
     setTimeout(() => { msg.textContent = ""; msg.className = "msg"; }, 2000);
     
-    // Reload all alerts to update both active and resolved sections
-    const alerts = await api("/api/alerts?limit=100&page=1");
-    const allAlerts = alerts.alerts || [];
-    renderAlerts(allAlerts);
-    renderResolvedAlerts(allAlerts);
+    // Reload alerts to update both active and resolved sections
+    const unresolvedData = await api("/api/alerts?limit=100&page=1&resolved=false");
+    const resolvedData = await api("/api/alerts?limit=100&page=1&resolved=true");
+    renderAlerts(unresolvedData.alerts || []);
+    renderResolvedAlerts(resolvedData.alerts || []);
     
     // Show resolved alerts section if it was hidden
     const resolvedContent = qs("#resolvedAlertsContent");
@@ -918,10 +924,64 @@ function openDevicePanel(device){
     deleteBtn.dataset.deviceName = device.name || device.device_id;
   }
 
+  // Update device groups section
+  updateDeviceGroupsDisplay(device);
+
   overlay.classList.add('show');
   panel.classList.add('show');
   overlay.setAttribute('aria-hidden', 'false');
   panel.setAttribute('aria-hidden', 'false');
+}
+
+// Update device groups display in detail panel
+function updateDeviceGroupsDisplay(device) {
+  const groupsContainer = document.getElementById('deviceDetailGroups');
+  const addGroupSelect = document.getElementById('deviceDetailAddGroup');
+  if (!groupsContainer || !addGroupSelect) return;
+  
+  const deviceGroups = device.groups || [];
+  const deviceId = device.id || device._id;
+  
+  // Show current groups
+  if (deviceGroups.length > 0) {
+    const groupBadges = deviceGroups.map(gId => {
+      const group = allGroups.find(g => g.id === String(gId));
+      if (group) {
+        return `
+          <span class="badge" style="background: ${esc(group.color)}; display: inline-flex; align-items: center; gap: 6px; margin-right: 6px; margin-bottom: 6px;">
+            ${esc(group.name)}
+            <button onclick="removeDeviceFromGroup('${group.id}', '${deviceId}', '${esc(device.name || device.device_id)}')" 
+                    style="background: transparent; border: none; color: inherit; cursor: pointer; padding: 0 4px; font-size: 14px; line-height: 1;">×</button>
+          </span>
+        `;
+      }
+      return '';
+    }).filter(b => b).join('');
+    
+    groupsContainer.innerHTML = `<div style="display: flex; flex-wrap: wrap; gap: 6px;">${groupBadges}</div>`;
+  } else {
+    groupsContainer.innerHTML = '<div class="hint" style="font-size: 13px;">No groups assigned</div>';
+  }
+  
+  // Update dropdown with groups not already assigned
+  const groupsNotAssigned = allGroups.filter(g => !deviceGroups.some(dg => String(dg) === g.id));
+  addGroupSelect.innerHTML = '<option value="">Add to group...</option>' +
+    groupsNotAssigned.map(g => `<option value="${g.id}">${esc(g.name)}</option>`).join('');
+  
+  // Add event listener for adding device to group
+  addGroupSelect.onchange = async function() {
+    const groupId = this.value;
+    if (groupId) {
+      await addDeviceToGroup(groupId, deviceId);
+      this.value = ''; // Reset dropdown
+      // Reload device data to refresh groups
+      await loadDevices();
+      const updatedDevice = Array.from(deviceCache.values()).find(d => (d.id || d._id) === deviceId || d.device_id === deviceId);
+      if (updatedDevice && typeof updateDeviceGroupsDisplay === 'function') {
+        updateDeviceGroupsDisplay(updatedDevice);
+      }
+    }
+  };
 }
 
 function closeDevicePanel(){
@@ -1269,14 +1329,30 @@ function renderGroupsList() {
     return;
   }
   
-  container.innerHTML = allGroups.map(group => `
-    <div class="card" style="margin-bottom: 12px; padding: 16px;">
-      <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 8px;">
+  // Get all devices for the dropdown
+  const allDevices = Array.from(deviceCache.values());
+  
+  container.innerHTML = allGroups.map(group => {
+    // Get devices in this group
+    const devicesInGroup = allDevices.filter(d => {
+      const deviceGroups = d.groups || [];
+      return deviceGroups.some(g => String(g) === group.id);
+    });
+    
+    // Get devices NOT in this group
+    const devicesNotInGroup = allDevices.filter(d => {
+      const deviceGroups = d.groups || [];
+      return !deviceGroups.some(g => String(g) === group.id);
+    });
+    
+    return `
+    <div class="card" style="margin-bottom: 16px; padding: 16px;">
+      <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 12px;">
         <div style="flex: 1;">
           <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
             <span style="display: inline-block; width: 16px; height: 16px; border-radius: 4px; background: ${esc(group.color)};"></span>
             <strong>${esc(group.name)}</strong>
-            <span class="badge" style="background: var(--muted);">${group.device_count} devices</span>
+            <span class="badge" style="background: var(--muted);">${devicesInGroup.length} device${devicesInGroup.length !== 1 ? 's' : ''}</span>
           </div>
           ${group.description ? `<div style="color: var(--muted); font-size: 14px; margin-top: 4px;">${esc(group.description)}</div>` : ''}
         </div>
@@ -1284,58 +1360,137 @@ function renderGroupsList() {
           <button class="btn-sm" onclick="deleteGroup('${group.id}')" style="background: var(--danger); color: white;">Delete</button>
         </div>
       </div>
+      
+      <!-- Devices in Group -->
+      <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border);">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+          <strong style="font-size: 14px;">Devices in Group</strong>
+          ${devicesNotInGroup.length > 0 ? `
+            <select id="addDeviceToGroup_${group.id}" style="padding: 6px 10px; border-radius: 4px; border: 1px solid var(--border); background: var(--bg); color: var(--text); font-size: 13px; min-width: 150px;">
+              <option value="">Add device...</option>
+              ${devicesNotInGroup.map(d => `<option value="${d.id || d._id}" data-device-name="${esc(d.name || d.device_id)}">${esc(d.name || d.device_id)}</option>`).join('')}
+            </select>
+          ` : ''}
+        </div>
+        ${devicesInGroup.length > 0 ? `
+          <div style="display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px;">
+            ${devicesInGroup.map(d => `
+              <span class="badge" style="background: ${esc(group.color)}; display: inline-flex; align-items: center; gap: 4px;">
+                ${esc(d.name || d.device_id)}
+                <button onclick="removeDeviceFromGroup('${group.id}', '${d.id || d._id}', '${esc(d.name || d.device_id)}')" 
+                        style="background: transparent; border: none; color: inherit; cursor: pointer; padding: 0 4px; font-size: 14px; line-height: 1;">×</button>
+              </span>
+            `).join('')}
+          </div>
+        ` : '<div class="hint" style="font-size: 13px;">No devices in this group</div>'}
+      </div>
     </div>
-  `).join('');
+  `;
+  }).join('');
+  
+  // Add event listeners for device selection dropdowns
+  allGroups.forEach(group => {
+    const select = document.getElementById(`addDeviceToGroup_${group.id}`);
+    if (select) {
+      // Remove existing listener if any
+      select.onchange = null;
+      select.addEventListener('change', async (e) => {
+        const deviceId = e.target.value;
+        if (deviceId) {
+          const selectedOption = e.target.options[e.target.selectedIndex];
+          const deviceName = selectedOption ? selectedOption.text : 'device';
+          await addDeviceToGroup(group.id, deviceId);
+          e.target.value = ''; // Reset dropdown
+        }
+      });
+    }
+  });
 }
 
-// Show group management panel
-function showGroupManagement() {
-  const overlay = qs('#groupModalOverlay');
-  const panel = qs('#groupManagementPanel');
-  if (overlay && panel) {
-    overlay.style.display = 'block';
-    panel.style.display = 'block';
+// Show group management panel (make it globally accessible)
+window.showGroupManagement = function() {
+  const overlay = document.getElementById('groupModalOverlay');
+  const panel = document.getElementById('groupManagementPanel');
+  if (!overlay || !panel) {
+    console.error('Group management modal elements not found', { overlay, panel });
+    if (typeof showToast === 'function') {
+      showToast('Group management panel not found. Please refresh the page.', 'error');
+    } else {
+      alert('Group management panel not found. Please refresh the page.');
+    }
+    return;
+  }
+  
+  // Show overlay and panel
+  overlay.style.display = 'block';
+  panel.style.display = 'flex';
+  
+  // Use requestAnimationFrame to ensure display is applied before animation
+  requestAnimationFrame(() => {
+    // Add show class for animation
+    overlay.classList.add('show');
+    panel.classList.add('show');
+  });
+  
+  // Prevent body scroll when modal is open
+  document.body.style.overflow = 'hidden';
+  
+  // Load groups if function exists
+  if (typeof loadGroups === 'function') {
     loadGroups();
   }
 }
 
-// Hide group management panel
-function hideGroupManagement() {
-  const overlay = qs('#groupModalOverlay');
-  const panel = qs('#groupManagementPanel');
-  if (overlay && panel) {
+// Hide group management panel (make it globally accessible)
+window.hideGroupManagement = function() {
+  const overlay = document.getElementById('groupModalOverlay');
+  const panel = document.getElementById('groupManagementPanel');
+  if (!overlay || !panel) return;
+  
+  // Remove show class to trigger animation
+  overlay.classList.remove('show');
+  panel.classList.remove('show');
+  
+  // Hide after animation completes (CSS transition is 0.25s = 250ms)
+  setTimeout(() => {
     overlay.style.display = 'none';
     panel.style.display = 'none';
+  }, 300);
+  
+  // Restore body scroll
+  document.body.style.overflow = '';
+  
+  if (typeof hideCreateGroupForm === 'function') {
     hideCreateGroupForm();
   }
 }
 
-// Show create group form
-function showCreateGroupForm() {
-  const form = qs('#createGroupForm');
+// Show create group form (make globally accessible)
+window.showCreateGroupForm = function() {
+  const form = document.querySelector('#createGroupForm');
   if (form) form.style.display = 'block';
 }
 
-// Hide create group form
-function hideCreateGroupForm() {
-  const form = qs('#createGroupForm');
+// Hide create group form (make globally accessible)
+window.hideCreateGroupForm = function() {
+  const form = document.querySelector('#createGroupForm');
   if (form) {
     form.style.display = 'none';
-    const nameInput = qs('#groupName');
-    const descInput = qs('#groupDescription');
-    const colorInput = qs('#groupColor');
+    const nameInput = document.querySelector('#groupName');
+    const descInput = document.querySelector('#groupDescription');
+    const colorInput = document.querySelector('#groupColor');
     if (nameInput) nameInput.value = '';
     if (descInput) descInput.value = '';
     if (colorInput) colorInput.value = '#3b82f6';
   }
 }
 
-// Create new group
-async function createGroup(event) {
+// Create new group (make globally accessible)
+window.createGroup = async function(event) {
   event.preventDefault();
-  const nameInput = qs('#groupName');
-  const descInput = qs('#groupDescription');
-  const colorInput = qs('#groupColor');
+  const nameInput = document.querySelector('#groupName');
+  const descInput = document.querySelector('#groupDescription');
+  const colorInput = document.querySelector('#groupColor');
   
   if (!nameInput) return;
   
@@ -1344,7 +1499,11 @@ async function createGroup(event) {
   const color = colorInput ? colorInput.value : '#3b82f6';
   
   if (!name) {
-    showToast('Group name is required', 'error');
+    if (typeof showToast === 'function') {
+      showToast('Group name is required', 'error');
+    } else {
+      alert('Group name is required');
+    }
     return;
   }
   
@@ -1357,40 +1516,161 @@ async function createGroup(event) {
         color
       }
     });
-    showToast('Group created successfully', 'success');
+    if (typeof showToast === 'function') {
+      showToast('Group created successfully', 'success');
+    }
     hideCreateGroupForm();
-    await loadGroups();
+    if (typeof loadGroups === 'function') {
+      await loadGroups();
+    }
   } catch (e) {
-    showToast('Failed to create group: ' + (e.message || 'Unknown error'), 'error');
+    if (typeof showToast === 'function') {
+      showToast('Failed to create group: ' + (e.message || 'Unknown error'), 'error');
+    } else {
+      alert('Failed to create group: ' + (e.message || 'Unknown error'));
+    }
   }
 }
 
-// Delete group
-async function deleteGroup(groupId) {
+// Delete group (make globally accessible)
+window.deleteGroup = async function(groupId) {
   if (!confirm('Are you sure you want to delete this group? Devices will be removed from the group.')) {
     return;
   }
   
   try {
     await api(`/api/groups/${groupId}`, { method: 'DELETE' });
-    showToast('Group deleted successfully', 'success');
-    await loadGroups();
+    if (typeof showToast === 'function') {
+      showToast('Group deleted successfully', 'success');
+    }
+    if (typeof loadGroups === 'function') {
+      await loadGroups();
+    }
     if (currentGroupFilter === groupId) {
       currentGroupFilter = null;
-      filterDevicesByGroup();
+      if (typeof filterDevicesByGroup === 'function') {
+        filterDevicesByGroup();
+      }
     }
-    await loadDevices();
+    if (typeof loadDevices === 'function') {
+      await loadDevices();
+    }
   } catch (e) {
-    showToast('Failed to delete group: ' + (e.message || 'Unknown error'), 'error');
+    if (typeof showToast === 'function') {
+      showToast('Failed to delete group: ' + (e.message || 'Unknown error'), 'error');
+    } else {
+      alert('Failed to delete group: ' + (e.message || 'Unknown error'));
+    }
   }
 }
 
-// Filter devices by group
-function filterDevicesByGroup() {
-  const filterSelect = qs('#groupFilter');
+// Add device to group (make globally accessible)
+window.addDeviceToGroup = async function(groupId, deviceId) {
+  try {
+    // deviceId should be MongoDB _id (from device.id or device._id)
+    // If it's device_id, we need to find the device first
+    let actualDeviceId = deviceId;
+    let device = null;
+    
+    // Check if it's already a MongoDB _id by checking deviceCache
+    device = Array.from(deviceCache.values()).find(d => (d.id || d._id) === deviceId);
+    if (device) {
+      actualDeviceId = device.id || device._id;
+    } else {
+      // Try to find by device_id
+      device = Array.from(deviceCache.values()).find(d => d.device_id === deviceId);
+      if (device) {
+        actualDeviceId = device.id || device._id;
+      } else {
+        // deviceId might already be the MongoDB _id
+        actualDeviceId = deviceId;
+      }
+    }
+    
+    await api(`/api/groups/${groupId}/devices/${actualDeviceId}`, { method: 'POST' });
+    if (typeof showToast === 'function') {
+      showToast('Device added to group', 'success');
+    }
+    // Reload devices and groups to refresh the UI
+    await Promise.all([loadDevices(), loadGroups()]);
+    
+    // Update device detail panel if open
+    const panel = document.getElementById('deviceDetailPanel');
+    if (panel && panel.classList.contains('show')) {
+      const currentDevice = device || Array.from(deviceCache.values()).find(d => (d.id || d._id) === actualDeviceId);
+      if (currentDevice && typeof updateDeviceGroupsDisplay === 'function') {
+        updateDeviceGroupsDisplay(currentDevice);
+      }
+    }
+  } catch (e) {
+    console.error('Failed to add device to group:', e);
+    if (typeof showToast === 'function') {
+      showToast('Failed to add device to group: ' + (e.message || 'Unknown error'), 'error');
+    } else {
+      alert('Failed to add device to group: ' + (e.message || 'Unknown error'));
+    }
+  }
+}
+
+// Remove device from group (make globally accessible)
+window.removeDeviceFromGroup = async function(groupId, deviceId, deviceName) {
+  if (!confirm(`Remove "${deviceName}" from this group?`)) {
+    return;
+  }
+  try {
+    // deviceId should be MongoDB _id (from device.id or device._id)
+    // If it's device_id, we need to find the device first
+    let actualDeviceId = deviceId;
+    let device = null;
+    
+    // Check if it's already a MongoDB _id by checking deviceCache
+    device = Array.from(deviceCache.values()).find(d => (d.id || d._id) === deviceId);
+    if (device) {
+      actualDeviceId = device.id || device._id;
+    } else {
+      // Try to find by device_id
+      device = Array.from(deviceCache.values()).find(d => d.device_id === deviceId);
+      if (device) {
+        actualDeviceId = device.id || device._id;
+      } else {
+        // deviceId might already be the MongoDB _id
+        actualDeviceId = deviceId;
+      }
+    }
+    
+    await api(`/api/groups/${groupId}/devices/${actualDeviceId}`, { method: 'DELETE' });
+    if (typeof showToast === 'function') {
+      showToast('Device removed from group', 'success');
+    }
+    // Reload devices and groups to refresh the UI
+    await Promise.all([loadDevices(), loadGroups()]);
+    
+    // Update device detail panel if open
+    const panel = document.getElementById('deviceDetailPanel');
+    if (panel && panel.classList.contains('show')) {
+      const currentDevice = device || Array.from(deviceCache.values()).find(d => (d.id || d._id) === actualDeviceId);
+      if (currentDevice && typeof updateDeviceGroupsDisplay === 'function') {
+        updateDeviceGroupsDisplay(currentDevice);
+      }
+    }
+  } catch (e) {
+    console.error('Failed to remove device from group:', e);
+    if (typeof showToast === 'function') {
+      showToast('Failed to remove device from group: ' + (e.message || 'Unknown error'), 'error');
+    } else {
+      alert('Failed to remove device from group: ' + (e.message || 'Unknown error'));
+    }
+  }
+}
+
+// Filter devices by group (make globally accessible)
+window.filterDevicesByGroup = function() {
+  const filterSelect = document.querySelector('#groupFilter');
   if (filterSelect) {
     currentGroupFilter = filterSelect.value || null;
-    loadDevices(); // Reload devices with filter
+    if (typeof loadDevices === 'function') {
+      loadDevices(); // Reload devices with filter
+    }
   }
 }
 
