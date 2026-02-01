@@ -16,7 +16,8 @@
       "supportsTablet": true,
       "bundleIdentifier": "com.iotsecurity.platform",
       "infoPlist": {
-        "NSLocationWhenInUseUsageDescription": "This app uses location to help monitor your IoT devices."
+        "NSLocationWhenInUseUsageDescription": "This app uses location to help monitor your IoT devices.",
+        "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {

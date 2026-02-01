@@ -1,5 +1,6 @@
 import Constants from 'expo-constants';
-import axios from 'axios';
+// Use the browser build of axios to avoid Node-only dependencies (like 'crypto')
+import axios from 'axios/dist/axios.js';
 import * as SecureStore from 'expo-secure-store';
 
 // Get API URL from config or use default
