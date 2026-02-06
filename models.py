@@ -189,6 +189,24 @@ class HeartbeatResponse(BaseModel):
     message: str
     last_seen: datetime
 
+
+class DiscoveryDeviceItem(BaseModel):
+    """Single device found on the network (from agent discovery)"""
+    ip: str = Field(..., description="IP address")
+    hostname: Optional[str] = None
+    mac: Optional[str] = None
+
+
+class DiscoveryPayload(BaseModel):
+    """Payload from device agent when it runs discovery"""
+    devices: List[DiscoveryDeviceItem] = Field(default_factory=list)
+
+
+class DiscoveryResponse(BaseModel):
+    """Response for GET /api/discovery - devices found on user's network"""
+    devices: List[DiscoveryDeviceItem]
+    updated_at: Optional[datetime] = None
+
 # ============================================================
 # PAGINATION & FILTERS
 # ============================================================

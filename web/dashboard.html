@@ -118,6 +118,18 @@
                 </div>
                 <div class="hint" id="dashmsg"></div>
 
+                <!-- Discover devices on your network -->
+                <div id="discoverDevicesSection" style="margin-bottom: 20px; padding: 16px; background: var(--surface); border-radius: 8px; border: 1px solid var(--border);">
+                  <h3 style="margin: 0 0 8px 0; font-size: 16px;">🔍 Discover devices on your network</h3>
+                  <p class="sub" style="margin: 0 0 8px 0;">Want to find smart appliances and cameras on your Wi‑Fi? Run our optional discovery script on a computer on your network (e.g. Raspberry Pi or PC). Then click <strong>Refresh</strong> below to see them here and add them with <strong>Add to my devices</strong>. You can rename each device in the form before saving.</p>
+                  <p class="sub" style="margin: 0 0 12px 0; font-size: 13px;"><strong>When to use this:</strong> Only if you run the discovery script. You'll need your <a href="/settings">device agent key from Settings</a> to configure the script. If you only add devices manually (below), you don't need the key.</p>
+                  <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 12px;">
+                    <button type="button" class="btn-sm" id="refreshDiscoveredBtn" onclick="refreshDiscoveredDevices()" style="background: var(--primary); color: white;">Refresh discovered devices</button>
+                    <span id="discoveryUpdated" class="hint" style="font-size: 12px;"></span>
+                  </div>
+                  <div id="discoveredDevicesList" class="hint" style="min-height: 40px;">No discovery yet. Run the discovery script on a computer on your Wi‑Fi, then click Refresh.</div>
+                </div>
+
                 <div class="device-filters">
                   <input type="text" id="deviceSearch" placeholder="Search by name or ID" aria-label="Search devices">
                   <select id="deviceTypeFilter" aria-label="Filter by device type">
@@ -127,6 +139,7 @@
                     <option value="Sensor">Sensor</option>
                     <option value="Smart TV">Smart TV</option>
                     <option value="Smart Speaker">Smart Speaker</option>
+                    <option value="Doorbell">Doorbell</option>
                     <option value="Thermostat">Thermostat</option>
                     <option value="Other">Other</option>
                   </select>
@@ -176,9 +189,15 @@
                           <option value="Sensor">Sensor</option>
                           <option value="Smart TV">Smart TV</option>
                           <option value="Smart Speaker">Smart Speaker</option>
+                          <option value="Doorbell">Doorbell</option>
                           <option value="Thermostat">Thermostat</option>
                           <option value="Other">Other</option>
                         </select>
+                      </div>
+                      <div>
+                        <label style="display: block; margin-bottom: 4px; font-weight: 500;">Device IP (optional)</label>
+                        <input type="text" id="device_ip" placeholder="e.g., 192.168.1.50" style="width: 100%; padding: 8px; border: 1px solid var(--border); border-radius: 4px; background: var(--bg); color: var(--text);">
+                        <small style="color: var(--muted); font-size: 12px;">IP on your network — use when adding from discovery or when you know the IP</small>
                       </div>
                       <div>
                         <label style="display: block; margin-bottom: 4px; font-weight: 500;">Router IP</label>

@@ -269,6 +269,24 @@
         </div>
       </div>
 
+      <!-- Device agent API key (for discovery & online status) -->
+      <div class="grid" style="margin-top: 24px;">
+        <div class="card">
+          <h2>📡 Device agent key</h2>
+          <p class="sub"><strong>When to use this:</strong> Only if you run our optional discovery script (to find devices on your Wi‑Fi) or the device agent (to see devices as online/offline) on a computer on your network. Get the key here, then use it when you set up the script. If you only add and manage devices from this website or the phone app, <strong>you don't need this key</strong>.</p>
+          <p class="sub" style="margin-top: 8px;">Adding devices in this app always requires you to be logged in. The key is only for those optional scripts — they run on a separate computer (e.g. Raspberry Pi or PC) that has no browser and no access to your login, so we use the key to link their data to your account. Add and discover devices in <a href="/dashboard">Dashboard → IoT Device Management</a>.</p>
+          <div class="hint" id="deviceAgentKeyMsg" style="margin: 12px 0;"></div>
+          <div id="deviceAgentKeySection" style="margin-top: 12px;">
+            <label style="display: block; margin-bottom: 6px; font-size: 12px; color: var(--muted);">API key</label>
+            <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+              <code id="deviceAgentKeyDisplay" style="padding: 8px 12px; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; font-size: 13px;">—</code>
+              <button type="button" class="btn-sm" id="deviceAgentKeyCopyBtn">Copy</button>
+              <button type="button" class="btn" id="deviceAgentKeyRegenerateBtn" style="background: var(--primary); color: white;">Generate key</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- Subscription & Usage Section -->
       <div class="grid" style="margin-top: 24px;">
         <!-- Subscription Card -->
@@ -381,11 +399,59 @@
           await loadUsage();
           await loadNotificationPreferences();
           await loadMfaStatus();
+          await loadDeviceAgentKey();
         } catch(e) {
-          // Not logged in
-          clearAuth();
-          window.location.href = "/login";
+          if (e && e.unauthorized) {
+            clearAuth();
+            window.location.href = "/login";
+            return;
+          }
+          const msg = document.querySelector("#settingsmsg");
+          if (msg) { msg.textContent = e?.message || "Something went wrong. Please try again."; msg.className = "msg bad"; }
           return;
+        }
+      }
+
+      // Device agent API key (must be in same scope as loadSettings so it's defined when loadSettings runs)
+      let deviceAgentKeyLastShown = null;
+      async function loadDeviceAgentKey() {
+        const display = document.getElementById("deviceAgentKeyDisplay");
+        const msg = document.getElementById("deviceAgentKeyMsg");
+        if (!display) return;
+        try {
+          const data = await api("/api/device-agent-key");
+          if (data.has_key && data.key_prefix) {
+            display.textContent = "••••••••" + data.key_prefix;
+          } else {
+            display.textContent = "No key — click Generate key";
+          }
+          if (msg) msg.textContent = "";
+        } catch (e) {
+          display.textContent = "—";
+          if (msg) msg.textContent = "Could not load key.";
+        }
+      }
+      async function regenerateDeviceAgentKey() {
+        const display = document.getElementById("deviceAgentKeyDisplay");
+        const msg = document.getElementById("deviceAgentKeyMsg");
+        const btn = document.getElementById("deviceAgentKeyRegenerateBtn");
+        if (!display || !btn) return;
+        setButtonLoading(btn, true, "Generating…");
+        if (msg) msg.textContent = "";
+        try {
+          const data = await api("/api/device-agent-key/regenerate", { method: "POST" });
+          deviceAgentKeyLastShown = data.key;
+          display.textContent = data.key;
+          if (msg) msg.textContent = "Key generated. Copy it now — it won't be shown again.";
+          setTimeout(() => {
+            display.textContent = "••••••••" + (data.key_prefix || "");
+            deviceAgentKeyLastShown = null;
+            if (msg) msg.textContent = "";
+          }, 60000);
+        } catch (e) {
+          if (msg) msg.textContent = e.message || "Failed to generate key.";
+        } finally {
+          setButtonLoading(btn, false);
         }
       }
 
@@ -1183,6 +1249,21 @@
           document.querySelector("#mfaBackupBtn").addEventListener("click", regenerateBackupCodes);
         }
 
+        // Device agent API key – attach listeners (functions defined above)
+        if (document.getElementById("deviceAgentKeyRegenerateBtn")) {
+          document.getElementById("deviceAgentKeyRegenerateBtn").addEventListener("click", regenerateDeviceAgentKey);
+        }
+        if (document.getElementById("deviceAgentKeyCopyBtn")) {
+          document.getElementById("deviceAgentKeyCopyBtn").addEventListener("click", () => {
+            const toCopy = deviceAgentKeyLastShown || document.getElementById("deviceAgentKeyDisplay")?.textContent || "";
+            if (toCopy && !toCopy.startsWith("No key")) {
+              navigator.clipboard.writeText(toCopy).then(() => showToast("Copied to clipboard", "success")).catch(() => {});
+            } else {
+              showToast("Generate a key first to copy it", "info");
+            }
+          });
+        }
+
         if(document.querySelector("#changePasswordForm")){
           document.querySelector("#changePasswordForm").addEventListener("submit", async (e) => {
             e.preventDefault();
@@ -1250,6 +1331,20 @@
               if(e.rateLimited){
                 showToast(e.message, "warning");
               }
+            }
+          });
+        }
+
+        if (document.getElementById("deviceAgentKeyRegenerateBtn")) {
+          document.getElementById("deviceAgentKeyRegenerateBtn").addEventListener("click", regenerateDeviceAgentKey);
+        }
+        if (document.getElementById("deviceAgentKeyCopyBtn")) {
+          document.getElementById("deviceAgentKeyCopyBtn").addEventListener("click", () => {
+            const toCopy = deviceAgentKeyLastShown || document.getElementById("deviceAgentKeyDisplay")?.textContent || "";
+            if (toCopy && !toCopy.startsWith("No key")) {
+              navigator.clipboard.writeText(toCopy).then(() => showToast("Copied to clipboard", "success")).catch(() => {});
+            } else {
+              showToast("Generate a key first to copy it", "info");
             }
           });
         }

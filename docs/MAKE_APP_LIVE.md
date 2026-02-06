@@ -1,0 +1,95 @@
+# How to Make the Web App Live
+
+This guide gets your IoT Security web app from **localhost** to a **public URL** so anyone can use it.
+
+---
+
+## Do it all (one script + follow steps)
+
+1. **Run the deployment helper** (generates a JWT secret and prints step-by-step instructions):
+   ```bash
+   python scripts/do_it_all_deploy.py
+   ```
+2. **Follow the printed steps** – MongoDB Atlas → push to GitHub → Railway (or Render) → add variables (copy the generated `JWT_SECRET` into your host’s Variables).
+3. **Generate domain** in Railway → set `APP_BASE_URL` and `CORS_ORIGINS` to that URL → redeploy if needed.
+
+The script prints the exact variables to set and links to this doc. For more detail, see below.
+
+---
+
+## What You Need First
+
+1. **MongoDB** – Your app stores data in MongoDB. For production, use **MongoDB Atlas** (free tier):
+   - Go to https://www.mongodb.com/cloud/atlas
+   - Create an account → Create a free cluster
+   - Create a database user and get the **connection string** (e.g. `mongodb+srv://user:pass@cluster.mongodb.net/iot_security`)
+
+2. **GitHub** – Your code should be in a GitHub repo so the hosting platform can deploy from it.
+
+3. **Secrets** – You’ll set these in the host’s dashboard (never commit them):
+   - `JWT_SECRET` – Run `python scripts/generate_secrets.py` or use a long random string (32+ chars)
+   - Gmail App Password (if you want email) – see docs/API_KEYS_SETUP.md
+
+---
+
+## Fastest Option: Railway (~10 minutes)
+
+1. **Sign up**  
+   Go to https://railway.app and sign in with GitHub.
+
+2. **New project**  
+   Click **New Project** → **Deploy from GitHub repo** → select your `IoT-security-app-python` repo.
+
+3. **Environment variables**  
+   In the project, open **Variables** and add:
+
+   | Variable        | Example / value |
+   |-----------------|-----------------|
+   | `MONGO_URI`     | Your Atlas connection string |
+   | `JWT_SECRET`    | Long random string (32+ chars) |
+   | `PORT`          | `8000` (Railway may set this automatically) |
+   | `CORS_ORIGINS`  | Your app URL, e.g. `https://your-app.up.railway.app` |
+   | `APP_BASE_URL`  | Same as CORS, e.g. `https://your-app.up.railway.app` |
+   | `APP_ENV`       | `production` |
+
+   Optional (for email): `SMTP_USER`, `SMTP_PASSWORD`, `FROM_EMAIL` (see .env.example and docs).
+
+4. **Deploy**  
+   Railway builds and runs your app. After the build finishes, open **Settings** → **Networking** → **Generate domain** to get a URL like `https://your-app.up.railway.app`.
+
+5. **Set CORS and APP_BASE_URL**  
+   Set `CORS_ORIGINS` and `APP_BASE_URL` to that exact URL (with `https://`), then redeploy if needed.
+
+6. **Test**  
+   Visit the URL → you should see the landing/login page. Try signup and login.
+
+**Cost:** Railway has a free trial; then roughly $5–20/month depending on usage.
+
+---
+
+## Alternative: Render
+
+1. Go to https://render.com and sign in with GitHub.
+2. **New** → **Web Service** → connect your repo.
+3. **Build:** `pip install -r requirements.txt`  
+   **Start:** `uvicorn main:app --host 0.0.0.0 --port $PORT`
+4. Add the same variables as above. Set `PORT=10000` (or leave Render’s default).
+5. Set `CORS_ORIGINS` and `APP_BASE_URL` to your Render URL (e.g. `https://your-app.onrender.com`).
+
+**Cost:** Free tier available; paid tier around $7+/month for production.
+
+---
+
+## After Going Live
+
+- **Custom domain (optional):** In Railway or Render, add your domain in settings and point DNS as instructed.
+- **Mobile app:** In `mobile/app.json` (or your config), set the API URL to your live URL so the app talks to the same backend.
+- **Device agent / discovery:** In the agent’s `.env`, set `API_BASE_URL` to your live URL.
+
+---
+
+## More Detail
+
+- **Full deployment options:** `docs/DEPLOYMENT.md`
+- **Checklist:** `DEPLOYMENT_CHECKLIST.md`
+- **Security:** `docs/SECURITY_CHECKLIST.md`

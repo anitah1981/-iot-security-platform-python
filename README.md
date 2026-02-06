@@ -2,11 +2,24 @@
 
 A comprehensive IoT security monitoring platform with real-time device tracking, multi-channel alerting, and threat detection.
 
+## 🚀 Deploy Now (Make It Live)
+
+**Ready to go live?** Follow these steps:
+
+1. **Get MongoDB Atlas connection string** (see `DEPLOY_NOW_STEPS.md` Step 1)
+2. **Generate Railway env vars**: `python scripts\prepare_for_railway.py`
+3. **Deploy to Railway**: https://railway.app → Deploy from GitHub → Add variables → Done!
+
+**Full guide**: `DEPLOY_NOW_STEPS.md` | **Quick reference**: `GET_STARTED_DEPLOY.md`
+
+---
+
 ## ✨ Features
 
 ### Core Functionality
 - **🔐 Authentication**: JWT-based auth with bcrypt password hashing
 - **📱 Device Management**: Register, monitor, and track IoT devices
+- **📡 Connect real devices**: Run the **device agent** (in `agent/`) on your network so Alexa, Ring, cameras, etc. show as online/offline; get your API key in **Settings → Connect real devices**. See `agent/README.md` and `docs/HOW_DEVICES_CONNECT.md`.
 - **🚨 Smart Alerts**: Multi-severity alerts with deduplication logic
 - **💓 Heartbeat Monitoring**: Real-time device health tracking
 - **📊 Web Dashboard**: Beautiful, responsive UI with auto-refresh
@@ -88,6 +101,16 @@ uvicorn main:app --reload --port 8000
 - **Web UI**: http://localhost:8000
 - **API Docs**: http://localhost:8000/docs
 - **Health Check**: http://localhost:8000/api/health
+
+## 🚀 Make the web app live (production)
+
+Run the deployment helper, then follow the printed steps (MongoDB Atlas → GitHub → Railway or Render):
+
+```bash
+python scripts/do_it_all_deploy.py
+```
+
+See **docs/MAKE_APP_LIVE.md** for full instructions. The project includes **Procfile** and **railway.json** for one-click deploy on Railway or Render.
 
 ## 🐳 Docker Deployment
 

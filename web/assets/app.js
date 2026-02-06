@@ -137,7 +137,9 @@ async function api(path, { method="GET", body, auth=true, retry=true } = {}){
       throw error;
     }
     const msg = data?.detail || data?.message || `Request failed (${res.status})`;
-    throw new Error(msg);
+    const err = new Error(msg);
+    if (res.status === 401 && auth) err.unauthorized = true;
+    throw err;
   }
   return data;
 }
@@ -196,9 +198,12 @@ async function loadDashboard(){
     const me = await api("/api/auth/me");
     if (who) who.textContent = `${me.name} (${me.email})`;
   }catch(e){
-    // Not logged in
-    clearAuth();
-    window.location.href = "/login";
+    if (e && e.unauthorized) {
+      clearAuth();
+      window.location.href = "/login";
+      return;
+    }
+    if (msg) msg.textContent = e?.message || "Failed to load. Please try again.";
     return;
   }
 
@@ -222,6 +227,8 @@ async function loadDashboard(){
         if(toggle) toggle.textContent = '▼';
       }
     }
+    // Load discovered devices (from agent) so list is ready
+    if (typeof refreshDiscoveredDevices === 'function') refreshDiscoveredDevices();
   }catch(e){
     console.error("Dashboard load error:", e);
     if (msg) {
@@ -584,6 +591,8 @@ function setDeviceFormMode(mode, device = null){
     document.getElementById('device_heartbeat').value = device.heartbeat_interval || 30;
     document.getElementById('device_alerts').checked = device.alerts_enabled !== false;
     document.getElementById('router_ip_display').value = device.router_ip || device.routerIp || "";
+    const deviceIpEl = document.getElementById('device_ip');
+    if(deviceIpEl) deviceIpEl.value = device.device_ip || device.deviceIp || "";
     if(hint) hint.textContent = "Make changes to enable Save.";
     setDeviceSubmitEnabled(false);
     return;
@@ -611,6 +620,8 @@ async function showAddDeviceForm(){
     document.getElementById('device_id').value = '';
     document.getElementById('device_name').value = '';
     document.getElementById('device_type').value = '';
+    const deviceIpEl = document.getElementById('device_ip');
+    if(deviceIpEl) deviceIpEl.value = '';
     document.getElementById('device_heartbeat').value = '30';
     document.getElementById('device_alerts').checked = true;
     
@@ -629,6 +640,66 @@ async function showAddDeviceForm(){
     }
   }
 }
+
+window.refreshDiscoveredDevices = async function(){
+  const listEl = document.getElementById('discoveredDevicesList');
+  const updatedEl = document.getElementById('discoveryUpdated');
+  const btn = document.getElementById('refreshDiscoveredBtn');
+  if(!listEl) return;
+  if(btn) { btn.disabled = true; btn.textContent = 'Loading...'; }
+  try {
+    const res = await api("/api/discovery");
+    if(updatedEl && res.updated_at) {
+      const d = new Date(res.updated_at);
+      updatedEl.textContent = 'Last discovery: ' + d.toLocaleString();
+    } else if(updatedEl) updatedEl.textContent = '';
+    if(!res.devices || res.devices.length === 0) {
+      listEl.innerHTML = '<span class="hint">No devices found yet. Run the device agent in discovery mode on a computer on your network (see agent README), then click Refresh again.</span>';
+    } else {
+      listEl.innerHTML = res.devices.map(d => {
+        const host = (d.hostname || '').replace(/"/g, '&quot;');
+        return `<div style="display: flex; align-items: center; justify-content: space-between; padding: 10px 12px; margin-bottom: 6px; background: var(--bg); border-radius: 6px; border: 1px solid var(--border);">
+          <div><strong>${esc(d.ip)}</strong>${d.hostname ? ' <span class="hint">(' + esc(d.hostname) + ')</span>' : ''}</div>
+          <button type="button" class="btn-sm discover-add-btn" data-ip="${esc(d.ip)}" data-hostname="${host}" style="background: var(--ok); color: white;">Add to my devices</button>
+        </div>`;
+      }).join('');
+      listEl.querySelectorAll('.discover-add-btn').forEach(btn => {
+        btn.addEventListener('click', () => addDeviceFromDiscovery(btn.dataset.ip, btn.dataset.hostname || btn.dataset.ip));
+      });
+    }
+  } catch(e) {
+    listEl.innerHTML = '<span class="msg bad">Could not load discovery: ' + (e.message || 'Unknown error') + '</span>';
+    if(updatedEl) updatedEl.textContent = '';
+  }
+  if(btn) { btn.disabled = false; btn.textContent = 'Refresh discovered devices'; }
+};
+
+window.addDeviceFromDiscovery = async function(ip, hostname){
+  const name = (hostname && hostname !== ip) ? hostname : ('Device ' + ip.replace(/\./g, '-'));
+  const deviceId = 'device-' + ip.replace(/\./g, '-');
+  const form = document.getElementById('addDeviceForm');
+  const hintEl = document.getElementById('deviceFormHint');
+  if(form) {
+    form.style.display = 'block';
+    form.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+  setDeviceFormMode("add");
+  document.getElementById('device_id').value = deviceId;
+  document.getElementById('device_name').value = name;
+  document.getElementById('device_type').value = 'Other';
+  const deviceIpEl = document.getElementById('device_ip');
+  if(deviceIpEl) deviceIpEl.value = ip;
+  if(hintEl) {
+    hintEl.textContent = 'You can rename the device above before adding.';
+    hintEl.className = 'hint';
+    hintEl.style.marginTop = '8px';
+  }
+  setTimeout(function(){ document.getElementById('device_name').focus(); }, 300);
+  try {
+    const settings = await api("/api/network-settings");
+    if(settings.router_ip) document.getElementById('router_ip_display').value = settings.router_ip;
+  } catch(_) {}
+};
 
 async function saveRouterIp(){
   const routerIp = document.getElementById('router_ip').value.trim();
@@ -754,6 +825,8 @@ function hideAddDeviceForm(){
     document.getElementById('device_id').value = '';
     document.getElementById('device_name').value = '';
     document.getElementById('device_type').value = '';
+    const deviceIpEl = document.getElementById('device_ip');
+    if(deviceIpEl) deviceIpEl.value = '';
     document.getElementById('device_heartbeat').value = '30';
     document.getElementById('device_alerts').checked = true;
     // Router IP stays filled (readonly)
@@ -785,6 +858,8 @@ async function submitDeviceForm(event){
   const name = document.getElementById('device_name').value.trim();
   const type = document.getElementById('device_type').value;
   const routerIp = document.getElementById('router_ip_display').value;
+  const deviceIpEl = document.getElementById('device_ip');
+  const deviceIp = deviceIpEl ? deviceIpEl.value.trim() : null;
   const heartbeatInterval = parseInt(document.getElementById('device_heartbeat').value) || 30;
   const alertsEnabled = document.getElementById('device_alerts').checked;
 
@@ -830,7 +905,7 @@ async function submitDeviceForm(event){
         name,
         type,
         router_ip: routerIp,
-        device_ip: null, // Not required
+        device_ip: deviceIp || null,
         heartbeat_interval: heartbeatInterval,
         alerts_enabled: alertsEnabled
       };

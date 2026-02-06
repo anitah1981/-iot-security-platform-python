@@ -25,9 +25,13 @@ async function loadFamilyPage() {
     }
   } catch (error) {
     console.error('Failed to load family page:', error);
-    // Not logged in
-    setToken(null);
-    window.location.href = '/login';
+    if (error && error.unauthorized) {
+      clearAuth();
+      window.location.href = '/login';
+      return;
+    }
+    const msgEl = document.getElementById('familyMsg');
+    if (msgEl) { msgEl.textContent = error?.message || 'Failed to load. Please try again.'; msgEl.className = 'msg bad'; }
   }
 }
 

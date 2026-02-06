@@ -284,6 +284,14 @@ app.include_router(alerts_router, prefix="/api/alerts", tags=["Alerts"])
 from routes.heartbeat import router as heartbeat_router
 app.include_router(heartbeat_router, prefix="/api/heartbeat", tags=["Heartbeat"])
 
+# Device agent API key (for connecting real devices via heartbeats)
+from routes.device_agent_key import router as device_agent_key_router
+app.include_router(device_agent_key_router, prefix="/api/device-agent-key", tags=["Device Agent Key"])
+
+# Discovery (agent posts devices found on network; app fetches for "Discover devices")
+from routes.discovery import router as discovery_router
+app.include_router(discovery_router, prefix="/api/discovery", tags=["Discovery"])
+
 # Include notification preferences routes
 from routes.notification_preferences import router as notification_prefs_router
 app.include_router(notification_prefs_router, prefix="/api/notification-preferences", tags=["Notification Preferences"])
