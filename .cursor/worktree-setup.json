@@ -1,0 +1,7 @@
+{
+  "worktreeSetupScript": {
+    "windows": "scripts\\worktree-setup.ps1",
+    "unix": "scripts/worktree-setup.sh",
+    "description": "Sets up Python virtual environment, installs dependencies, and creates .env file for new Git worktrees"
+  }
+}
