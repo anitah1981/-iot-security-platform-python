@@ -7,6 +7,7 @@ from contextlib import asynccontextmanager
 from datetime import datetime
 import os
 from pathlib import Path
+from urllib.parse import urlparse
 from dotenv import load_dotenv
 import socketio
 
@@ -27,6 +28,17 @@ load_dotenv()
 MONGO_URI = os.getenv("MONGO_URI", "mongodb://localhost:27017/iot_security")
 PORT = int(os.getenv("PORT", 8000))
 WEB_DIR = Path(__file__).parent / "web"
+
+
+def _check_production_config():
+    """Fail fast with clear error if critical production config is missing."""
+    if os.getenv("APP_ENV", "local").lower() != "production":
+        return
+    if not MONGO_URI or "localhost" in MONGO_URI or "127.0.0.1" in MONGO_URI:
+        print("[FATAL] MONGO_URI is not set or still points to localhost.")
+        print("In Railway: Service -> Variables -> Add MONGO_URI with your MongoDB Atlas connection string.")
+        print("Example: mongodb+srv://user:pass@cluster.mongodb.net/iot_security?retryWrites=true&w=majority")
+        raise SystemExit(1)
 
 def _parse_cors_origins(raw: str | None) -> list[str]:
     """
@@ -50,6 +62,7 @@ async def lifespan(app: FastAPI):
     """Handle startup and shutdown"""
     # Startup
     print("Starting IoT Security Backend...")
+    _check_production_config()
     await init_db(MONGO_URI)
     # Start background monitoring tasks (best-effort)
     try:
@@ -122,6 +135,15 @@ if app_env == "production" and force_https:
 if app_env not in ["local", "development"]:
     allowed_hosts = os.getenv("ALLOWED_HOSTS", "localhost,127.0.0.1").split(",")
     allowed_hosts = [h.strip() for h in allowed_hosts if h.strip()]
+    # Auto-add host from APP_BASE_URL so Railway URL works without setting ALLOWED_HOSTS
+    app_base = os.getenv("APP_BASE_URL", "").strip()
+    if app_base:
+        try:
+            host = urlparse(app_base).hostname
+            if host and host not in allowed_hosts:
+                allowed_hosts.append(host)
+        except Exception:
+            pass
     app.add_middleware(TrustedHostMiddleware, allowed_hosts=allowed_hosts)
 
 if app_env == "production":
