@@ -60,7 +60,23 @@ Example:
 
 ---
 
-## Step 6: Check Deploy Logs
+## Step 6: Match the Target Port (CRITICAL for 502 fix)
+
+If your app starts but you still get 502:
+
+1. Go to **Settings** → **Networking** → **Public Networking**.
+2. Find your domain (e.g. `iot-security-platform-python-production-e18f.up.railway.app`).
+3. Click the **edit (pencil) icon** next to the domain.
+4. Set **Target Port** to match what your app listens on.
+   - Check Deploy Logs for `[START] Binding to 0.0.0.0:XXXX` or `Uvicorn running on http://0.0.0.0:XXXX`
+   - Use that port (often **8000**).
+5. Save and try again.
+
+Railway’s proxy must connect to the same port your app uses. If they don’t match, you get 502.
+
+---
+
+## Step 7: Check Deploy Logs
 
 1. Open the **Deployments** tab.
 2. Click the latest deployment.
@@ -68,6 +84,7 @@ Example:
 
 You should see:
 
+- `[START] Binding to 0.0.0.0:8000` (or whatever port)
 - `Connected to MongoDB: iot_security`
 - `Backend ready`
 - `Application startup complete`
@@ -76,7 +93,7 @@ If you see `[FATAL] MONGO_URI is not set or still points to localhost`, add or f
 
 ---
 
-## Step 7: Test your app
+## Step 8: Test your app
 
 Open your Railway URL in a browser. You should see the landing or login page instead of “Application failed to respond”.
 
