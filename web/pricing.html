@@ -61,7 +61,7 @@
         </div>
         </div>
         <div class="row">
-          <a class="btn" href="/dashboard">Dashboard</a>
+          <a class="btn" href="/login">Dashboard</a>
           <a class="btn" href="/">Home</a>
           <button class="btn danger" id="logoutBtn" type="button" style="display:none;">Logout</button>
           <a class="btn" href="/login" id="loginBtn">Login</a>
@@ -324,7 +324,13 @@
         msg.textContent = "✅ Payment successful! Your subscription is now active. Redirecting to dashboard...";
         
         setTimeout(() => {
-          window.location.href = "/dashboard";
+          // Verify user is still authenticated before redirecting
+          const token = localStorage.getItem('iot_token');
+          if (token) {
+            window.location.href = "/dashboard";
+          } else {
+            window.location.href = "/login?redirect=/dashboard";
+          }
         }, 2000);
       } else if (paymentStatus === "cancelled") {
         const msg = document.querySelector("#pricingmsg");
