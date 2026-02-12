@@ -177,6 +177,11 @@ async def security_threats_page():
         return JSONResponse(status_code=404, content={"detail": f"File not found: {f}"})
     return FileResponse(str(f), media_type="text/html")
 
+@app.get("/security-compliance")
+def security_compliance_page():
+    f = WEB_DIR / "security-compliance.html"
+    return FileResponse(str(f))
+
 @app.get("/")
 def root():
     landing = WEB_DIR / "landing.html"

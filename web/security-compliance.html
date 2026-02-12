@@ -1,0 +1,310 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <title>Security & Compliance | IoT Security Platform - Standards & Guidelines</title>
+    <meta name="description" content="Learn about IoT Security Platform's security principles, accessibility standards, compliance frameworks, and data protection guidelines. Built with CIA principles, WCAG accessibility, and GDPR compliance."/>
+    <meta name="robots" content="index, follow"/>
+    <link rel="canonical" href="https://iot-security-platform.com/security-compliance"/>
+    <link rel="stylesheet" href="/assets/app.css?v=9"/>
+    <script defer src="/assets/accessibility.js?v=1"></script>
+  </head>
+  <body>
+    <div class="wrap">
+      <nav class="nav" role="navigation" aria-label="Main navigation">
+        <div class="brand">
+          <div class="logo" aria-hidden="true"></div>
+          <div>
+            <h1>Security & Compliance</h1>
+            <p>Our standards and guidelines</p>
+          </div>
+        </div>
+        <div class="row">
+          <a class="btn" href="/">Home</a>
+          <a class="btn" href="/login">Login</a>
+        </div>
+      </nav>
+
+      <main id="main-content" role="main">
+        <div class="card" style="max-width: 1000px; margin: 40px auto;">
+          <div style="line-height: 1.8; color: var(--text);">
+            
+            <h1 style="margin-top: 0;">Security & Compliance Standards</h1>
+            <p class="sub" style="margin-bottom: 32px;">
+              IoT Security Platform is built on industry-leading security principles, accessibility standards, and compliance frameworks. 
+              This page outlines the standards and guidelines we follow to ensure your data is secure, our platform is accessible, and we meet regulatory requirements.
+            </p>
+
+            <!-- Security Principles -->
+            <section style="margin-bottom: 48px;">
+              <h2>🔒 Security Principles: CIA Triad</h2>
+              <p>
+                We follow the <strong>CIA Triad</strong> (Confidentiality, Integrity, Availability) as the foundation of our security architecture:
+              </p>
+
+              <div style="display: grid; gap: 24px; margin-top: 24px;">
+                <div class="card" style="padding: 20px; border-left: 4px solid var(--primary);">
+                  <h3 style="margin-top: 0; color: var(--primary);">Confidentiality</h3>
+                  <p><strong>Protecting data from unauthorized access.</strong></p>
+                  <ul style="margin-top: 12px;">
+                    <li>✅ <strong>Password Security:</strong> Bcrypt hashing with salt (12+ rounds)</li>
+                    <li>✅ <strong>Encryption:</strong> HTTPS/TLS encryption for all data in transit</li>
+                    <li>✅ <strong>Authentication:</strong> JWT tokens with expiration and refresh token rotation</li>
+                    <li>✅ <strong>Multi-Factor Authentication:</strong> TOTP-based MFA with backup codes</li>
+                    <li>✅ <strong>Access Control:</strong> Role-based permissions and family sharing controls</li>
+                    <li>✅ <strong>Security Headers:</strong> HSTS, X-Frame-Options, CSP, and more</li>
+                    <li>✅ <strong>Data Isolation:</strong> User data is isolated and encrypted at rest</li>
+                  </ul>
+                </div>
+
+                <div class="card" style="padding: 20px; border-left: 4px solid var(--accent);">
+                  <h3 style="margin-top: 0; color: var(--accent);">Integrity</h3>
+                  <p><strong>Ensuring data accuracy and preventing unauthorized modification.</strong></p>
+                  <ul style="margin-top: 12px;">
+                    <li>✅ <strong>Input Validation:</strong> Pydantic models validate all API inputs</li>
+                    <li>✅ <strong>CSRF Protection:</strong> Token-based protection for state-changing operations</li>
+                    <li>✅ <strong>SQL Injection Prevention:</strong> Parameterized queries and pattern detection</li>
+                    <li>✅ <strong>XSS Protection:</strong> Content sanitization and CSP headers</li>
+                    <li>✅ <strong>Audit Logging:</strong> Complete audit trail of all user actions</li>
+                    <li>✅ <strong>Data Validation:</strong> Server-side validation for all user inputs</li>
+                    <li>✅ <strong>Request Signing:</strong> API key authentication for device agents</li>
+                  </ul>
+                </div>
+
+                <div class="card" style="padding: 20px; border-left: 4px solid var(--ok);">
+                  <h3 style="margin-top: 0; color: var(--ok);">Availability</h3>
+                  <p><strong>Ensuring services are accessible when needed.</strong></p>
+                  <ul style="margin-top: 12px;">
+                    <li>✅ <strong>Rate Limiting:</strong> Prevents abuse and ensures fair resource usage</li>
+                    <li>✅ <strong>Error Handling:</strong> Graceful degradation and user-friendly error messages</li>
+                    <li>✅ <strong>Health Monitoring:</strong> Health check endpoints for service monitoring</li>
+                    <li>✅ <strong>Uptime Monitoring:</strong> 24/7 device monitoring and alerting</li>
+                    <li>✅ <strong>Backup & Recovery:</strong> Regular backups and disaster recovery plans</li>
+                    <li>✅ <strong>Scalability:</strong> Cloud infrastructure designed for high availability</li>
+                    <li>✅ <strong>DDoS Protection:</strong> Rate limiting and request filtering</li>
+                  </ul>
+                </div>
+              </div>
+            </section>
+
+            <!-- Accessibility Standards -->
+            <section style="margin-bottom: 48px;">
+              <h2>♿ Accessibility Standards: WCAG 2.1</h2>
+              <p>
+                We are committed to making IoT Security Platform accessible to everyone. We follow the 
+                <strong>Web Content Accessibility Guidelines (WCAG) 2.1 Level AA</strong> standards:
+              </p>
+
+              <div style="display: grid; gap: 20px; margin-top: 24px;">
+                <div class="card" style="padding: 16px;">
+                  <h3 style="margin-top: 0;">Perceivable</h3>
+                  <ul>
+                    <li>✅ Text alternatives for all images and icons</li>
+                    <li>✅ Captions and transcripts for multimedia content</li>
+                    <li>✅ Sufficient color contrast (WCAG AA: 4.5:1 for normal text)</li>
+                    <li>✅ Text can be resized up to 200% without loss of functionality</li>
+                    <li>✅ Content structure with proper headings and landmarks</li>
+                  </ul>
+                </div>
+
+                <div class="card" style="padding: 16px;">
+                  <h3 style="margin-top: 0;">Operable</h3>
+                  <ul>
+                    <li>✅ Full keyboard navigation support</li>
+                    <li>✅ No content that causes seizures or physical reactions</li>
+                    <li>✅ Skip navigation links for faster access</li>
+                    <li>✅ Focus indicators visible on all interactive elements</li>
+                    <li>✅ Sufficient time limits with ability to extend</li>
+                    <li>✅ Escape key support to close modals and drawers</li>
+                  </ul>
+                </div>
+
+                <div class="card" style="padding: 16px;">
+                  <h3 style="margin-top: 0;">Understandable</h3>
+                  <ul>
+                    <li>✅ Clear and simple language</li>
+                    <li>✅ Consistent navigation and functionality</li>
+                    <li>✅ Helpful error messages with suggestions</li>
+                    <li>✅ Form labels and instructions</li>
+                    <li>✅ Contextual help and tooltips</li>
+                  </ul>
+                </div>
+
+                <div class="card" style="padding: 16px;">
+                  <h3 style="margin-top: 0;">Robust</h3>
+                  <ul>
+                    <li>✅ Valid HTML5 semantic markup</li>
+                    <li>✅ ARIA labels and roles for screen readers</li>
+                    <li>✅ ARIA live regions for dynamic content</li>
+                    <li>✅ Compatible with assistive technologies</li>
+                    <li>✅ Progressive enhancement approach</li>
+                  </ul>
+                </div>
+              </div>
+
+              <div style="margin-top: 24px; padding: 16px; background: rgba(20, 184, 166, 0.1); border: 1px solid rgba(20, 184, 166, 0.3); border-radius: 8px;">
+                <p style="margin: 0;">
+                  <strong>Screen Reader Support:</strong> Our platform is fully compatible with screen readers including 
+                  NVDA, JAWS, VoiceOver, and TalkBack. We use semantic HTML, ARIA attributes, and proper heading structure 
+                  to ensure content is accessible.
+                </p>
+              </div>
+            </section>
+
+            <!-- Privacy & Data Protection -->
+            <section style="margin-bottom: 48px;">
+              <h2>🛡️ Privacy & Data Protection</h2>
+              
+              <h3>GDPR Compliance</h3>
+              <p>
+                We comply with the <strong>General Data Protection Regulation (GDPR)</strong> and other applicable data protection laws:
+              </p>
+              <ul>
+                <li>✅ <strong>Right to Access:</strong> Users can access all their personal data</li>
+                <li>✅ <strong>Right to Rectification:</strong> Users can update their information</li>
+                <li>✅ <strong>Right to Erasure:</strong> Users can delete their accounts and data</li>
+                <li>✅ <strong>Right to Data Portability:</strong> Export data in machine-readable format</li>
+                <li>✅ <strong>Data Minimization:</strong> We only collect data necessary for the service</li>
+                <li>✅ <strong>Purpose Limitation:</strong> Data used only for stated purposes</li>
+                <li>✅ <strong>Storage Limitation:</strong> Data retained only as long as necessary</li>
+                <li>✅ <strong>Security by Design:</strong> Security built into all systems</li>
+              </ul>
+
+              <h3 style="margin-top: 32px;">Data Security Measures</h3>
+              <ul>
+                <li>✅ <strong>Encryption:</strong> All data encrypted in transit (TLS 1.2+) and at rest</li>
+                <li>✅ <strong>Access Controls:</strong> Role-based access control and authentication</li>
+                <li>✅ <strong>Audit Trails:</strong> Complete logging of data access and modifications</li>
+                <li>✅ <strong>Regular Backups:</strong> Automated backups with encryption</li>
+                <li>✅ <strong>Incident Response:</strong> Procedures for security incident handling</li>
+                <li>✅ <strong>Vendor Security:</strong> Third-party services assessed for security</li>
+              </ul>
+            </section>
+
+            <!-- Security Practices -->
+            <section style="margin-bottom: 48px;">
+              <h2>🔐 Security Practices</h2>
+              
+              <h3>Authentication & Authorization</h3>
+              <ul>
+                <li>✅ Strong password requirements (12+ characters, complexity rules)</li>
+                <li>✅ Account lockout after 5 failed login attempts (15-minute lockout)</li>
+                <li>✅ Multi-factor authentication (TOTP) with backup codes</li>
+                <li>✅ Session management with token expiration</li>
+                <li>✅ Refresh token rotation for enhanced security</li>
+                <li>✅ Email verification for new accounts</li>
+              </ul>
+
+              <h3 style="margin-top: 32px;">API Security</h3>
+              <ul>
+                <li>✅ Rate limiting on all endpoints (120 requests/minute default)</li>
+                <li>✅ Stricter limits on authentication endpoints</li>
+                <li>✅ API key authentication for device agents</li>
+                <li>✅ CORS protection with whitelisted origins</li>
+                <li>✅ Input sanitization and validation</li>
+                <li>✅ Request logging for security auditing</li>
+              </ul>
+
+              <h3 style="margin-top: 32px;">Security Headers</h3>
+              <p>We implement comprehensive security headers:</p>
+              <ul>
+                <li>✅ <strong>Strict-Transport-Security (HSTS):</strong> Forces HTTPS connections</li>
+                <li>✅ <strong>X-Content-Type-Options:</strong> Prevents MIME type sniffing</li>
+                <li>✅ <strong>X-Frame-Options:</strong> Prevents clickjacking attacks</li>
+                <li>✅ <strong>X-XSS-Protection:</strong> XSS attack prevention</li>
+                <li>✅ <strong>Content-Security-Policy:</strong> Restricts resource loading</li>
+                <li>✅ <strong>Referrer-Policy:</strong> Controls referrer information</li>
+                <li>✅ <strong>Permissions-Policy:</strong> Restricts browser features</li>
+              </ul>
+            </section>
+
+            <!-- Compliance & Certifications -->
+            <section style="margin-bottom: 48px;">
+              <h2>📋 Compliance & Standards</h2>
+              
+              <div style="display: grid; gap: 16px; margin-top: 24px;">
+                <div class="card" style="padding: 16px;">
+                  <h3 style="margin-top: 0;">Standards We Follow</h3>
+                  <ul>
+                    <li>✅ <strong>WCAG 2.1 Level AA:</strong> Web accessibility standards</li>
+                    <li>✅ <strong>GDPR:</strong> European data protection regulation</li>
+                    <li>✅ <strong>OWASP Top 10:</strong> Web application security best practices</li>
+                    <li>✅ <strong>CIA Triad:</strong> Confidentiality, Integrity, Availability</li>
+                    <li>✅ <strong>ISO 27001 Principles:</strong> Information security management</li>
+                    <li>✅ <strong>NIST Cybersecurity Framework:</strong> Security best practices</li>
+                  </ul>
+                </div>
+
+                <div class="card" style="padding: 16px;">
+                  <h3 style="margin-top: 0;">Third-Party Security</h3>
+                  <ul>
+                    <li>✅ <strong>Stripe:</strong> PCI DSS Level 1 compliant payment processing</li>
+                    <li>✅ <strong>MongoDB Atlas:</strong> SOC 2 Type II certified database</li>
+                    <li>✅ <strong>Twilio:</strong> SOC 2 compliant SMS/Voice services</li>
+                    <li>✅ <strong>Email Services:</strong> Secure SMTP with TLS encryption</li>
+                  </ul>
+                </div>
+              </div>
+            </section>
+
+            <!-- Reporting Security Issues -->
+            <section style="margin-bottom: 48px;">
+              <h2>🚨 Reporting Security Issues</h2>
+              <p>
+                We take security seriously. If you discover a security vulnerability, please report it responsibly:
+              </p>
+              <div class="card" style="padding: 20px; background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3);">
+                <p style="margin: 0 0 12px 0;">
+                  <strong>Email:</strong> security@iot-security-platform.com
+                </p>
+                <p style="margin: 0;">
+                  Please include details about the vulnerability, steps to reproduce, and potential impact. 
+                  We will respond within 48 hours and work with you to resolve the issue responsibly.
+                </p>
+              </div>
+            </section>
+
+            <!-- Updates -->
+            <section>
+              <h2>📅 Standards Updates</h2>
+              <p>
+                We regularly review and update our security practices, accessibility standards, and compliance measures. 
+                This page is updated as we implement new standards or improve existing ones.
+              </p>
+              <p style="color: var(--muted); font-size: 14px; margin-top: 24px;">
+                <strong>Last Updated:</strong> January 2026<br/>
+                <strong>Next Review:</strong> April 2026
+              </p>
+            </section>
+
+            <!-- Links -->
+            <div style="margin-top: 48px; padding-top: 32px; border-top: 1px solid var(--border);">
+              <h3>Related Information</h3>
+              <ul style="list-style: none; padding: 0;">
+                <li style="margin-bottom: 8px;">
+                  <a href="/privacy" style="color: var(--primary);">Privacy Policy</a> - How we handle your data
+                </li>
+                <li style="margin-bottom: 8px;">
+                  <a href="/terms" style="color: var(--primary);">Terms of Service</a> - Service terms and conditions
+                </li>
+                <li style="margin-bottom: 8px;">
+                  <a href="/cybersecurity-threats" style="color: var(--primary);">Security Threats</a> - Learn about IoT security threats
+                </li>
+              </ul>
+            </div>
+
+          </div>
+        </div>
+      </main>
+    
+      <footer class="footer" style="text-align: center; padding: 20px; margin-top: 48px;">
+        <a href="/privacy" style="color: var(--primary); text-decoration: none; margin: 0 12px;">Privacy Policy</a>
+        <span style="color: var(--muted);">•</span>
+        <a href="/terms" style="color: var(--primary); text-decoration: none; margin: 0 12px;">Terms of Service</a>
+        <span style="color: var(--muted);">•</span>
+        <a href="/security-compliance" style="color: var(--primary); text-decoration: none; margin: 0 12px;">Security & Compliance</a>
+      </footer>
+    </div>
+  </body>
+</html>
