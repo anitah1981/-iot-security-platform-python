@@ -160,7 +160,10 @@ async function loginFlow(){
     if(data.refresh_token) setRefreshToken(data.refresh_token);
     msg.className = "msg ok";
     msg.textContent = "Signed in. Redirecting…";
-    setTimeout(()=>{ window.location.href = "/dashboard"; }, 450);
+    // Check for redirect parameter, default to dashboard
+    const urlParams = new URLSearchParams(window.location.search);
+    const redirect = urlParams.get('redirect') || '/dashboard';
+    setTimeout(()=>{ window.location.href = redirect; }, 450);
   }catch(e){
     msg.className = "msg bad";
     const lowerMsg = String(e.message || "").toLowerCase();
@@ -200,7 +203,8 @@ async function loadDashboard(){
   }catch(e){
     if (e && e.unauthorized) {
       clearAuth();
-      window.location.href = "/login";
+      const currentPath = window.location.pathname;
+      window.location.href = `/login?redirect=${encodeURIComponent(currentPath)}`;
       return;
     }
     if (msg) msg.textContent = e?.message || "Failed to load. Please try again.";

@@ -11,6 +11,15 @@
     <meta name="keywords" content="audit logs, activity history, compliance logs, security audit, user activity tracking, IoT security audit"/>
     <link rel="canonical" href="https://iot-security-platform.com/audit-logs"/>
     <link rel="stylesheet" href="/assets/app.css?v=10"/>
+    <!-- Immediate auth check - runs before page renders -->
+    <script>
+      (function() {
+        const token = localStorage.getItem('iot_token');
+        if (!token) {
+          window.location.href = '/login?redirect=' + encodeURIComponent(window.location.pathname);
+        }
+      })();
+    </script>
     <script defer src="/assets/app.js?v=11"></script>
     <script defer src="/assets/audit.js?v=1"></script>
   </head>

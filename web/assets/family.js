@@ -27,7 +27,8 @@ async function loadFamilyPage() {
     console.error('Failed to load family page:', error);
     if (error && error.unauthorized) {
       clearAuth();
-      window.location.href = '/login';
+      const currentPath = window.location.pathname;
+      window.location.href = `/login?redirect=${encodeURIComponent(currentPath)}`;
       return;
     }
     const msgEl = document.getElementById('familyMsg');

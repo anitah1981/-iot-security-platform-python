@@ -202,13 +202,31 @@ def signup_page():
     f = WEB_DIR / "signup.html"
     return FileResponse(str(f))
 
+def _check_auth_for_page(request: Request) -> bool:
+    """Check if user is authenticated for HTML page access"""
+    # Check for Authorization header
+    auth_header = request.headers.get("Authorization", "")
+    if auth_header.startswith("Bearer "):
+        return True
+    
+    # Check for token in cookie (if we set it)
+    token_cookie = request.cookies.get("auth_token")
+    if token_cookie:
+        return True
+    
+    # For HTML pages, we'll rely on client-side check
+    # But we can check if there's any indication of auth
+    return False
+
 @app.get("/dashboard")
-def dashboard_page():
+def dashboard_page(request: Request):
+    # Client-side will handle redirect, but we can add a check here too
+    # For now, serve the page and let client-side JS handle auth
     f = WEB_DIR / "dashboard.html"
     return FileResponse(str(f))
 
 @app.get("/settings")
-def settings_page():
+def settings_page(request: Request):
     f = WEB_DIR / "settings.html"
     return FileResponse(str(f))
 
@@ -269,6 +287,8 @@ def health():
 # Include authentication routes
 from routes.auth import router as auth_router
 from routes.auth import get_current_user
+from fastapi import Cookie
+from fastapi.responses import RedirectResponse
 app.include_router(auth_router, prefix="/api/auth", tags=["Authentication"])
 
 # Protected API Documentation - Only for authenticated users

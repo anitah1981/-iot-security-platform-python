@@ -11,6 +11,15 @@
     <meta name="keywords" content="incident management, security incidents, timeline view, alert correlation, incident tracking, IoT security incidents"/>
     <link rel="canonical" href="https://iot-security-platform.com/incidents"/>
     <link rel="stylesheet" href="/assets/app.css?v=10"/>
+    <!-- Immediate auth check - runs before page renders -->
+    <script>
+      (function() {
+        const token = localStorage.getItem('iot_token');
+        if (!token) {
+          window.location.href = '/login?redirect=' + encodeURIComponent(window.location.pathname);
+        }
+      })();
+    </script>
     <script defer src="/assets/app.js?v=11"></script>
     <script defer src="/assets/timeline.js?v=1"></script>
   </head>
