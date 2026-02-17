@@ -63,17 +63,18 @@ a:hover{ text-decoration:underline; }
 .sidebar-logo{
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 16px;
   margin-bottom: 8px;
 }
 
 .sidebar-logo .logo{
-  width: 56px;
-  height: 56px;
-  border-radius: 12px;
+  width: 80px;
+  height: 80px;
+  border-radius: 14px;
   background: url('/assets/logo.png') center/contain no-repeat;
   background-color: rgba(255,255,255,.05);
   box-shadow: 0 10px 30px rgba(47,107,255,.35);
+  flex-shrink: 0;
 }
 
 .sidebar-logo h1{
@@ -186,12 +187,13 @@ a:hover{ text-decoration:underline; }
     cursor: pointer;
   }
 }
-.brand{ display:flex; align-items:center; gap:12px; }
+.brand{ display:flex; align-items:center; gap:16px; }
 .logo{
-  width:56px; height:56px; border-radius: 12px;
+  width:80px; height:80px; border-radius: 14px;
   background: url('/assets/logo.png') center/contain no-repeat;
   background-color: rgba(255,255,255,.05);
   box-shadow: 0 10px 30px rgba(47,107,255,.35);
+  flex-shrink: 0;
 }
 .brand h1{ font-size: 15px; margin:0; letter-spacing:.2px; }
 .brand p{ margin:2px 0 0; font-size: 12px; color: var(--muted); }
