@@ -1,4 +1,4 @@
-# models.py - Data Models for IoT Security Platform
+# models.py - Data Models for Alert-Pro
 from pydantic import BaseModel, EmailStr, Field, validator
 from typing import Optional, List, Literal, Dict, Any
 from datetime import datetime
@@ -81,6 +81,7 @@ class DeviceBase(BaseModel):
     device_ip: Optional[str] = Field(None, description="Device's actual IP (optional, auto-detected)")
 
 class DeviceCreate(DeviceBase):
+    device_id: Optional[str] = Field(None, description="Optional; auto-generated from name if not provided")
     heartbeat_interval: int = Field(30, ge=10, description="Seconds between heartbeats")
     alerts_enabled: bool = True
     organization: Optional[str] = None
@@ -269,6 +270,12 @@ class NotificationPreferencesResponse(NotificationPreferences):
     """Response model with user ID"""
     user_id: str
     updated_at: datetime
+
+
+class NotificationPreferencesSaveResponse(NotificationPreferencesResponse):
+    """Response when saving preferences: includes verification send results for each channel."""
+    verification_sent: Optional[Dict[str, bool]] = None  # e.g. {"email": True, "sms": True, "whatsapp": False, "voice": True}
+    verification_failed: Optional[List[Dict[str, str]]] = None  # e.g. [{"channel": "whatsapp", "message": "..."}]
 
 # ============================================================
 # FAMILY/HOUSEHOLD SHARING MODELS

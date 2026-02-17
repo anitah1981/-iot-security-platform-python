@@ -1,4 +1,4 @@
-/* Minimal frontend for the IoT Security Platform API */
+/* Minimal frontend for the Alert-Pro API */
 
 const API_BASE = ""; // same-origin
 
@@ -138,7 +138,13 @@ async function api(path, { method="GET", body, auth=true, retry=true } = {}){
     }
     const msg = data?.detail || data?.message || `Request failed (${res.status})`;
     const err = new Error(msg);
-    if (res.status === 401 && auth) err.unauthorized = true;
+    // Treat 401 or 403 (e.g. "Not authenticated" when no Bearer token) as need-to-login
+    if (auth && (res.status === 401 || res.status === 403)) {
+      const authMsg = (typeof msg === 'string' ? msg : msg?.message || '').toLowerCase();
+      if (res.status === 401 || authMsg.includes('not authenticated') || authMsg.includes('invalid authentication') || authMsg.includes('credentials')) {
+        err.unauthorized = true;
+      }
+    }
     throw err;
   }
   return data;
@@ -196,6 +202,7 @@ async function loginFlow(){
 async function loadDashboard(){
   const msg = qs("#dashmsg");
   const who = qs("#who");
+  if (who) who.textContent = "Loading profile…";
 
   try{
     const me = await api("/api/auth/me");
@@ -207,7 +214,15 @@ async function loadDashboard(){
       window.location.href = `/login?redirect=${encodeURIComponent(currentPath)}`;
       return;
     }
+    // Auth-related message but flag not set (e.g. 403): still redirect to login
+    const errMsg = (e?.message || "").toLowerCase();
+    if (errMsg.includes("not authenticated") || errMsg.includes("invalid authentication") || errMsg.includes("credentials")) {
+      clearAuth();
+      window.location.href = `/login?redirect=${encodeURIComponent(window.location.pathname)}`;
+      return;
+    }
     if (msg) msg.textContent = e?.message || "Failed to load. Please try again.";
+    if (who) who.textContent = "Could not load profile";
     return;
   }
 
@@ -231,14 +246,50 @@ async function loadDashboard(){
         if(toggle) toggle.textContent = '▼';
       }
     }
-    // Load discovered devices (from agent) so list is ready
-    if (typeof refreshDiscoveredDevices === 'function') refreshDiscoveredDevices();
+    // Prefill router IP for network scan from settings
+    const scanRouterIpEl = document.getElementById('scanRouterIp');
+    if (scanRouterIpEl) {
+      try {
+        const net = await api('/api/network-settings');
+        if (net && net.router_ip) scanRouterIpEl.placeholder = net.router_ip;
+        if (net && net.router_ip && !scanRouterIpEl.value) scanRouterIpEl.value = net.router_ip;
+      } catch (_) {}
+    }
   }catch(e){
     console.error("Dashboard load error:", e);
     if (msg) {
       msg.className = "msg bad";
       msg.textContent = "Error loading dashboard: " + (e.message || "Unknown error");
     }
+  }
+  
+  // Start auto-refresh for real-time updates
+  startAutoRefreshDashboard();
+}
+
+let dashboardAutoRefreshInterval = null;
+
+function startAutoRefreshDashboard(){
+  // Clear any existing interval
+  if(dashboardAutoRefreshInterval){
+    clearInterval(dashboardAutoRefreshInterval);
+  }
+  
+  // Refresh devices and alerts every 30 seconds
+  dashboardAutoRefreshInterval = setInterval(async () => {
+    try {
+      await Promise.all([loadDevices(), loadAlerts()]);
+      updateLastRefreshTime();
+    } catch(e) {
+      console.error("Auto-refresh error:", e);
+    }
+  }, 30000); // 30 seconds
+}
+
+function stopAutoRefreshDashboard(){
+  if(dashboardAutoRefreshInterval){
+    clearInterval(dashboardAutoRefreshInterval);
+    dashboardAutoRefreshInterval = null;
   }
 }
 
@@ -333,7 +384,29 @@ function buildDevicesQuery(){
 async function loadDevices(){
   const data = await api(buildDevicesQuery());
   renderDevices(data.devices || []);
+  
+  // Check real-time device status in background
+  checkDeviceStatus().catch(err => console.log("Device status check:", err.message));
+  
   return data;
+}
+
+async function checkDeviceStatus(){
+  try {
+    const result = await api("/api/network/check-device-status", { method: "POST" });
+    
+    // If any devices were updated, reload to show new status
+    if(result.updated > 0){
+      console.log(`Updated ${result.updated} device(s) status`);
+      // Wait a moment then reload devices
+      setTimeout(() => {
+        loadDevices().catch(e => console.error("Reload after status check:", e));
+      }, 1000);
+    }
+  } catch(e) {
+    // Silently fail - don't disrupt user experience
+    console.log("Status check unavailable:", e.message);
+  }
 }
 
 async function loadAlerts(){
@@ -359,11 +432,15 @@ function scheduleDeviceFilterUpdate(){
 
 function renderDevices(devs){
   const tbody = qs("#devices");
+  const allOfflineBanner = qs("#allOfflineBanner");
   if(!tbody) return;
   if(!devs.length){
     tbody.innerHTML = `<tr><td colspan="8" class="hint">No devices yet.</td></tr>`;
+    if(allOfflineBanner) allOfflineBanner.style.display = "none";
     return;
   }
+  const allOffline = devs.every(d => (d.status || "").toLowerCase() === "offline");
+  if(allOfflineBanner) allOfflineBanner.style.display = allOffline ? "block" : "none";
   deviceCache = new Map(devs.map(d => [d.device_id, d]));
   
   // Filter by group if selected
@@ -705,6 +782,17 @@ window.addDeviceFromDiscovery = async function(ip, hostname){
   } catch(_) {}
 };
 
+window.showChangeRouterIp = function() {
+  const setup = document.getElementById('routerIpSetup');
+  const display = document.getElementById('router_ip_display');
+  const input = document.getElementById('router_ip');
+  if (setup && input) {
+    if (display && display.value) input.value = display.value;
+    setup.style.display = 'block';
+    input.focus();
+  }
+};
+
 async function saveRouterIp(){
   const routerIp = document.getElementById('router_ip').value.trim();
   if(!routerIp) {
@@ -746,84 +834,181 @@ async function saveRouterIp(){
   }
 }
 
-// New improved network scan function for the enhanced UI
-async function scanNetworkForDevices(){
+// New improved network scan function for the enhanced UI (exposed on window for onclick)
+window.scanNetworkForDevices = async function scanNetworkForDevices(){
   const scanBtn = document.getElementById('scanNetworkBtn');
   const resultsDiv = document.getElementById('networkScanResults');
   const statusDiv = document.getElementById('networkScanStatus');
   const devicesList = document.getElementById('networkScanDevicesList');
-  
-  if(!resultsDiv || !statusDiv || !devicesList) {
-    console.error('Network scan UI elements not found');
-    return;
+
+  function setStatus(html) {
+    if (statusDiv) statusDiv.innerHTML = html;
+    else if (typeof showToast === 'function') showToast(html.replace(/<[^>]+>/g, '').trim(), 'info');
   }
-  
-  // Show results section
-  resultsDiv.style.display = 'block';
-  statusDiv.innerHTML = '<span style="color: var(--primary);">🔍 Scanning your network... This may take a moment.</span>';
-  devicesList.innerHTML = '';
-  
-  // Disable button
+  function setList(html) {
+    if (devicesList) devicesList.innerHTML = html;
+  }
+  function showResults() {
+    if (resultsDiv) resultsDiv.style.display = 'block';
+  }
+
+  const routerIpInput = document.getElementById('scanRouterIp');
+  const routerIp = routerIpInput ? routerIpInput.value.trim() : '';
+  const url = routerIp ? `/api/network/scan-devices?router_ip=${encodeURIComponent(routerIp)}` : '/api/network/scan-devices';
+
+  showResults();
+  setStatus('<span style="color: var(--primary);">Scanning network thoroughly... This will take 1-2 minutes to ensure all devices are found.</span>');
+  setList('');
   if(scanBtn) {
     scanBtn.disabled = true;
     scanBtn.textContent = 'Scanning...';
   }
-  
+
   try {
-    const result = await api("/api/network/scan-devices");
-    
+    const result = await api(url);
+
     if(result.error === 'no_router_ip') {
-      statusDiv.innerHTML = '<span style="color: var(--danger);">⚠️ Router IP not configured. Please enter your router IP first.</span>';
-      // Show router IP setup in add device form
-      const routerIpSetup = document.getElementById('routerIpSetup');
-      if(routerIpSetup) {
-        routerIpSetup.style.display = 'block';
-        showAddDeviceForm();
-      }
-      devicesList.innerHTML = '<p style="color: var(--muted); font-size: 14px;">Configure your router IP in the form above, then try scanning again.</p>';
+      setStatus('<span style="color: var(--danger);">Enter your router IP above (e.g. 192.168.1.1) and click Scan.</span>');
+      setList('<p style="color: var(--muted); font-size: 14px;">Or set a default in <a href="/settings">Settings</a>.</p>');
       return;
     }
-    
+    if(result.error === 'invalid_router_ip') {
+      setStatus('<span style="color: var(--danger);">Invalid router IP. Use format like 192.168.1.1</span>');
+      setList('');
+      return;
+    }
+    if(result.error === 'scan_failed') {
+      setStatus(`<span style="color: var(--danger);">${esc(result.message || 'Scan failed')}</span>`);
+      setList('<p style="color: var(--muted); font-size: 14px; margin-top: 8px;">Check that your router IP is correct and this PC can reach the network (e.g. open Command Prompt and run: <code>ping ' + esc(result.router_ip || '192.168.1.1') + '</code>).</p>');
+      return;
+    }
+
     if(result.devices && result.devices.length > 0) {
-      statusDiv.innerHTML = `<span style="color: var(--ok); font-weight: 500;">✓ Found ${result.devices.length} device(s) on your network</span>`;
-      
-      // Show detected devices with "Add" buttons
-      devicesList.innerHTML = result.devices.map(device => {
-        const hostname = device.hostname || 'Unknown';
-        const ports = device.ports_open ? device.ports_open.join(', ') : 'N/A';
+      setStatus(`<span style="color: var(--ok); font-weight: 500;">Found ${result.devices.length} device(s)</span>`);
+      setList(result.devices.map(device => {
+        const name = device.hostname || '—';
+        const mac = device.mac || '—';
+        const deviceType = device.device_type || 'Other';
+        const typeIcon = {
+          'Doorbell': '🔔',
+          'Camera': '📷',
+          'Router': '📡',
+          'Smart Speaker': '🔊',
+          'Thermostat': '🌡️',
+          'Smart TV': '📺',
+          'Sensor': '📡',
+          'Smart Home Hub': '🏠',
+          'Smart Plug': '🔌',
+          'Other': '📱'
+        }[deviceType] || '📱';
         return `
           <div style="display: flex; align-items: center; justify-content: space-between; padding: 12px; margin-bottom: 8px; background: var(--bg); border-radius: 6px; border: 1px solid var(--border);">
-            <div style="flex: 1;">
-              <div style="font-weight: 500; margin-bottom: 4px;">${esc(device.ip)}</div>
+            <div style="flex: 1; min-width: 0;">
+              <div style="font-weight: 500; margin-bottom: 4px;">${esc(device.ip)}${deviceType !== 'Other' ? ' <span style="background: var(--primary); color: white; padding: 2px 6px; border-radius: 4px; font-size: 11px; margin-left: 6px;">' + typeIcon + ' ' + esc(deviceType) + '</span>' : ''}</div>
               <div style="font-size: 12px; color: var(--muted);">
-                ${hostname !== 'Unknown' ? `Hostname: ${esc(hostname)} • ` : ''}
-                Ports: ${ports}
+                Name: ${esc(name)}${mac !== '—' ? ' • MAC: ' + esc(mac) : ''}
               </div>
             </div>
-            <button type="button" class="btn-sm" onclick="addDeviceFromScan('${esc(device.ip)}', '${esc(hostname)}')" style="background: var(--ok); color: white; border: none; cursor: pointer; padding: 8px 16px; border-radius: 6px; font-weight: 500;">
-              ➕ Add Device
+            <button type="button" class="btn-sm" onclick="addDeviceFromScan('${esc(device.ip)}', '${esc(name === '—' ? '' : name)}', '${esc(deviceType)}')" style="background: var(--ok); color: white; border: none; cursor: pointer; padding: 8px 16px; border-radius: 6px; font-weight: 500; flex-shrink: 0;">
+              Add
             </button>
           </div>
         `;
-      }).join('');
+      }).join(''));
     } else {
-      statusDiv.innerHTML = '<span style="color: var(--warning);">No devices detected. Make sure your devices are powered on and connected to the network.</span>';
-      devicesList.innerHTML = '<p style="color: var(--muted); font-size: 14px; margin-top: 8px;">Tip: Ensure your router IP is correct and devices are on the same network.</p>';
+      const scanned = result.ips_scanned ? ` Scanned ${result.ips_scanned} IPs.` : '';
+      setStatus('<span style="color: var(--warning);">No devices found.' + scanned + '</span>');
+      setList('<p style="color: var(--muted); font-size: 14px; margin-top: 8px;"><strong>Tips:</strong><br>1) Confirm router IP (run <code>ipconfig</code> → Default Gateway).<br>2) Some devices sleep/don\'t respond—run scan again or check your router\'s device list.<br>3) If devices don\'t appear, add them manually with their IP.</p>');
     }
   } catch(e) {
-    statusDiv.innerHTML = `<span style="color: var(--danger);">✗ Scan failed: ${e.message || 'Unknown error'}</span>`;
-    devicesList.innerHTML = '<p style="color: var(--muted); font-size: 14px; margin-top: 8px;">Please check your router IP configuration and try again.</p>';
+    const errMsg = e.message || 'Unknown error';
+    setStatus(`<span style="color: var(--danger);">Scan failed: ${esc(errMsg)}</span>`);
+    setList('');
+    if (typeof showToast === 'function') showToast('Scan failed: ' + errMsg, 'error');
   }
-  
-  // Re-enable button
+
   if(scanBtn) {
     scanBtn.disabled = false;
-    scanBtn.textContent = '🔍 Scan Network Now';
+    scanBtn.textContent = 'Scan network';
   }
-}
+};
+
+// Bulk add devices by IP list (one IP per line)
+window.bulkAddDevicesByIp = async function() {
+  const textarea = document.getElementById('bulkAddIps');
+  const statusEl = document.getElementById('bulkAddStatus');
+  const btn = document.getElementById('bulkAddBtn');
+  if(!textarea || !statusEl) return;
+  const raw = textarea.value.trim();
+  const lines = raw.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+  const ipPattern = /^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$/;
+  const ips = lines.filter(l => ipPattern.test(l));
+  if(ips.length === 0) {
+    statusEl.textContent = 'Enter at least one valid IP address (one per line).';
+    statusEl.style.color = 'var(--danger)';
+    return;
+  }
+  
+  // Try to get router IP from multiple sources
+  let routerIp = null;
+  const scanRouterIpEl = document.getElementById('scanRouterIp');
+  if(scanRouterIpEl && scanRouterIpEl.value) routerIp = scanRouterIpEl.value.trim();
+  if(!routerIp) {
+    const routerIpDisplay = document.getElementById('router_ip_display');
+    if(routerIpDisplay && routerIpDisplay.value) routerIp = routerIpDisplay.value.trim();
+  }
+  if(!routerIp) {
+    try {
+      const settings = await api("/api/network-settings");
+      routerIp = settings.router_ip;
+    } catch(e) {}
+  }
+  if(!routerIp) {
+    statusEl.textContent = 'Enter Router IP in the scan box above first, or set it in Settings.';
+    statusEl.style.color = 'var(--danger)';
+    return;
+  }
+  
+  if(btn) { btn.disabled = true; btn.textContent = 'Adding...'; }
+  statusEl.textContent = `Adding ${ips.length} device(s)...`;
+  statusEl.style.color = 'var(--primary)';
+  let added = 0, failed = 0;
+  const errors = [];
+  for(const ip of ips) {
+    const name = 'Device ' + ip.replace(/\./g, '-');
+    try {
+      await api("/api/devices", {
+        method: "POST",
+        body: { name, type: "Other", device_ip: ip, router_ip: routerIp, alerts_enabled: true }
+      });
+      added++;
+    } catch(e) {
+      failed++;
+      errors.push(`${ip}: ${e.message || 'failed'}`);
+    }
+  }
+  if(btn) { btn.disabled = false; btn.textContent = 'Add all'; }
+  
+  if(added > 0 && failed === 0) {
+    statusEl.textContent = `✓ Added ${added} device(s).`;
+    statusEl.style.color = 'var(--ok)';
+    textarea.value = '';
+    loadDashboard();
+  } else if(added > 0 && failed > 0) {
+    statusEl.textContent = `Added ${added}, ${failed} failed (may already exist or invalid). Check console for details.`;
+    statusEl.style.color = 'var(--warning)';
+    console.log('Bulk add errors:', errors);
+    loadDashboard();
+  } else {
+    statusEl.textContent = `All ${failed} failed. ${errors[0] || 'May already exist or router IP issue.'}`;
+    statusEl.style.color = 'var(--danger)';
+    console.log('Bulk add errors:', errors);
+  }
+};
 
 // Add device from network scan results
-window.addDeviceFromScan = function(ip, hostname) {
+window.addDeviceFromScan = function(ip, hostname, deviceType) {
+  deviceType = deviceType || 'Other';
   const name = (hostname && hostname !== 'Unknown' && hostname !== ip) ? hostname : ('Device ' + ip.replace(/\./g, '-'));
   const deviceId = 'device-' + ip.replace(/\./g, '-');
   
@@ -834,13 +1019,13 @@ window.addDeviceFromScan = function(ip, hostname) {
   setDeviceFormMode("add");
   document.getElementById('device_id').value = deviceId;
   document.getElementById('device_name').value = name;
-  document.getElementById('device_type').value = 'Other';
+  document.getElementById('device_type').value = deviceType;
   const deviceIpEl = document.getElementById('device_ip');
   if(deviceIpEl) deviceIpEl.value = ip;
   
   const hintEl = document.getElementById('deviceFormHint');
   if(hintEl) {
-    hintEl.textContent = 'Device details pre-filled from scan. You can rename or change the type before adding.';
+    hintEl.textContent = `Device details pre-filled from scan${deviceType !== 'Other' ? ' (detected as ' + deviceType + ')' : ''}. You can rename or change the type before adding.`;
     hintEl.className = 'hint';
     hintEl.style.marginTop = '8px';
   }
@@ -961,7 +1146,8 @@ async function submitDeviceForm(event){
   const msg = qs("#dashmsg");
   const submitBtn = event.target.querySelector('button[type="submit"]');
   
-  const deviceId = document.getElementById('device_id').value.trim();
+  const deviceIdEl = document.getElementById('device_id');
+  const deviceId = deviceIdEl ? deviceIdEl.value.trim() : '';
   const name = document.getElementById('device_name').value.trim();
   const type = document.getElementById('device_type').value;
   const routerIp = document.getElementById('router_ip_display').value;
@@ -970,11 +1156,11 @@ async function submitDeviceForm(event){
   const heartbeatInterval = parseInt(document.getElementById('device_heartbeat').value) || 30;
   const alertsEnabled = document.getElementById('device_alerts').checked;
 
-  // Validation
-  if(!deviceId || !name || !type || !routerIp) {
+  // Validation: name, type, and router IP (from settings) required; device_id is optional
+  if(!name || !type || !routerIp) {
     if(msg) {
       msg.className = "msg bad";
-      msg.textContent = "Please fill in all required fields";
+      msg.textContent = "Please enter name, type, and set Router IP in Settings if you haven't.";
     }
     return;
   }
@@ -1008,7 +1194,6 @@ async function submitDeviceForm(event){
       editSnapshot = null;
     } else {
       const deviceData = {
-        device_id: deviceId,
         name,
         type,
         router_ip: routerIp,
@@ -1016,6 +1201,7 @@ async function submitDeviceForm(event){
         heartbeat_interval: heartbeatInterval,
         alerts_enabled: alertsEnabled
       };
+      if(deviceId) deviceData.device_id = deviceId;
 
       await api("/api/devices", {
         method: "POST",
@@ -1282,6 +1468,11 @@ window.addEventListener("DOMContentLoaded", () => {
   }
   if(qs("#dashboardRoot")){
     loadDashboard();
+    // Ensure Scan Network button works (fallback if inline onclick doesn't run)
+    const scanNetworkBtn = document.getElementById('scanNetworkBtn');
+    if(scanNetworkBtn && typeof window.scanNetworkForDevices === 'function'){
+      scanNetworkBtn.addEventListener('click', window.scanNetworkForDevices);
+    }
     // Always start auto-refresh as backup
     startAutoRefresh();
     // Initialize WebSocket for real-time updates (if available)
@@ -1856,9 +2047,36 @@ window.filterDevicesByGroup = function() {
   }
 }
 
+async function manualRefreshStatus(){
+  const btn = event?.target;
+  if(btn) {
+    btn.disabled = true;
+    btn.textContent = "🔄 Checking...";
+  }
+  
+  try {
+    const result = await api("/api/network/check-device-status", { method: "POST" });
+    
+    if(result.updated > 0){
+      showToast(`Updated ${result.updated} device(s) - reloading...`, "success");
+      await loadDevices();
+    } else {
+      showToast("All devices up to date", "info");
+    }
+  } catch(e) {
+    showToast("Status check failed: " + e.message, "error");
+  } finally {
+    if(btn) {
+      btn.disabled = false;
+      btn.textContent = "🔄 Refresh Status";
+    }
+  }
+}
+
 // Clean up on page unload
 window.addEventListener("beforeunload", () => {
   stopAutoRefresh();
+  stopAutoRefreshDashboard();
   if(typeof disconnectWebSocket === 'function'){
     disconnectWebSocket();
   }

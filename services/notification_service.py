@@ -48,7 +48,14 @@ class NotificationService:
         self.twilio_auth_token = os.getenv("TWILIO_AUTH_TOKEN")
         self.twilio_phone_number = os.getenv("TWILIO_PHONE_NUMBER")
         self.twilio_whatsapp_number = os.getenv("TWILIO_WHATSAPP_NUMBER")
-        self.sms_enabled = os.getenv("SMS_ENABLED", "false").lower() in {"1", "true", "yes", "on"}
+        # Default SMS to enabled when Twilio is configured (set SMS_ENABLED=false to disable)
+        _sms_env = os.getenv("SMS_ENABLED", "").strip().lower()
+        if _sms_env in ("0", "false", "no", "off"):
+            self.sms_enabled = False
+        elif _sms_env in ("1", "true", "yes", "on"):
+            self.sms_enabled = True
+        else:
+            self.sms_enabled = bool(self.twilio_account_sid and self.twilio_auth_token and self.twilio_phone_number)
 
     def _smtp_ready(self) -> bool:
         return bool(self.smtp_user and self.smtp_password and self.from_email)
@@ -100,7 +107,7 @@ class NotificationService:
                 <body style="font-family: Arial, sans-serif; padding: 20px;">
                     <div style="background: {'#dc2626' if severity == 'critical' else '#f59e0b' if severity == 'high' else '#3b82f6'}; 
                                 color: white; padding: 15px; border-radius: 5px; margin-bottom: 20px;">
-                        <h2 style="margin: 0;">🚨 IoT Security Alert</h2>
+                        <h2 style="margin: 0;">🚨 Alert-Pro Alert</h2>
                     </div>
                     
                     <div style="background: #f3f4f6; padding: 20px; border-radius: 5px; margin-bottom: 20px;">
@@ -113,7 +120,7 @@ class NotificationService:
                     <hr style="margin: 30px 0; border: none; border-top: 1px solid #e5e7eb;">
                     
                     <p style="color: #6b7280; font-size: 12px;">
-                        You're receiving this because you have IoT Security Platform monitoring enabled.
+                        You're receiving this because you have Alert-Pro monitoring enabled.
                     </p>
                 </body>
             </html>
@@ -188,8 +195,14 @@ class NotificationService:
             client = Client(self.twilio_account_sid, self.twilio_auth_token)
             client.messages.create(from_=self.twilio_phone_number, to=to_number, body=body)
             return NotificationResult(True, "sms", "Sent")
+        except ModuleNotFoundError as e:
+            if "twilio" in str(e).lower():
+                return NotificationResult(False, "sms", "Twilio package not installed. Run: pip install twilio")
+            return NotificationResult(False, "sms", f"Send failed: {e}")
         except Exception as e:
             error_code = getattr(e, "code", None)
+            if error_code == 21608:
+                return NotificationResult(False, "sms", "We couldn't reach this number. Please check it is correct and try again.", "21608")
             if error_code:
                 detail = f"Twilio error {error_code}: {getattr(e, 'msg', str(e))}"
                 return NotificationResult(False, "sms", detail, str(error_code))
@@ -221,7 +234,16 @@ class NotificationService:
                 body=body,
             )
             return NotificationResult(True, "whatsapp", "Sent")
+        except ModuleNotFoundError as e:
+            if "twilio" in str(e).lower():
+                return NotificationResult(False, "whatsapp", "Twilio package not installed. Run: pip install twilio")
+            return NotificationResult(False, "whatsapp", f"Send failed: {e}")
         except Exception as e:
+            code = getattr(e, "code", None) or getattr(e, "status", None)
+            if code == 63016:
+                return NotificationResult(False, "whatsapp", "WhatsApp couldn't be delivered. Please ensure you've accepted messages from this service and try again.", "63016")
+            if code:
+                return NotificationResult(False, "whatsapp", f"WhatsApp error {code}: {getattr(e, 'msg', str(e))}", str(code))
             return NotificationResult(False, "whatsapp", f"Send failed: {e}")
 
     def make_voice_call(self, to_number: str, twiml: Optional[str] = None) -> NotificationResult:
@@ -239,10 +261,19 @@ class NotificationService:
             from twilio.rest import Client
 
             client = Client(self.twilio_account_sid, self.twilio_auth_token)
-            twiml_payload = twiml or "<Response><Say>Critical alert from IoT Security Platform.</Say></Response>"
+            twiml_payload = twiml or "<Response><Say>This is an automated notification. A device on your account has gone offline. Please check your dashboard.</Say></Response>"
             client.calls.create(from_=self.twilio_phone_number, to=to_number, twiml=twiml_payload)
             return NotificationResult(True, "voice", "Call placed")
+        except ModuleNotFoundError as e:
+            if "twilio" in str(e).lower():
+                return NotificationResult(False, "voice", "Twilio package not installed. Run: pip install twilio")
+            return NotificationResult(False, "voice", f"Call failed: {e}")
         except Exception as e:
+            code = getattr(e, "code", None) or getattr(e, "status", None)
+            if code == 21608:
+                return NotificationResult(False, "voice", "We couldn't place a call to this number. Please check it is correct and try again.", "21608")
+            if code:
+                return NotificationResult(False, "voice", f"Voice error {code}: {getattr(e, 'msg', str(e))}", str(code))
             return NotificationResult(False, "voice", f"Call failed: {e}")
 
 
@@ -282,8 +313,13 @@ async def send_alert_notification(
     service = get_notification_service()
     results = []
     
+    # Log so we can see why a channel might not fire (e.g. SMTP not configured, no phone number)
+    print(f"[NOTIFY] Alert to {user_email} | device={device_name} severity={alert_severity} | "
+          f"email={notification_prefs.get('emailEnabled', True)} sms={notification_prefs.get('smsEnabled')} phone={bool(notification_prefs.get('phoneNumber'))} "
+          f"whatsapp={notification_prefs.get('whatsappEnabled')} wa_num={bool(notification_prefs.get('whatsappNumber'))} voice={notification_prefs.get('voiceEnabled')}")
+    
     # Format the alert message for email
-    subject = f"[{alert_severity.upper()}] IoT Security Alert - {device_name}"
+    subject = f"[{alert_severity.upper()}] Alert-Pro Alert - {device_name}"
     email_message = f"Device: {device_name}\n\n{alert_message}"
     
     # Check if in quiet hours
@@ -317,7 +353,7 @@ async def send_alert_notification(
                 # Skip non-critical alerts during quiet hours
                 if in_quiet_hours and alert_severity != "critical":
                     # Suppress non-critical alerts during quiet hours
-                    return NotificationResult(True, "email", "Suppressed (quiet hours)")
+                    return [NotificationResult(True, "email", "Suppressed (quiet hours)")]
             except (ValueError, AttributeError):
                 # Invalid time format, skip quiet hours check
                 pass
@@ -336,30 +372,56 @@ async def send_alert_notification(
             results.append(NotificationResult(success, "email", "Sent" if success else "Failed"))
     
     # SMS notification
-    if notification_prefs.get("smsEnabled", False):
+    sms_enabled = notification_prefs.get("smsEnabled", False) in (True, "true", "1", 1, "yes", "on")
+    phone_number = (notification_prefs.get("phoneNumber") or "").strip() or None
+    if sms_enabled:
         sms_severities = notification_prefs.get("smsSeverities", ["high", "critical"])
-        phone_number = notification_prefs.get("phoneNumber")
-        if alert_severity in sms_severities and phone_number:
-            sms_body = f"[{alert_severity.upper()}] {device_name}: {alert_message}"
+        if alert_severity not in sms_severities:
+            results.append(NotificationResult(False, "sms", "Skipped (severity not in sms severities)"))
+        elif not phone_number:
+            print("[NOTIFY] Skipping SMS: no phone number in preferences")
+            results.append(NotificationResult(False, "sms", "Skipped (no phone number)"))
+        else:
+            print(f"[NOTIFY] Attempting SMS to {phone_number[:4]}***{phone_number[-2:] if len(phone_number) > 6 else '***'}")
+            sms_body = f"Alert: {device_name} has gone offline. Please check your network or dashboard."
             result = service.send_sms(phone_number, sms_body)
             results.append(result)
+    else:
+        results.append(NotificationResult(False, "sms", "Skipped (SMS disabled in prefs)"))
     
     # WhatsApp notification
-    if notification_prefs.get("whatsappEnabled", False):
+    wa_enabled = notification_prefs.get("whatsappEnabled", False) in (True, "true", "1", 1, "yes", "on")
+    whatsapp_number = (notification_prefs.get("whatsappNumber") or "").strip() or None
+    if wa_enabled:
         whatsapp_severities = notification_prefs.get("whatsappSeverities", ["medium", "high", "critical"])
-        whatsapp_number = notification_prefs.get("whatsappNumber")
-        if alert_severity in whatsapp_severities and whatsapp_number:
-            wa_body = f"🚨 [{alert_severity.upper()}] Alert\n\nDevice: {device_name}\n{alert_message}"
+        if alert_severity not in whatsapp_severities:
+            results.append(NotificationResult(False, "whatsapp", "Skipped (severity not in whatsapp severities)"))
+        elif not whatsapp_number:
+            print("[NOTIFY] Skipping WhatsApp: no WhatsApp number in preferences")
+            results.append(NotificationResult(False, "whatsapp", "Skipped (no whatsapp number)"))
+        else:
+            print(f"[NOTIFY] Attempting WhatsApp to {whatsapp_number[:4]}***{whatsapp_number[-2:] if len(whatsapp_number) > 6 else '***'}")
+            wa_body = f"Alert: {device_name} has gone offline. Please check your WiFi or dashboard."
             result = service.send_whatsapp(whatsapp_number, wa_body)
             results.append(result)
+    else:
+        results.append(NotificationResult(False, "whatsapp", "Skipped (WhatsApp disabled in prefs)"))
     
     # Voice call for critical
-    if notification_prefs.get("voiceEnabled", False):
+    voice_enabled = notification_prefs.get("voiceEnabled", False) in (True, "true", "1", 1, "yes", "on")
+    if voice_enabled:
         voice_severities = notification_prefs.get("voiceSeverities", ["critical"])
-        phone_number = notification_prefs.get("phoneNumber")
-        if alert_severity in voice_severities and phone_number:
-            twiml = f"<Response><Say>Critical alert from I o T Security Platform. {device_name} {alert_message}. Please check your dashboard immediately.</Say></Response>"
+        if alert_severity not in voice_severities:
+            results.append(NotificationResult(False, "voice", "Skipped (severity not in voice severities)"))
+        elif not phone_number:
+            print("[NOTIFY] Skipping Voice: no phone number in preferences")
+            results.append(NotificationResult(False, "voice", "Skipped (no phone number)"))
+        else:
+            print(f"[NOTIFY] Attempting Voice call to {phone_number[:4]}***{phone_number[-2:] if len(phone_number) > 6 else '***'}")
+            twiml = f"<Response><Say>This is an automated notification. Your device {device_name} has gone offline. Please check your WiFi or dashboard.</Say></Response>"
             result = service.make_voice_call(phone_number, twiml)
             results.append(result)
+    else:
+        results.append(NotificationResult(False, "voice", "Skipped (Voice disabled in prefs)"))
     
     return results

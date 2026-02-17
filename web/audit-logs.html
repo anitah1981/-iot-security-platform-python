@@ -6,21 +6,17 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"/>
     <meta http-equiv="Pragma" content="no-cache"/>
     <meta http-equiv="Expires" content="0"/>
-    <title>Audit Logs | IoT Security Platform - Activity History & Compliance</title>
+    <title>Audit Logs | Alert-Pro - Activity History & Compliance</title>
     <meta name="description" content="View comprehensive audit logs of all user actions, device operations, and system changes. Business plan feature for compliance and security monitoring."/>
     <meta name="keywords" content="audit logs, activity history, compliance logs, security audit, user activity tracking, IoT security audit"/>
     <link rel="canonical" href="https://iot-security-platform.com/audit-logs"/>
     <link rel="stylesheet" href="/assets/app.css?v=10"/>
-    <!-- Immediate auth check - runs before page renders -->
+    <!-- Redirect to login if not authenticated; logged-in users see the page straight away -->
     <script>
-      document.write('<style>body{display:none !important;}</style>');
       (function() {
-        const token = localStorage.getItem('iot_token');
-        if (!token) {
+        if (!localStorage.getItem('iot_token')) {
           window.location.replace('/login?redirect=' + encodeURIComponent(window.location.pathname));
-          return;
         }
-        document.body.style.display = '';
       })();
     </script>
     <script defer src="/assets/app.js?v=11"></script>
@@ -33,7 +29,7 @@
         <div class="sidebar-header">
           <div class="sidebar-logo">
             <div class="logo" aria-hidden="true"></div>
-            <h1>IoT Security</h1>
+            <h1>Alert-Pro</h1>
           </div>
           <div class="sidebar-user">
             <div id="who">Loading profile…</div>

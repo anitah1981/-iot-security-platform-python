@@ -61,7 +61,24 @@ def _parse_cors_origins(raw: str | None) -> list[str]:
 async def lifespan(app: FastAPI):
     """Handle startup and shutdown"""
     # Startup
-    print("Starting IoT Security Backend...")
+    print("Starting Alert-Pro Backend...")
+    # Ensure twilio is available in THIS process (fixes "Twilio package not installed" when app is run from IDE/different Python)
+    try:
+        import twilio  # noqa: F401
+    except ModuleNotFoundError:
+        import subprocess
+        import sys
+        print("[NOTIFICATIONS] Twilio not found in this Python - installing with pip...")
+        try:
+            subprocess.run(
+                [sys.executable, "-m", "pip", "install", "twilio"],
+                capture_output=True,
+                timeout=120,
+                check=True,
+            )
+            print("[NOTIFICATIONS] Twilio installed successfully.")
+        except Exception as e:
+            print(f"[NOTIFICATIONS] Could not auto-install twilio: {e}. Run: {sys.executable} -m pip install twilio")
     _check_production_config()
     await init_db(MONGO_URI)
     # Start background monitoring tasks (best-effort)
@@ -71,6 +88,16 @@ async def lifespan(app: FastAPI):
         print("[OK] Heartbeat sweep started")
     except Exception as e:
         print(f"[ERROR] Could not start heartbeat sweep: {e}")
+    
+    # Start device status monitor (active network checks)
+    try:
+        from services.device_status_monitor import start_device_status_monitor
+        start_device_status_monitor(interval_seconds=30)
+        print("[OK] Device status monitor started")
+    except Exception as e:
+        print(f"[ERROR] Could not start device status monitor: {e}")
+        import traceback
+        traceback.print_exc()
     
     # Start alert retention cleanup task
     try:
@@ -94,6 +121,16 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         print(f"[ERROR] Could not start network monitoring: {e}")
     
+    # Log notification/Twilio status so user can see why SMS/WhatsApp/Voice might not send
+    try:
+        from services.notification_service import get_notification_service
+        svc = get_notification_service()
+        twilio_ok = bool(svc.twilio_account_sid and svc.twilio_auth_token)
+        print("[NOTIFICATIONS] Twilio configured:", twilio_ok, "| SMS enabled:", svc.sms_enabled, "| Voice ready:", svc._voice_ready(), "| WhatsApp ready:", svc._whatsapp_ready())
+        if not twilio_ok:
+            print("[NOTIFICATIONS] Set TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_PHONE_NUMBER in .env for SMS/WhatsApp/Voice. Restart app after changing .env.")
+    except Exception as e:
+        print(f"[NOTIFICATIONS] Status check failed: {e}")
     print("Backend ready")
     
     yield
@@ -106,7 +143,7 @@ async def lifespan(app: FastAPI):
 # Create FastAPI app
 # Disable public docs - require authentication
 app = FastAPI(
-    title="IoT Security Platform",
+    title="Alert-Pro",
     version="2.0.0",
     lifespan=lifespan,
     docs_url=None,  # Disable public Swagger UI
@@ -180,6 +217,8 @@ async def security_threats_page():
 @app.get("/security-compliance")
 def security_compliance_page():
     f = WEB_DIR / "security-compliance.html"
+    if not f.exists():
+        return JSONResponse(status_code=404, content={"detail": "Page not found"})
     return FileResponse(str(f))
 
 @app.get("/")
@@ -190,16 +229,20 @@ def root():
     index = WEB_DIR / "index.html"
     if index.exists():
         return FileResponse(str(index))
-    return {"message": "IoT Security Platform API", "version": "2.0.0", "status": "running"}
+    return {"message": "Alert-Pro API", "version": "2.0.0", "status": "running"}
 
 @app.get("/login")
 def login_page():
     f = WEB_DIR / "login.html"
+    if not f.exists():
+        return JSONResponse(status_code=404, content={"detail": "Page not found"})
     return FileResponse(str(f))
 
 @app.get("/signup")
 def signup_page():
     f = WEB_DIR / "signup.html"
+    if not f.exists():
+        return JSONResponse(status_code=404, content={"detail": "Page not found"})
     return FileResponse(str(f))
 
 def _check_auth_for_page(request: Request) -> bool:
@@ -220,49 +263,65 @@ def _check_auth_for_page(request: Request) -> bool:
 
 @app.get("/dashboard")
 def dashboard_page(request: Request):
-    # Client-side will handle redirect, but we can add a check here too
-    # For now, serve the page and let client-side JS handle auth
     f = WEB_DIR / "dashboard.html"
+    if not f.exists():
+        return JSONResponse(status_code=404, content={"detail": "Page not found"})
     return FileResponse(str(f))
 
 @app.get("/settings")
 def settings_page(request: Request):
     f = WEB_DIR / "settings.html"
+    if not f.exists():
+        return JSONResponse(status_code=404, content={"detail": "Page not found"})
     return FileResponse(str(f))
 
 @app.get("/pricing")
 def pricing_page():
     f = WEB_DIR / "pricing.html"
+    if not f.exists():
+        return JSONResponse(status_code=404, content={"detail": "Page not found"})
     return FileResponse(str(f))
 
 @app.get("/forgot-password")
 def forgot_password_page():
     f = WEB_DIR / "forgot-password.html"
+    if not f.exists():
+        return JSONResponse(status_code=404, content={"detail": "Page not found"})
     return FileResponse(str(f))
 
 @app.get("/reset-password")
 def reset_password_page():
     f = WEB_DIR / "reset-password.html"
+    if not f.exists():
+        return JSONResponse(status_code=404, content={"detail": "Page not found"})
     return FileResponse(str(f))
 
 @app.get("/verify-email")
 def verify_email_page():
     f = WEB_DIR / "verify-email.html"
+    if not f.exists():
+        return JSONResponse(status_code=404, content={"detail": "Page not found"})
     return FileResponse(str(f))
 
 @app.get("/terms")
 def terms_page():
     f = WEB_DIR / "terms.html"
+    if not f.exists():
+        return JSONResponse(status_code=404, content={"detail": "Page not found"})
     return FileResponse(str(f))
 
 @app.get("/privacy")
 def privacy_page():
     f = WEB_DIR / "privacy.html"
+    if not f.exists():
+        return JSONResponse(status_code=404, content={"detail": "Page not found"})
     return FileResponse(str(f))
 
 @app.get("/family")
 def family_page():
     f = WEB_DIR / "family.html"
+    if not f.exists():
+        return JSONResponse(status_code=404, content={"detail": "Page not found"})
     return FileResponse(str(f))
 
 @app.get("/audit-logs")
@@ -279,7 +338,7 @@ def incidents_page():
 def health():
     return {
         "ok": True,
-        "service": "iot-security-platform",
+        "service": "alert-pro",
         "timestamp": datetime.utcnow().isoformat(),
         "database": "connected"
     }
@@ -380,3 +439,16 @@ app.include_router(network_router, prefix="/api/network", tags=["Network Monitor
 
 # Mount Socket.IO for real-time updates - Temporarily disabled
 # app.mount("/socket.io", socket_app)
+
+
+if __name__ == "__main__":
+    import uvicorn
+    print(f"[INFO] Starting IoT Security Platform on http://localhost:{PORT}")
+    print(f"[INFO] Environment: {os.getenv('APP_ENV', 'local')}")
+    print(f"[INFO] MongoDB: {MONGO_URI.split('@')[1] if '@' in MONGO_URI else 'localhost'}")
+    uvicorn.run(
+        app,
+        host="0.0.0.0",
+        port=PORT,
+        log_level="info"
+    )

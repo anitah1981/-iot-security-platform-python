@@ -3,21 +3,17 @@
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <title>Family Sharing | IoT Security Platform - Share Device Access</title>
+  <title>Family Sharing | Alert-Pro - Share Device Access</title>
   <meta name="description" content="Share IoT device monitoring and security alerts with your family members. Invite household members to access your smart home security dashboard and receive alerts."/>
   <meta name="robots" content="noindex, follow"/>
   <link rel="canonical" href="https://iot-security-platform.com/family"/>
   <link rel="stylesheet" href="/assets/app.css?v=10"/>
-  <!-- Immediate auth check - runs before page renders -->
+  <!-- Redirect to login if not authenticated; logged-in users see the page straight away -->
   <script>
-    document.write('<style>body{display:none !important;}</style>');
     (function() {
-      const token = localStorage.getItem('iot_token');
-      if (!token) {
+      if (!localStorage.getItem('iot_token')) {
         window.location.replace('/login?redirect=' + encodeURIComponent(window.location.pathname));
-        return;
       }
-      document.body.style.display = '';
     })();
   </script>
   <script defer src="/assets/app.js?v=11"></script>
@@ -30,7 +26,7 @@
       <div class="sidebar-header">
         <div class="sidebar-logo">
           <div class="logo" aria-hidden="true"></div>
-          <h1>IoT Security</h1>
+          <h1>Alert-Pro</h1>
         </div>
         <div class="sidebar-user">
           <div id="who">Loading...</div>

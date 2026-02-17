@@ -3,7 +3,7 @@ from fastapi import APIRouter, HTTPException, status, Depends, Request
 from datetime import datetime
 from bson import ObjectId
 
-from models import NotificationPreferences, NotificationPreferencesResponse
+from models import NotificationPreferences, NotificationPreferencesResponse, NotificationPreferencesSaveResponse
 from services.notification_service import get_notification_service, NotificationResult
 from routes.auth import get_current_user
 from database import get_database
@@ -37,6 +37,64 @@ def _is_valid_e164(value: str) -> bool:
         return False
     digits = value[1:]
     return digits.isdigit() and 8 <= len(digits) <= 15
+
+
+async def _send_verification_to_all_channels(
+    current_user: dict,
+    preferences: NotificationPreferences,
+    service,
+) -> tuple[dict, list]:
+    """
+    Send a one-off verification to each enabled channel so the user can confirm
+    their details are correct. No further action required from the consumer.
+    Returns (verification_sent: {channel: bool}, verification_failed: [{channel, message}]).
+    """
+    verification_sent = {"email": False, "sms": False, "whatsapp": False, "voice": False}
+    verification_failed = []
+    user_email = (current_user.get("email") or "").strip()
+    phone = (preferences.phone_number or "").strip() or None
+    whatsapp_number = (preferences.whatsapp_number or "").strip() or None
+
+    # Email
+    if preferences.email_enabled and user_email:
+        try:
+            ok = await service._send_email(
+                to_email=user_email,
+                subject="Alert-Pro – your email is set up",
+                message="This is a verification. Your email is set up correctly. You'll receive alerts here when a device goes offline.",
+                severity="low",
+                alert_id="verification",
+            )
+            verification_sent["email"] = ok
+            if not ok:
+                verification_failed.append({"channel": "email", "message": "We couldn't send a verification email. Please check your address and try again."})
+        except Exception as e:
+            print(f"[VERIFY] Email failed: {e}")
+            verification_failed.append({"channel": "email", "message": "We couldn't send a verification email. Please check your address and try again."})
+
+    # SMS
+    if preferences.sms_enabled and phone:
+        result = service.send_sms(phone, "Alert-Pro: Your number is set up correctly. You'll receive alerts here when a device goes offline.")
+        verification_sent["sms"] = result.ok
+        if not result.ok:
+            verification_failed.append({"channel": "sms", "message": "We couldn't send a verification text. Please check your number and try again."})
+
+    # WhatsApp
+    if preferences.whatsapp_enabled and whatsapp_number:
+        result = service.send_whatsapp(whatsapp_number, "Alert-Pro: Your number is set up correctly. You'll receive alerts here when a device goes offline.")
+        verification_sent["whatsapp"] = result.ok
+        if not result.ok:
+            verification_failed.append({"channel": "whatsapp", "message": "We couldn't send a verification to WhatsApp. Please check the number and try again."})
+
+    # Voice
+    if preferences.voice_enabled and phone:
+        twiml = "<Response><Say>This is a verification call from Alert-Pro. Your number is set up correctly. You will receive alert calls here when a device goes offline.</Say></Response>"
+        result = service.make_voice_call(phone, twiml)
+        verification_sent["voice"] = result.ok
+        if not result.ok:
+            verification_failed.append({"channel": "voice", "message": "We couldn't place a verification call. Please check your number and try again."})
+
+    return verification_sent, verification_failed
 
 @router.get("/", response_model=NotificationPreferencesResponse)
 async def get_notification_preferences(current_user = Depends(get_current_user)):
@@ -94,6 +152,45 @@ async def get_notification_preferences(current_user = Depends(get_current_user))
     )
 
 
+@router.post("/test-offline-alert")
+async def test_offline_alert(current_user=Depends(get_current_user)):
+    """
+    Trigger the exact same notification flow as when a device goes offline.
+    Use this to test that SMS, WhatsApp, and Voice actually reach you without turning WiFi off.
+    """
+    from services.notification_service import send_alert_notification
+    db = await get_database()
+    user_id = ObjectId(current_user["_id"])
+    user = await db.users.find_one({"_id": user_id})
+    if not user:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+    prefs_doc = await db.notification_preferences.find_one({"userId": user_id})
+    notif_prefs = {**DEFAULT_PREFS}
+    if prefs_doc:
+        for k, v in prefs_doc.items():
+            if k in DEFAULT_PREFS and v is not None:
+                if k in ("emailEnabled", "smsEnabled", "whatsappEnabled", "voiceEnabled", "quietHoursEnabled", "escalationEnabled"):
+                    notif_prefs[k] = v in (True, "true", "1", 1, "yes", "on")
+                else:
+                    notif_prefs[k] = v
+    device_name = "Test Device"
+    message = "Test offline alert – if you receive this, notifications work."
+    results = await send_alert_notification(
+        user_email=user.get("email", ""),
+        user_name=user.get("name", "User"),
+        device_name=device_name,
+        alert_message=message,
+        alert_severity="critical",
+        notification_prefs=notif_prefs,
+        alert_id="test-offline-alert",
+    )
+    return {
+        "ok": True,
+        "message": "Test offline alert sent. Check your phone/SMS/WhatsApp/email.",
+        "results": [{"channel": r.channel, "ok": r.ok, "detail": r.detail} for r in results],
+    }
+
+
 @router.post("/test/{channel}")
 async def test_notification_channel(
     channel: str,
@@ -125,8 +222,8 @@ async def test_notification_channel(
     result: NotificationResult
 
     if channel == "email":
-        subject = "Test notification — IoT Security Platform"
-        message = "This is a test email notification from your IoT Security Platform settings."
+        subject = "Test notification — Alert-Pro"
+        message = "This is a test email notification from your Alert-Pro settings."
         success = await service._send_email(
             to_email=current_user.get("email", ""),
             subject=subject,
@@ -137,21 +234,24 @@ async def test_notification_channel(
         result = NotificationResult(success, "email", "Sent" if success else "Failed")
     elif channel == "sms":
         if not service.sms_enabled:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="SMS disabled by server configuration")
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="SMS is disabled. Configure Twilio (TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_PHONE_NUMBER) in .env, or set SMS_ENABLED=true to enable."
+            )
         phone_number = prefs.get("phoneNumber")
         if not phone_number:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Phone number is required for SMS")
-        result = service.send_sms(phone_number, "Test SMS from IoT Security Platform.")
+        result = service.send_sms(phone_number, "Test SMS from Alert-Pro.")
     elif channel == "whatsapp":
         whatsapp_number = prefs.get("whatsappNumber")
         if not whatsapp_number:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="WhatsApp number is required")
-        result = service.send_whatsapp(whatsapp_number, "Test WhatsApp message from IoT Security Platform.")
+        result = service.send_whatsapp(whatsapp_number, "Test WhatsApp message from Alert-Pro.")
     else:
         phone_number = prefs.get("phoneNumber")
         if not phone_number:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Phone number is required for voice calls")
-        twiml = "<Response><Say>This is a test call from IoT Security Platform.</Say></Response>"
+        twiml = "<Response><Say>This is a test call from Alert-Pro.</Say></Response>"
         result = service.make_voice_call(phone_number, twiml)
 
     return {
@@ -161,7 +261,7 @@ async def test_notification_channel(
         "error_code": result.error_code,
     }
 
-@router.put("/", response_model=NotificationPreferencesResponse)
+@router.put("/", response_model=NotificationPreferencesSaveResponse)
 async def update_notification_preferences(
     preferences: NotificationPreferences,
     current_user = Depends(get_current_user)
@@ -177,7 +277,7 @@ async def update_notification_preferences(
     if preferences.sms_enabled and not service.sms_enabled:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="SMS is disabled by server configuration. Keep it off until UK regulatory requirements are complete."
+            detail="SMS is not available right now. Please use another channel or try again later."
         )
 
     if (preferences.sms_enabled or preferences.voice_enabled) and not preferences.phone_number:
@@ -250,9 +350,21 @@ async def update_notification_preferences(
         )
     except Exception as e:
         print(f"Failed to log notification preferences update: {e}")
-    
-    return NotificationPreferencesResponse(
+
+    # Automatically send verification to each enabled channel so the user can confirm their details — no further action required.
+    service = get_notification_service()
+    verification_sent = {}
+    verification_failed = []
+    try:
+        verification_sent, verification_failed = await _send_verification_to_all_channels(current_user, preferences, service)
+    except Exception as e:
+        print(f"[VERIFY] Verification send error: {e}")
+        verification_failed.append({"channel": "all", "message": "We couldn't send all verifications. Please try again in a moment."})
+
+    return NotificationPreferencesSaveResponse(
         user_id=str(user_id),
         **preferences.dict(),
-        updated_at=prefs_doc["updatedAt"]
+        updated_at=prefs_doc["updatedAt"],
+        verification_sent=verification_sent,
+        verification_failed=verification_failed,
     )

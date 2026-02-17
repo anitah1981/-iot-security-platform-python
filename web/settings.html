@@ -3,21 +3,17 @@
   <head>
     <meta charset="utf-8"/>
     <meta name="viewport" content="width=device-width, initial-scale=1"/>
-    <title>Account Settings | IoT Security Platform - Manage Your Profile</title>
-    <meta name="description" content="Manage your IoT Security Platform account settings, notification preferences, subscription, password, and multi-factor authentication."/>
+    <title>Account Settings | Alert-Pro - Manage Your Profile</title>
+    <meta name="description" content="Manage your Alert-Pro account settings, notification preferences, subscription, password, and multi-factor authentication."/>
     <meta name="robots" content="noindex, follow"/>
     <link rel="canonical" href="https://iot-security-platform.com/settings"/>
     <link rel="stylesheet" href="/assets/app.css?v=10"/>
-    <!-- Immediate auth check - runs before page renders -->
+    <!-- Redirect to login if not authenticated; logged-in users see the page straight away -->
     <script>
-      document.write('<style>body{display:none !important;}</style>');
       (function() {
-        const token = localStorage.getItem('iot_token');
-        if (!token) {
+        if (!localStorage.getItem('iot_token')) {
           window.location.replace('/login?redirect=' + encodeURIComponent(window.location.pathname));
-          return;
         }
-        document.body.style.display = '';
       })();
     </script>
     <script defer src="/assets/app.js?v=11"></script>
@@ -29,7 +25,7 @@
         <div class="sidebar-header">
           <div class="sidebar-logo">
             <div class="logo" aria-hidden="true"></div>
-            <h1>IoT Security</h1>
+            <h1>Alert-Pro</h1>
           </div>
           <div class="sidebar-user">
             <div id="who">Loading profile…</div>
@@ -186,6 +182,21 @@
                 🔒 Your account is secured with enterprise-grade encryption
               </p>
             </div>
+          </div>
+        </div>
+
+        <!-- Router IP & Network Card -->
+        <div class="card">
+          <h2>🌐 Router IP &amp; Network</h2>
+          <p class="sub">Set your router/gateway IP so the app can help discover devices on your network (e.g. for &quot;Scan Network&quot; on the Dashboard).</p>
+          <div class="hint" id="routerIpMsg" style="margin: 12px 0;"></div>
+          <div style="max-width: 500px; margin-top: 16px;">
+            <label style="display: block; margin-bottom: 6px; font-size: 14px; font-weight: 500;">Router / Gateway IP</label>
+            <div style="display: flex; gap: 8px; align-items: flex-end; flex-wrap: wrap;">
+              <input type="text" id="settingsRouterIp" pattern="^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$" placeholder="e.g. 192.168.1.1" style="flex: 1; min-width: 180px; padding: 10px 14px; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-size: 14px;" />
+              <button type="button" class="btn" id="saveRouterIpBtn" style="background: var(--primary); color: white; padding: 10px 20px; font-weight: 600;">Save Router IP</button>
+            </div>
+            <p style="font-size: 12px; color: var(--muted); margin-top: 8px;">Use this in Dashboard → Add or Find Devices → Scan Network to detect devices.</p>
           </div>
         </div>
       </div>
@@ -412,6 +423,7 @@
           await loadNotificationPreferences();
           await loadMfaStatus();
           await loadDeviceAgentKey();
+          await loadRouterIpSettings();
         } catch(e) {
           if (e && e.unauthorized) {
             clearAuth();
@@ -422,6 +434,46 @@
           if (msg) { msg.textContent = e?.message || "Something went wrong. Please try again."; msg.className = "msg bad"; }
           return;
         }
+      }
+
+      async function loadRouterIpSettings() {
+        const input = document.getElementById("settingsRouterIp");
+        const msg = document.getElementById("routerIpMsg");
+        if (!input) return;
+        try {
+          const settings = await api("/api/network-settings");
+          input.value = settings.router_ip || "";
+          if (msg) msg.textContent = "";
+        } catch (e) {
+          input.value = "";
+          if (msg) msg.textContent = "Could not load network settings.";
+        }
+      }
+      async function saveRouterIpFromSettings() {
+        const input = document.getElementById("settingsRouterIp");
+        const msg = document.getElementById("routerIpMsg");
+        const btn = document.getElementById("saveRouterIpBtn");
+        if (!input || !btn) return;
+        const routerIp = input.value.trim();
+        if (!routerIp) {
+          if (msg) { msg.textContent = "Please enter your router IP address."; msg.className = "msg bad"; }
+          return;
+        }
+        const ipPattern = /^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$/;
+        if (!ipPattern.test(routerIp)) {
+          if (msg) { msg.textContent = "Please enter a valid IP (e.g. 192.168.1.1)."; msg.className = "msg bad"; }
+          return;
+        }
+        setButtonLoading(btn, true, "Saving…");
+        if (msg) msg.textContent = "";
+        try {
+          await api("/api/network-settings", { method: "PUT", body: { router_ip: routerIp } });
+          if (msg) { msg.textContent = "Router IP saved. You can scan for devices from the Dashboard."; msg.className = "msg ok"; }
+          setTimeout(() => { if (msg) msg.textContent = ""; }, 3000);
+        } catch (e) {
+          if (msg) { msg.textContent = (e.message || "Failed to save."); msg.className = "msg bad"; }
+        }
+        setButtonLoading(btn, false, "Save Router IP");
       }
 
       // Device agent API key (must be in same scope as loadSettings so it's defined when loadSettings runs)
@@ -483,6 +535,15 @@
           };
           
           container.innerHTML = `
+            <div style="background: linear-gradient(135deg, rgba(47,107,255,.12), rgba(47,107,255,.06)); border: 1px solid rgba(47,107,255,.25); border-radius: 10px; padding: 16px; margin-bottom: 20px;">
+              <strong style="font-size: 14px;">📞 How notifications work</strong>
+              <ul style="margin: 10px 0 0 20px; font-size: 13px; color: var(--muted); line-height: 1.6;">
+                <li>Enter your <strong>phone number</strong> (e.g. +441234567890) and, if you want WhatsApp, your <strong>WhatsApp number</strong>.</li>
+                <li>Turn on the toggles for <strong>Email</strong>, <strong>SMS</strong>, <strong>WhatsApp</strong>, and <strong>Voice call</strong> as you prefer.</li>
+                <li>Click <strong>Save Notification Preferences</strong>. We'll send a verification to each channel you enabled so you can confirm your details are correct. Check your inbox and phone — no further action needed.</li>
+                <li>When a device goes offline, you'll receive an alert on the channels you enabled.</li>
+              </ul>
+            </div>
             <form id="notificationForm">
               <!-- Email Notifications -->
               <div style="padding: 20px; background: var(--surface-alt); border-radius: 8px; margin-bottom: 16px;">
@@ -608,7 +669,11 @@
                   <button type="button" id="testVoiceBtn" onclick="testNotification('voice')" class="btn-sm" style="background: var(--primary); color: white;">
                     Test Voice Call
                   </button>
+                  <button type="button" id="testOfflineAlertBtn" onclick="testOfflineAlert()" class="btn-sm" style="background: #059669; color: white;">
+                    Test full offline alert (SMS + WhatsApp + Voice)
+                  </button>
                 </div>
+                <p style="margin-top: 10px; font-size: 12px; color: var(--muted);">Use "Test full offline alert" to trigger the same flow as when a device goes offline. You should receive a call, SMS, and WhatsApp if configured.</p>
               </div>
 
               <!-- Save Button -->
@@ -685,27 +750,50 @@
             quiet_hours_end: document.getElementById("quietHoursEnabled").checked ? document.getElementById("quietHoursEnd").value : null,
           };
 
-          setButtonLoading(saveBtn, true, "Saving...");
-          await api("/api/notification-preferences/", {
+          setButtonLoading(saveBtn, true, "Saving & sending verification...");
+          const res = await api("/api/notification-preferences/", {
             method: "PUT",
             body: prefs
           });
 
-          msg.className = "msg ok";
-          msg.textContent = "✓ Notification preferences saved successfully!";
-          showToast("Notification preferences saved.", "success");
-          
+          const sent = res.verification_sent || {};
+          const failed = res.verification_failed || [];
+          const channels = [];
+          if (sent.email) channels.push("email");
+          if (sent.sms) channels.push("text");
+          if (sent.whatsapp) channels.push("WhatsApp");
+          if (sent.voice) channels.push("call");
+          const anySent = channels.length > 0;
+          const anyFailed = failed.length > 0;
+
+          msg.className = anyFailed ? "msg bad" : "msg ok";
+          if (anySent) {
+            msg.textContent = "✓ Preferences saved. We've sent a verification to your " + channels.join(", ") + ". Check your inbox and phone to confirm your details are correct.";
+            showToast("Preferences saved. Check your email and phone for verification.", "success");
+          } else {
+            msg.textContent = "✓ Preferences saved.";
+            showToast("Preferences saved.", "success");
+          }
+          if (anyFailed) {
+            const failLines = failed.map(f => f.message).filter(Boolean);
+            if (failLines.length) {
+              msg.textContent = (msg.textContent || "✓ Preferences saved. ") + " " + failLines.join(" ");
+              msg.className = "msg bad";
+            }
+          }
+          hideSmsComplianceBanner();
           setTimeout(() => {
             msg.textContent = "";
             msg.className = "msg";
-          }, 3000);
+          }, 8000);
 
         } catch(e) {
           msg.className = "msg bad";
           msg.textContent = `✗ ${e.message}`;
           showToast(e.message || "Failed to save notification preferences.", "error");
-          if(String(e.message || "").includes("SMS disabled")){
-            showSmsComplianceBanner("SMS is currently disabled by server configuration.");
+          const err = String(e.message || "").toLowerCase();
+          if(err.includes("sms") && (err.includes("disabled") || err.includes("twilio"))){
+            showSmsComplianceBanner("SMS is disabled. Configure Twilio in .env and run: pip install twilio");
           }
         } finally {
           setButtonLoading(saveBtn, false);
@@ -961,11 +1049,7 @@
             msg.className = "msg bad";
             msg.textContent = `✗ ${response.detail || "Failed to send test notification."}`;
             const detail = String(response.detail || "");
-            if(response.error_code === "21612" || detail.includes("21612")){
-              showSmsComplianceBanner("SMS sending is blocked in the UK without geo-permissions or a UK regulatory bundle.");
-            } else if(detail.toLowerCase().includes("sms disabled")){
-              showSmsComplianceBanner("SMS is currently disabled by server configuration.");
-            }
+            showSmsComplianceBanner(detail || "Notification could not be sent. Please check your number and try again.");
           }
           
           setTimeout(() => {
@@ -978,11 +1062,33 @@
           msg.textContent = `✗ Failed to send test ${channel}: ${e.message}`;
           const detail = String(e.message || "");
           if(detail.includes("21612")){
-            showSmsComplianceBanner("SMS sending is blocked in the UK without geo-permissions or a UK regulatory bundle.");
-          } else if(detail.toLowerCase().includes("sms disabled")){
-            showSmsComplianceBanner("SMS is currently disabled by server configuration.");
+            showSmsComplianceBanner("SMS could not be sent to this region. Please try another channel or contact support.");
+          } else {
+            showSmsComplianceBanner(detail || "Notification could not be sent. Please check your number and settings.");
           }
           showToast(detail || "Test notification failed.", "error");
+        } finally {
+          setButtonLoading(btn, false);
+        }
+      }
+
+      async function testOfflineAlert() {
+        const msg = document.querySelector("#notificationmsg");
+        const btn = document.querySelector("#testOfflineAlertBtn");
+        if (!msg || !btn) return;
+        setButtonLoading(btn, true, "Sending…");
+        msg.className = "msg";
+        msg.textContent = "Sending test offline alert (SMS + WhatsApp + Voice)…";
+        try {
+          const res = await api("/api/notification-preferences/test-offline-alert", { method: "POST" });
+          const lines = (res.results || []).map(r => `${r.channel}: ${r.ok ? "✓ " : "✗ "}${r.detail}`);
+          msg.className = res.ok ? "msg ok" : "msg bad";
+          msg.textContent = res.message + (lines.length ? "\n" + lines.join("\n") : "");
+          showToast(res.message, res.ok ? "success" : "info");
+        } catch (e) {
+          msg.className = "msg bad";
+          msg.textContent = "✗ " + (e.message || "Failed to send test offline alert.");
+          showToast(e.message || "Test failed.", "error");
         } finally {
           setButtonLoading(btn, false);
         }
@@ -1261,6 +1367,9 @@
           document.querySelector("#mfaBackupBtn").addEventListener("click", regenerateBackupCodes);
         }
 
+        if (document.getElementById("saveRouterIpBtn")) {
+          document.getElementById("saveRouterIpBtn").addEventListener("click", saveRouterIpFromSettings);
+        }
         // Device agent API key – attach listeners (functions defined above)
         if (document.getElementById("deviceAgentKeyRegenerateBtn")) {
           document.getElementById("deviceAgentKeyRegenerateBtn").addEventListener("click", regenerateDeviceAgentKey);

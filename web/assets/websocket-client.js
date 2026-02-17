@@ -166,7 +166,7 @@ function handleNewAlert(data) {
   
   // Show browser notification if permitted
   if (Notification.permission === 'granted') {
-    new Notification('New IoT Security Alert', {
+    new Notification('New Alert-Pro Alert', {
       body: `${alert.severity.toUpperCase()}: ${alert.message}`,
       icon: '/assets/logo.png',
       tag: alert.id

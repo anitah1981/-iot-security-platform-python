@@ -261,7 +261,7 @@ async def invite_family_member(
             body=f"""
             <h2>Family Invitation</h2>
             <p>Hi {invitation_data.name}!</p>
-            <p><strong>{current_user['name']}</strong> has invited you to join their family on the IoT Security Platform:</p>
+            <p><strong>{current_user['name']}</strong> has invited you to join their family on Alert-Pro:</p>
             <h3>{family_doc['name']}</h3>
             <p>{family_doc.get('description', '')}</p>
             <p><strong>Your role:</strong> {invitation_data.role.title()}</p>
