@@ -551,7 +551,10 @@ async def leave_family(current_user: dict = Depends(get_current_user)):
     
     # Check if owner
     family_doc = await db.families.find_one({"_id": family_id})
-    if family_doc["owner_id"] == user_id:
+    if not family_doc:
+        # Family missing - can't check ownership, allow leaving
+        pass
+    elif family_doc["owner_id"] == user_id:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Family owner cannot leave. Transfer ownership or delete the family first."
