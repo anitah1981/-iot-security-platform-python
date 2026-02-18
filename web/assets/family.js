@@ -169,9 +169,11 @@ function renderInvitations(invitations) {
   const tbody = document.getElementById('invitationsTable');
   
   if (!invitations || invitations.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="6" class="hint">No pending invitations</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="7" class="hint">No pending invitations</td></tr>';
     return;
   }
+  
+  const isAdmin = currentUser && currentFamily && currentUser.id === currentFamily.owner_id;
   
   tbody.innerHTML = invitations.map(inv => `
     <tr>
@@ -181,6 +183,12 @@ function renderInvitations(invitations) {
       <td>${new Date(inv.created_at).toLocaleDateString()}</td>
       <td>${new Date(inv.expires_at).toLocaleDateString()}</td>
       <td><span class="badge b-warn">${esc(inv.status)}</span></td>
+      <td>
+        ${inv.status === 'pending' && isAdmin ? 
+          `<button class="btn-sm danger" onclick="cancelInvitation('${esc(inv.id)}')">Cancel</button>` : 
+          '-'
+        }
+      </td>
     </tr>
   `).join('');
 }
@@ -263,6 +271,28 @@ async function leaveFamily() {
     window.location.reload();
   } catch (error) {
     alert('Failed to leave family: ' + error.message);
+  }
+}
+
+async function cancelInvitation(invitationId) {
+  if (!confirm('Are you sure you want to cancel this invitation?')) {
+    return;
+  }
+  
+  try {
+    await api(`/api/family/invitations/${invitationId}`, {
+      method: 'DELETE'
+    });
+    
+    // Reload invitations
+    await loadInvitations();
+    
+    // Show success message
+    if (typeof showToast === 'function') {
+      showToast('Invitation cancelled successfully', 'success');
+    }
+  } catch (error) {
+    alert('Failed to cancel invitation: ' + error.message);
   }
 }
 

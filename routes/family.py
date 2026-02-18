@@ -117,10 +117,37 @@ async def get_my_family(current_user: dict = Depends(get_current_user)):
     family_id = membership["family_id"]
     family_doc = await db.families.find_one({"_id": family_id})
     if not family_doc:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Family not found"
-        )
+        # Family document missing but membership exists - repair by recreating family
+        # Get owner info from membership
+        owner_member = await db.family_members.find_one({"family_id": family_id, "role": "admin"})
+        if not owner_member:
+            owner_member = await db.family_members.find_one({"family_id": family_id})
+        
+        if owner_member:
+            owner_user = await db.users.find_one({"_id": owner_member["user_id"]})
+            if owner_user:
+                # Recreate family document
+                family_doc = {
+                    "_id": family_id,  # Use existing family_id
+                    "name": "My Family",  # Default name
+                    "description": "Family recreated automatically",
+                    "owner_id": owner_member["user_id"],
+                    "owner_name": owner_user.get("name", "Unknown"),
+                    "owner_email": owner_user.get("email", ""),
+                    "created_at": owner_member.get("joined_at", datetime.utcnow()),
+                    "updated_at": datetime.utcnow()
+                }
+                await db.families.insert_one(family_doc)
+            else:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="Family not found - owner account missing"
+                )
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Family not found - no members found"
+            )
     
     # Get all members
     members = await db.family_members.find({"family_id": family_id}).to_list(100)
@@ -197,10 +224,37 @@ async def invite_family_member(
     # Get family details
     family_doc = await db.families.find_one({"_id": family_id})
     if not family_doc:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Family not found"
-        )
+        # Family document missing but membership exists - repair by recreating family
+        # Get owner info from membership
+        owner_member = await db.family_members.find_one({"family_id": family_id, "role": "admin"})
+        if not owner_member:
+            owner_member = await db.family_members.find_one({"family_id": family_id})
+        
+        if owner_member:
+            owner_user = await db.users.find_one({"_id": owner_member["user_id"]})
+            if owner_user:
+                # Recreate family document
+                family_doc = {
+                    "name": "My Family",  # Default name
+                    "description": "Family recreated automatically",
+                    "owner_id": owner_member["user_id"],
+                    "owner_name": owner_user.get("name", "Unknown"),
+                    "owner_email": owner_user.get("email", ""),
+                    "created_at": owner_member.get("joined_at", datetime.utcnow()),
+                    "updated_at": datetime.utcnow()
+                }
+                await db.families.insert_one(family_doc)
+                family_doc["_id"] = family_id
+            else:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="Family not found - owner account missing"
+                )
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Family not found - no members found"
+            )
     
     # Check if email is already a member
     existing_member = await db.family_members.find_one({
@@ -507,3 +561,57 @@ async def leave_family(current_user: dict = Depends(get_current_user)):
     await db.family_members.delete_one({"_id": membership["_id"]})
     
     return {"message": "Successfully left the family"}
+
+
+@router.delete("/invitations/{invitation_id}")
+async def cancel_invitation(
+    invitation_id: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """Cancel a pending invitation (admin only)"""
+    db = await get_database()
+    user_id = current_user["_id"]
+    
+    # Check if user is admin
+    membership = await db.family_members.find_one({"user_id": user_id})
+    if not membership or membership["role"] != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only family admins can cancel invitations"
+        )
+    
+    family_id = membership["family_id"]
+    
+    # Find invitation
+    try:
+        invitation_obj_id = ObjectId(invitation_id)
+    except:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid invitation ID"
+        )
+    
+    invitation = await db.family_invitations.find_one({
+        "_id": invitation_obj_id,
+        "family_id": family_id
+    })
+    
+    if not invitation:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Invitation not found"
+        )
+    
+    if invitation["status"] != "pending":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Can only cancel pending invitations"
+        )
+    
+    # Cancel invitation
+    await db.family_invitations.update_one(
+        {"_id": invitation_obj_id},
+        {"$set": {"status": "cancelled", "cancelled_at": datetime.utcnow()}}
+    )
+    
+    return {"message": "Invitation cancelled successfully"}
