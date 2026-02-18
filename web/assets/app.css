@@ -87,8 +87,9 @@ a:hover{ text-decoration:underline; }
 }
 
 .sidebar-logo .logo{
-  width: 160px;
   height: 160px;
+  width: auto;
+  max-width: 300px;
   border-radius: 16px;
   object-fit: contain;
   flex-shrink: 0;
@@ -208,7 +209,7 @@ a:hover{ text-decoration:underline; }
 }
 .brand{ display:flex; align-items:center; gap:20px; }
 .logo{
-  width:160px; height:160px; border-radius: 16px;
+  height:160px; width:auto; max-width:300px; border-radius: 16px;
   object-fit: contain;
   flex-shrink: 0;
   display: block;
