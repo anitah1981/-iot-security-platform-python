@@ -314,8 +314,11 @@ async def get_usage(user: dict = Depends(get_current_user)):
             detail="Invalid plan configuration"
         )
     
-    # Count user's devices
-    device_count = await db.devices.count_documents({"userId": user["_id"]})
+    # Count user's devices (exclude soft-deleted; support both userId and user_id)
+    device_count = await db.devices.count_documents({
+        "$or": [{"userId": user["_id"]}, {"user_id": user["_id"]}],
+        "isDeleted": {"$ne": True}
+    })
     
     # Count alerts in retention period
     from datetime import timedelta

@@ -40,9 +40,12 @@ class PlanLimits:
         if device_limit < 0:
             return True
         
-        # Count user's devices
+        # Count user's devices (exclude soft-deleted devices)
         db = await get_database()
-        device_count = await db.devices.count_documents({"userId": user["_id"]})
+        device_count = await db.devices.count_documents({
+            "userId": user["_id"],
+            "isDeleted": {"$ne": True}
+        })
         
         if device_count >= device_limit:
             raise HTTPException(
@@ -77,9 +80,12 @@ class PlanLimits:
         
         device_limit = plan_config["device_limit"]
         
-        # Count user's devices
+        # Count user's devices (exclude soft-deleted devices)
         db = await get_database()
-        device_count = await db.devices.count_documents({"userId": user["_id"]})
+        device_count = await db.devices.count_documents({
+            "userId": user["_id"],
+            "isDeleted": {"$ne": True}
+        })
         
         if device_limit < 0:
             return {

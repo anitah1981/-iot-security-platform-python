@@ -19,10 +19,10 @@ PLANS = {
         "price": 0,
         "currency": "gbp",
         "interval": "month",
-        "device_limit": 5,
+        "device_limit": 3,
         "history_days": 30,
         "features": [
-            "Up to 5 devices",
+            "Up to 3 devices",
             "30-day alert history",
             "Email notifications",
             "Basic dashboard",

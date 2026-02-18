@@ -1,4 +1,6 @@
 # routes/devices.py - Device Management Routes
+import re
+import secrets
 from fastapi import APIRouter, HTTPException, status, Query, Depends, Request
 from typing import Optional
 from bson import ObjectId
@@ -31,6 +33,27 @@ async def _can_manage_devices(user_id: ObjectId, db) -> bool:
     if not membership:
         return True  # Not in family, full control
     return membership.get("can_manage_devices", True)
+
+
+def _slug_device_id(name: str) -> str:
+    """Generate a URL-safe device_id from name (e.g. 'Living Room Speaker' -> 'living-room-speaker')."""
+    s = re.sub(r"[^a-z0-9]+", "-", (name or "").lower()).strip("-") or "device"
+    return s[:50]  # cap length
+
+
+async def _ensure_unique_device_id(db, device_id: str, user_id: ObjectId, family_id: Optional[ObjectId]) -> str:
+    """If device_id already exists, append random suffix until unique."""
+    for _ in range(20):
+        if family_id:
+            exists = await db.devices.find_one({"deviceId": device_id, "family_id": family_id})
+        else:
+            exists = await db.devices.find_one(
+                {"deviceId": device_id, "$or": [{"userId": user_id}, {"user_id": user_id}]}
+            )
+        if not exists:
+            return device_id
+        device_id = f"{_slug_device_id(device_id)}-{secrets.token_hex(2)}"
+    return f"device-{secrets.token_hex(4)}"
 
 @router.get("/", response_model=DeviceListResponse)
 async def get_devices(
@@ -256,13 +279,21 @@ async def create_device(device: DeviceCreate, user: dict = Depends(get_current_u
     if not isinstance(user_id, ObjectId):
         user_id = ObjectId(user_id)
     
+    # Auto-generate device_id if not provided (easier add flow)
+    device_id = (device.device_id or "").strip()
+    if not device_id:
+        base_id = _slug_device_id(device.name)
+        device_id = await _ensure_unique_device_id(db, base_id, user_id, family_id)
+    else:
+        device_id = await _ensure_unique_device_id(db, device_id, user_id, family_id)
+    
     # Check if device_id already exists for this user/family
     if family_id:
-        filter_existing = {"deviceId": device.device_id, "family_id": family_id}
+        filter_existing = {"deviceId": device_id, "family_id": family_id}
     else:
         # Check both userId and user_id for compatibility
         filter_existing = {
-            "deviceId": device.device_id,
+            "deviceId": device_id,
             "$or": [
                 {"userId": user_id},
                 {"user_id": user_id}
@@ -273,7 +304,7 @@ async def create_device(device: DeviceCreate, user: dict = Depends(get_current_u
     if existing:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail=f"Device with ID '{device.device_id}' already exists"
+            detail=f"Device with ID '{device_id}' already exists"
         )
     
     # REMOVED: IP uniqueness check - allow multiple devices with same router IP
@@ -282,7 +313,7 @@ async def create_device(device: DeviceCreate, user: dict = Depends(get_current_u
     device_doc = {
         "userId": user_id,  # Creator (use camelCase for consistency)
         "user_id": user_id,  # Also store snake_case for compatibility
-        "deviceId": device.device_id,
+        "deviceId": device_id,
         "name": device.name,
         "type": device.type,
         "routerIp": router_ip,
@@ -314,7 +345,7 @@ async def create_device(device: DeviceCreate, user: dict = Depends(get_current_u
         user_id=user_id,
         user_email=user.get("email", ""),
         user_name=user.get("name", ""),
-        device_id=device.device_id,
+        device_id=device_id,
         device_name=device.name,
         ip_address=client_ip,
         user_agent=user_agent
@@ -326,7 +357,7 @@ async def create_device(device: DeviceCreate, user: dict = Depends(get_current_u
     
     return DeviceResponse(
         id=str(result.inserted_id),
-        device_id=device.device_id,
+        device_id=device_id,
         name=device.name,
         type=device.type,
         router_ip=router_ip,
