@@ -9,7 +9,9 @@ async function loadFamilyPage() {
   try {
     // Get current user
     currentUser = await api('/api/auth/me');
-    who.textContent = `${currentUser.name} (${currentUser.email})`;
+    if (who) {
+      who.textContent = `${currentUser.name} (${currentUser.email})`;
+    }
     
     // Try to load family
     try {
@@ -17,10 +19,18 @@ async function loadFamilyPage() {
       showHasFamily();
       await loadFamilyDetails();
     } catch (error) {
-      if (error.message.includes('not part of any family')) {
+      const errorMsg = error?.message || String(error || '');
+      if (errorMsg.includes('not part of any family') || errorMsg.includes('404') || errorMsg.includes('not found')) {
         showNoFamily();
       } else {
-        throw error;
+        console.error('Error loading family:', error);
+        // Show no family state as fallback
+        showNoFamily();
+        const msgEl = document.getElementById('createMsg');
+        if (msgEl) {
+          msgEl.textContent = 'Unable to load family details. You can create a new family below.';
+          msgEl.className = 'msg';
+        }
       }
     }
   } catch (error) {
@@ -31,19 +41,28 @@ async function loadFamilyPage() {
       window.location.href = `/login?redirect=${encodeURIComponent(currentPath)}`;
       return;
     }
-    const msgEl = document.getElementById('familyMsg');
-    if (msgEl) { msgEl.textContent = error?.message || 'Failed to load. Please try again.'; msgEl.className = 'msg bad'; }
+    // Always show something - default to no family state
+    showNoFamily();
+    const msgEl = document.getElementById('createMsg');
+    if (msgEl) {
+      msgEl.textContent = error?.message || 'Failed to load. Please try again.';
+      msgEl.className = 'msg bad';
+    }
   }
 }
 
 function showNoFamily() {
-  document.getElementById('noFamily').style.display = 'block';
-  document.getElementById('hasFamily').style.display = 'none';
+  const noFamilyEl = document.getElementById('noFamily');
+  const hasFamilyEl = document.getElementById('hasFamily');
+  if (noFamilyEl) noFamilyEl.style.display = 'block';
+  if (hasFamilyEl) hasFamilyEl.style.display = 'none';
 }
 
 function showHasFamily() {
-  document.getElementById('noFamily').style.display = 'none';
-  document.getElementById('hasFamily').style.display = 'block';
+  const noFamilyEl = document.getElementById('noFamily');
+  const hasFamilyEl = document.getElementById('hasFamily');
+  if (noFamilyEl) noFamilyEl.style.display = 'none';
+  if (hasFamilyEl) hasFamilyEl.style.display = 'block';
 }
 
 async function createFamily(event) {
