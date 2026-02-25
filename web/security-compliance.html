@@ -7,26 +7,39 @@
     <meta name="description" content="Learn about Alert-Pro's security principles, accessibility standards, compliance frameworks, and data protection guidelines. Built with CIA principles, WCAG accessibility, and GDPR compliance."/>
     <meta name="robots" content="index, follow"/>
     <link rel="canonical" href="https://iot-security-platform.com/security-compliance"/>
-    <link rel="stylesheet" href="/assets/app.css?v=9"/>
+    <link rel="stylesheet" href="/assets/app.css?v=18"/>
+    <script defer src="/assets/app.js?v=16"></script>
     <script defer src="/assets/accessibility.js?v=1"></script>
   </head>
   <body>
-    <div class="wrap">
-      <nav class="nav" role="navigation" aria-label="Main navigation">
-        <div class="brand">
-          <img src="/assets/logo.png" alt="Alert-Pro Logo" class="logo" />
-          <div>
-            <h1>Security & Compliance</h1>
-            <p>Our standards and guidelines</p>
+    <div class="app-layout">
+      <aside class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+          <div class="sidebar-logo">
+            <img src="/assets/logo.png" alt="Alert-Pro Logo" class="logo" />
+          </div>
+          <div class="sidebar-user">
+            <div id="who">Guest</div>
+            <div id="wsStatus" class="ws-status" style="font-size: 11px; margin-top: 4px;">🟢 Connected</div>
           </div>
         </div>
-        <div class="row">
-          <a class="btn" href="/">Home</a>
-          <a class="btn" href="/login">Login</a>
+        <nav class="sidebar-nav">
+          <a href="/dashboard" class="sidebar-nav-item"><span class="icon">📊</span><span>Dashboard</span></a>
+          <a href="/family" class="sidebar-nav-item"><span class="icon">👨‍👩‍👧‍👦</span><span>Family</span></a>
+          <a href="/settings" class="sidebar-nav-item"><span class="icon">⚙️</span><span>Settings</span></a>
+          <a href="/audit-logs" class="sidebar-nav-item"><span class="icon">📋</span><span>Audit Logs</span></a>
+          <a href="/incidents" class="sidebar-nav-item"><span class="icon">🔍</span><span>Incidents</span></a>
+          <a href="/cybersecurity-threats" class="sidebar-nav-item"><span class="icon">🛡️</span><span>Security Threats</span></a>
+          <a href="/security-compliance" class="sidebar-nav-item active"><span class="icon">🔒</span><span>Security & Compliance</span></a>
+          <a href="/pricing" class="sidebar-nav-item"><span class="icon">💳</span><span>Pricing</span></a>
+          <a href="/" class="sidebar-nav-item"><span class="icon">🏠</span><span>Home</span></a>
+        </nav>
+        <div class="sidebar-footer">
+          <button class="btn danger" id="logoutBtn" type="button" style="display:none;">Logout</button>
         </div>
-      </nav>
-
-      <main id="main-content" role="main">
+      </aside>
+      <button class="mobile-menu-toggle" id="mobileMenuToggle" onclick="toggleSidebar()">☰</button>
+      <main class="main-content" id="main-content" role="main">
         <div class="card" style="max-width: 1000px; margin: 40px auto;">
           <div style="line-height: 1.8; color: var(--text);">
             
@@ -296,15 +309,30 @@
 
           </div>
         </div>
+        <footer class="footer" style="text-align: center; padding: 20px; margin-top: 48px;">
+          <a href="/privacy" style="color: var(--primary); text-decoration: none; margin: 0 12px;">Privacy Policy</a>
+          <span style="color: var(--muted);">•</span>
+          <a href="/terms" style="color: var(--primary); text-decoration: none; margin: 0 12px;">Terms of Service</a>
+          <span style="color: var(--muted);">•</span>
+          <a href="/security-compliance" style="color: var(--primary); text-decoration: none; margin: 0 12px;">Security & Compliance</a>
+        </footer>
       </main>
-    
-      <footer class="footer" style="text-align: center; padding: 20px; margin-top: 48px;">
-        <a href="/privacy" style="color: var(--primary); text-decoration: none; margin: 0 12px;">Privacy Policy</a>
-        <span style="color: var(--muted);">•</span>
-        <a href="/terms" style="color: var(--primary); text-decoration: none; margin: 0 12px;">Terms of Service</a>
-        <span style="color: var(--muted);">•</span>
-        <a href="/security-compliance" style="color: var(--primary); text-decoration: none; margin: 0 12px;">Security & Compliance</a>
-      </footer>
     </div>
+    <script>
+      function toggleSidebar(){ var s=document.getElementById('sidebar'); if(s) s.classList.toggle('open'); }
+      document.addEventListener('DOMContentLoaded', function() {
+        var who = document.getElementById('who');
+        var logoutBtn = document.getElementById('logoutBtn');
+        if (typeof api === 'function') {
+          api('/api/auth/me').then(function(me) {
+            if (who) who.textContent = (me.name || me.email) + (me.email ? ' (' + me.email + ')' : '');
+            if (logoutBtn) logoutBtn.style.display = 'block';
+          }).catch(function() {
+            if (who) who.innerHTML = '<a href="/login" style="color: var(--primary-2);">Log in</a>';
+          });
+        }
+        if (logoutBtn) logoutBtn.addEventListener('click', typeof logout === 'function' ? logout : function() { window.location.href = '/login'; });
+      });
+    </script>
   </body>
 </html>

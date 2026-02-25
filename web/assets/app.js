@@ -83,17 +83,25 @@ function hideSmsComplianceBanner(){
   banner.style.display = "none";
 }
 
-async function api(path, { method="GET", body, auth=true, retry=true } = {}){
+async function api(path, { method="GET", body, auth=true, retry=true, timeout=30000 } = {}){
   const headers = { "Content-Type": "application/json" };
   if(auth){
     const t = getToken();
     if(t) headers["Authorization"] = `Bearer ${t}`;
   }
-  const res = await fetch(`${API_BASE}${path}`, {
-    method,
-    headers,
-    body: body ? JSON.stringify(body) : undefined,
-  });
+  
+  // Add timeout using AbortController
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeout);
+  
+  try {
+    const res = await fetch(`${API_BASE}${path}`, {
+      method,
+      headers,
+      body: body ? JSON.stringify(body) : undefined,
+      signal: controller.signal,
+    });
+    clearTimeout(timeoutId);
   let data = null;
   try{ data = await res.json(); } catch {}
   if(res.status === 401 && auth && retry){
@@ -148,6 +156,13 @@ async function api(path, { method="GET", body, auth=true, retry=true } = {}){
     throw err;
   }
   return data;
+  } catch (err) {
+    clearTimeout(timeoutId);
+    if (err.name === 'AbortError') {
+      throw new Error(`Request timed out. The server may be slow—try again.`);
+    }
+    throw err;
+  }
 }
 
 async function loginFlow(){
@@ -207,6 +222,8 @@ async function loadDashboard(){
   try{
     const me = await api("/api/auth/me");
     if (who) who.textContent = `${me.name} (${me.email})`;
+    const wsEl = qs("#wsStatus");
+    if (wsEl) { wsEl.textContent = "🟢 Connected"; wsEl.style.color = "var(--ok)"; wsEl.className = "ws-status connected"; }
   }catch(e){
     if (e && e.unauthorized) {
       clearAuth();
@@ -229,10 +246,14 @@ async function loadDashboard(){
   if (msg) msg.textContent = "Loading…";
 
   try{
-    await Promise.all([loadDevices(), loadAlerts(), loadGroups()]);
+    // Load critical data first (devices and groups) - alerts can load after
+    await Promise.all([loadDevices(), loadGroups()]);
     updateLastRefreshTime();
 
     if (msg) msg.textContent = "";
+    
+    // Load alerts after page is visible (non-blocking)
+    loadAlerts().catch(err => console.error("Alerts load error:", err));
     
     // Auto-expand resolved alerts section if there are resolved alerts
     const resolvedContent = qs("#resolvedAlertsContent");
@@ -255,6 +276,10 @@ async function loadDashboard(){
         if (net && net.router_ip && !scanRouterIpEl.value) scanRouterIpEl.value = net.router_ip;
       } catch (_) {}
     }
+    // Check device status after page loads (non-blocking, delayed by 5 seconds)
+    setTimeout(() => {
+      checkDeviceStatus().catch(err => console.log("Device status check:", err.message));
+    }, 5000);
   }catch(e){
     console.error("Dashboard load error:", e);
     if (msg) {
@@ -385,8 +410,9 @@ async function loadDevices(){
   const data = await api(buildDevicesQuery());
   renderDevices(data.devices || []);
   
-  // Check real-time device status in background
-  checkDeviceStatus().catch(err => console.log("Device status check:", err.message));
+  // Removed: Don't check device status on every load - it blocks page load (30+ seconds)
+  // Device status will be checked after page loads via delayed call in loadDashboard()
+  // checkDeviceStatus().catch(err => console.log("Device status check:", err.message));
   
   return data;
 }
@@ -409,19 +435,70 @@ async function checkDeviceStatus(){
   }
 }
 
+const ACTIVE_ALERTS_PAGE_SIZE = 10;
+let activeAlertsPage = 1;
+let activeAlertsTotal = 0;
+
 async function loadAlerts(){
-  // Load unresolved alerts for main table
-  const unresolvedData = await api("/api/alerts?limit=100&page=1&resolved=false");
-  const unresolvedAlerts = unresolvedData.alerts || [];
-  renderAlerts(unresolvedAlerts);
+  // Load first page of active alerts (10 per page) and resolved alerts in parallel
+  const results = await Promise.allSettled([
+    api(`/api/alerts?limit=${ACTIVE_ALERTS_PAGE_SIZE}&page=1&resolved=false`).catch(e => {
+      console.error("Failed to load unresolved alerts:", e);
+      return { alerts: [], total: 0, page: 1 };
+    }),
+    api("/api/alerts?limit=100&page=1&resolved=true").catch(e => {
+      console.error("Failed to load resolved alerts:", e);
+      return { alerts: [] };
+    })
+  ]);
   
-  // Load resolved alerts separately for the resolved section
-  const resolvedData = await api("/api/alerts?limit=100&page=1&resolved=true");
+  const unresolvedData = results[0].status === 'fulfilled' ? results[0].value : { alerts: [], total: 0, page: 1 };
+  const resolvedData = results[1].status === 'fulfilled' ? results[1].value : { alerts: [] };
+  
+  activeAlertsPage = unresolvedData.page || 1;
+  activeAlertsTotal = unresolvedData.total != null ? unresolvedData.total : (unresolvedData.alerts || []).length;
+  const unresolvedAlerts = unresolvedData.alerts || [];
   const resolvedAlerts = resolvedData.alerts || [];
+  
+  renderAlerts(unresolvedAlerts);
   renderResolvedAlerts(resolvedAlerts);
+  renderActiveAlertsPagination(activeAlertsTotal, activeAlertsPage);
   
   return { alerts: unresolvedAlerts };
 }
+
+async function loadActiveAlertsPage(page){
+  if (page < 1) page = 1;
+  try {
+    const data = await api(`/api/alerts?limit=${ACTIVE_ALERTS_PAGE_SIZE}&page=${page}&resolved=false`);
+    const alerts = data.alerts || [];
+    activeAlertsPage = data.page != null ? data.page : page;
+    activeAlertsTotal = data.total != null ? data.total : alerts.length;
+    renderAlerts(alerts);
+    renderActiveAlertsPagination(activeAlertsTotal, activeAlertsPage);
+  } catch (e) {
+    console.error("Failed to load alerts page:", e);
+  }
+}
+
+function renderActiveAlertsPagination(total, page){
+  const totalPages = Math.max(1, Math.ceil(total / ACTIVE_ALERTS_PAGE_SIZE));
+  const start = total === 0 ? 0 : (page - 1) * ACTIVE_ALERTS_PAGE_SIZE + 1;
+  const end = total === 0 ? 0 : Math.min(page * ACTIVE_ALERTS_PAGE_SIZE, total);
+  const html = total === 0
+    ? ""
+    : `<span><strong>Showing ${start}&ndash;${end} of ${total}</strong> active alert${total !== 1 ? "s" : ""} (10 per page)</span>
+       <div class="pagination-buttons">
+         <button class="btn-sm" ${page <= 1 ? "disabled" : ""} onclick="window.loadActiveAlertsPage(${page - 1})">← Previous</button>
+         <span style="min-width: 100px; text-align: center;">Page ${page} of ${totalPages}</span>
+         <button class="btn-sm" ${page >= totalPages ? "disabled" : ""} onclick="window.loadActiveAlertsPage(${page + 1})">Next →</button>
+       </div>`;
+  const el = qs("#activeAlertsPagination");
+  const elTop = qs("#activeAlertsPaginationTop");
+  if (el) el.innerHTML = html;
+  if (elTop) elTop.innerHTML = html;
+}
+window.loadActiveAlertsPage = loadActiveAlertsPage;
 
 function scheduleDeviceFilterUpdate(){
   if(filterDebounce) clearTimeout(filterDebounce);
@@ -526,17 +603,15 @@ function renderAlerts(alerts){
     return;
   }
   
-  // Render only unresolved alerts
+  // Action column first so Resolve is always visible without horizontal scroll
   const html = unresolvedAlerts.map(a => `
     <tr class="alert-row" data-alert-id="${a.id || a._id}">
+      <td class="alert-action"><button class="btn-sm" onclick="resolveAlert('${a.id}')">Resolve</button></td>
       <td><span class="${badgeForSeverity(a.severity)}">${esc(a.severity)}</span></td>
       <td>${esc(a.type)}</td>
       <td>${esc(a.message)}</td>
       <td>${a.device?.name ? esc(a.device.name) : esc(a.device_id)}</td>
       <td>${esc((a.created_at || "").toString().slice(0,19).replace("T"," "))}</td>
-      <td class="alert-action">
-        <button class="btn-sm" onclick="resolveAlert('${a.id}')">Resolve</button>
-      </td>
     </tr>
   `).join("");
   
@@ -596,10 +671,9 @@ async function resolveAlert(alertId){
     msg.textContent = "Alert resolved!";
     setTimeout(() => { msg.textContent = ""; msg.className = "msg"; }, 2000);
     
-    // Reload alerts to update both active and resolved sections
-    const unresolvedData = await api("/api/alerts?limit=100&page=1&resolved=false");
-    const resolvedData = await api("/api/alerts?limit=100&page=1&resolved=true");
-    renderAlerts(unresolvedData.alerts || []);
+    // Reload current page of active alerts and resolved section
+    await loadActiveAlertsPage(activeAlertsPage);
+    const resolvedData = await api("/api/alerts?limit=100&page=1&resolved=true").catch(() => ({ alerts: [] }));
     renderResolvedAlerts(resolvedData.alerts || []);
     
     // Show resolved alerts section if it was hidden
@@ -652,9 +726,13 @@ function setDeviceFormMode(mode, device = null){
 
   if(mode === "edit" && device){
     editingDeviceId = device.device_id;
+    const deviceIpVal = (device.device_ip || device.deviceIp || device.ip_address || "").trim();
+    const routerIpVal = (device.router_ip || device.routerIp || "").trim();
     editSnapshot = {
       name: device.name || "",
       type: device.type || "",
+      device_ip: deviceIpVal,
+      router_ip: routerIpVal,
       heartbeat_interval: device.heartbeat_interval || 30,
       alerts_enabled: device.alerts_enabled !== false
     };
@@ -865,7 +943,8 @@ window.scanNetworkForDevices = async function scanNetworkForDevices(){
   }
 
   try {
-    const result = await api(url);
+    // Scan can take 1–2 minutes (253 IPs); use a long timeout so the request doesn't abort
+    const result = await api(url, { timeout: 150000 });
 
     if(result.error === 'no_router_ip') {
       setStatus('<span style="color: var(--danger);">Enter your router IP above (e.g. 192.168.1.1) and click Scan.</span>');
@@ -1182,6 +1261,8 @@ async function submitDeviceForm(event){
         body: {
           name,
           type,
+          device_ip: (deviceIp && deviceIp.trim()) ? deviceIp.trim() : null,
+          router_ip: (routerIp && routerIp.trim()) ? routerIp.trim() : null,
           heartbeat_interval: heartbeatInterval,
           alerts_enabled: alertsEnabled
         }
@@ -1248,9 +1329,13 @@ function setDeviceSubmitEnabled(enabled){
 }
 
 function getDeviceFormState(){
+  const deviceIpEl = document.getElementById('device_ip');
+  const routerIpEl = document.getElementById('router_ip_display');
   return {
     name: document.getElementById('device_name').value.trim(),
     type: document.getElementById('device_type').value,
+    device_ip: (deviceIpEl && deviceIpEl.value) ? deviceIpEl.value.trim() : "",
+    router_ip: (routerIpEl && routerIpEl.value) ? routerIpEl.value.trim() : "",
     heartbeat_interval: parseInt(document.getElementById('device_heartbeat').value) || 30,
     alerts_enabled: document.getElementById('device_alerts').checked
   };
@@ -1435,11 +1520,28 @@ async function manualRefresh(){
   
   try{
     msg.textContent = "Refreshing...";
-    await Promise.all([loadDevices(), loadAlerts()]);
-    updateLastRefreshTime();
-    
-    msg.textContent = "✅ Refreshed successfully!";
-    setTimeout(() => { msg.textContent = ""; }, 2000);
+    // Use allSettled so one failing request (e.g. timeout) doesn't break the whole refresh
+    const [devicesResult, alertsResult] = await Promise.allSettled([
+      loadDevices(),
+      loadAlerts()
+    ]);
+    const devicesOk = devicesResult.status === 'fulfilled';
+    const alertsOk = alertsResult.status === 'fulfilled';
+    if (devicesOk || alertsOk) {
+      updateLastRefreshTime();
+    }
+    if (devicesOk && alertsOk) {
+      msg.textContent = "✅ Refreshed successfully!";
+      setTimeout(() => { msg.textContent = ""; }, 2000);
+    } else if (devicesOk || alertsOk) {
+      msg.className = "msg";
+      msg.textContent = "⚠️ Partially refreshed. " + (devicesOk ? "Devices loaded." : "Alerts loaded.") + " One request timed out.";
+      setTimeout(() => { msg.textContent = ""; msg.className = "msg"; }, 4000);
+    } else {
+      const err = devicesResult.reason || alertsResult.reason;
+      msg.className = "msg bad";
+      msg.textContent = "❌ Refresh failed: " + (err && err.message ? err.message : "Request failed or timed out.");
+    }
   }catch(e){
     msg.className = "msg bad";
     msg.textContent = "❌ Refresh failed: " + e.message;
@@ -1517,7 +1619,7 @@ window.addEventListener("DOMContentLoaded", () => {
       });
     }
 
-    ['device_name', 'device_type', 'device_heartbeat', 'device_alerts'].forEach((id) => {
+    ['device_name', 'device_type', 'device_ip', 'router_ip_display', 'device_heartbeat', 'device_alerts'].forEach((id) => {
       const el = document.getElementById(id);
       if(el){
         el.addEventListener('input', refreshDeviceFormState);

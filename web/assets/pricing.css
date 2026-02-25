@@ -1,4 +1,12 @@
-/* Pricing Page Styles */
+/* Pricing Page Styles – ensure sidebar layout is always visible */
+.app-layout {
+  display: flex !important;
+}
+.app-layout .sidebar {
+  display: flex !important;
+  flex-direction: column !important;
+  visibility: visible !important;
+}
 
 .pricing-grid {
   display: grid;

@@ -1,11 +1,12 @@
 # routes/alerts.py - Alert Management Routes
-from fastapi import APIRouter, HTTPException, status, Query, BackgroundTasks
+from fastapi import APIRouter, HTTPException, status, Query, BackgroundTasks, Depends
 from typing import Optional
 from bson import ObjectId
 from datetime import datetime, timedelta
 
 from models import AlertCreate, AlertResponse, AlertListResponse
 from database import get_database
+from routes.auth import get_current_user
 
 router = APIRouter()
 
@@ -183,27 +184,43 @@ async def get_alerts(
     resolved: Optional[bool] = Query(None, description="Filter by resolved status (True/False). If not specified, returns all alerts"),
     since: Optional[datetime] = Query(None, description="Only alerts after this timestamp"),
     page: int = Query(1, ge=1, description="Page number"),
-    limit: int = Query(10, ge=1, le=100, description="Items per page")
+    limit: int = Query(10, ge=1, le=100, description="Items per page"),
+    user: dict = Depends(get_current_user)
 ):
     """
-    Get alerts with filters and pagination
-    
-    Query params:
-    - device_id: Filter by device (MongoDB ObjectId)
-    - severity: Filter by severity (critical, high, medium, low)
-    - type: Filter by type (connectivity, power, security, system)
-    - since: Only alerts after this timestamp
-    - page: Page number
-    - limit: Items per page
+    Get alerts with filters and pagination - OPTIMIZED for performance
+    Only returns alerts for the current user's devices
     """
     db = await get_database()
+    user_id = user["_id"]
+    if not isinstance(user_id, ObjectId):
+        user_id = ObjectId(user_id)
     
-    # Build filter - handle both deviceId and device_id formats
-    filter_query = {}
+    # Get user's device IDs (filter alerts to only user's devices)
+    user_devices = await db.devices.find({
+        "$or": [{"userId": user_id}, {"user_id": user_id}],
+        "isDeleted": {"$ne": True}
+    }).to_list(length=1000)
+    
+    user_device_ids = [ObjectId(d["_id"]) for d in user_devices]
+    
+    if not user_device_ids:
+        return AlertListResponse(page=page, total=0, alerts=[])
+    
+    # Build filter - only alerts for user's devices
+    filter_query = {
+        "$or": [
+            {"deviceId": {"$in": user_device_ids}},
+            {"device_id": {"$in": user_device_ids}}
+        ]
+    }
     
     # Device filter - check both field names
     if device_id:
         device_obj_id = ObjectId(device_id)
+        # Verify device belongs to user
+        if device_obj_id not in user_device_ids:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Device not found or access denied")
         filter_query["$or"] = [
             {"deviceId": device_obj_id},
             {"device_id": device_obj_id}
@@ -217,8 +234,8 @@ async def get_alerts(
                 {"created_at": {"$gte": since}}
             ]
         }
-        # If we already have $or for device_id, use $and to combine
-        if "$or" in filter_query:
+        # Combine with existing $or
+        if "$or" in filter_query and isinstance(filter_query["$or"], list) and len(filter_query["$or"]) > 0:
             device_condition = {"$or": filter_query.pop("$or")}
             filter_query["$and"] = [device_condition, date_condition]
         else:
@@ -240,28 +257,42 @@ async def get_alerts(
     alerts_raw = await cursor.to_list(length=limit)
     
     # Get total count
-    total = await db.alerts.count_documents(filter_query)
+    try:
+        total = await db.alerts.count_documents(filter_query)
+    except Exception:
+        total = len(alerts_raw) if len(alerts_raw) == limit else len(alerts_raw)
     
-    # Shape response with device info
+    # Fetch all devices in one query
+    device_ids_in_alerts = []
+    for a in alerts_raw:
+        alert_device_id = a.get("deviceId") or a.get("device_id")
+        if alert_device_id:
+            try:
+                device_ids_in_alerts.append(ObjectId(alert_device_id))
+            except:
+                pass
+    
+    # Single query to get all devices
+    devices_map = {}
+    if device_ids_in_alerts:
+        devices_cursor = db.devices.find({"_id": {"$in": device_ids_in_alerts}})
+        devices_list = await devices_cursor.to_list(length=len(device_ids_in_alerts))
+        for device in devices_list:
+            devices_map[str(device["_id"])] = {
+                "id": str(device["_id"]),
+                "logical_id": device.get("deviceId") or device.get("device_id"),
+                "name": device.get("name"),
+                "type": device.get("type")
+            }
+    
+    # Shape response with device info (now using pre-fetched map)
     alerts = []
     for a in alerts_raw:
         # Get device ID - handle both deviceId and device_id formats
         alert_device_id = a.get("deviceId") or a.get("device_id")
         
-        # Get device info
-        device_info = None
-        if alert_device_id:
-            try:
-                device = await db.devices.find_one({"_id": ObjectId(alert_device_id)})
-                if device:
-                    device_info = {
-                        "id": str(device["_id"]),
-                        "logical_id": device.get("deviceId") or device.get("device_id"),
-                        "name": device.get("name"),
-                        "type": device.get("type")
-                    }
-            except Exception as e:
-                print(f"[ERROR] Failed to get device info for alert {a.get('_id')}: {e}")
+        # Get device info from pre-fetched map (no database query!)
+        device_info = devices_map.get(str(alert_device_id)) if alert_device_id else None
         
         # Handle both createdAt and created_at
         created_at = a.get("createdAt") or a.get("created_at") or datetime.utcnow()

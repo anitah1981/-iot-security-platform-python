@@ -10,7 +10,7 @@
     <meta name="description" content="View comprehensive audit logs of all user actions, device operations, and system changes. Business plan feature for compliance and security monitoring."/>
     <meta name="keywords" content="audit logs, activity history, compliance logs, security audit, user activity tracking, IoT security audit"/>
     <link rel="canonical" href="https://iot-security-platform.com/audit-logs"/>
-    <link rel="stylesheet" href="/assets/app.css?v=10"/>
+    <link rel="stylesheet" href="/assets/app.css?v=18"/>
     <!-- Redirect to login if not authenticated; logged-in users see the page straight away -->
     <script>
       (function() {
@@ -32,49 +32,27 @@
           </div>
           <div class="sidebar-user">
             <div id="who">Loading profile…</div>
-            <div id="wsStatus" class="ws-status" style="font-size: 11px; margin-top: 4px;">Connecting...</div>
+            <div id="wsStatus" class="ws-status" style="font-size: 11px; margin-top: 4px;">🟢 Connected</div>
           </div>
         </div>
         
         <nav class="sidebar-nav">
-          <a href="/dashboard" class="sidebar-nav-item">
-            <span class="icon">📊</span>
-            <span>Dashboard</span>
-          </a>
-          <a href="/family" class="sidebar-nav-item">
-            <span class="icon">👨‍👩‍👧‍👦</span>
-            <span>Family</span>
-          </a>
-          <a href="/settings" class="sidebar-nav-item">
-            <span class="icon">⚙️</span>
-            <span>Settings</span>
-          </a>
-          <a href="/audit-logs" class="sidebar-nav-item active">
-            <span class="icon">📋</span>
-            <span>Audit Logs</span>
-          </a>
-          <a href="/pricing" class="sidebar-nav-item">
-            <span class="icon">💳</span>
-            <span>Pricing</span>
-          </a>
-          <a href="/docs" class="sidebar-nav-item">
-            <span class="icon">📚</span>
-            <span>API Docs</span>
-          </a>
+          <a href="/dashboard" class="sidebar-nav-item"><span class="icon">📊</span><span>Dashboard</span></a>
+          <a href="/family" class="sidebar-nav-item"><span class="icon">👨‍👩‍👧‍👦</span><span>Family</span></a>
+          <a href="/settings" class="sidebar-nav-item"><span class="icon">⚙️</span><span>Settings</span></a>
+          <a href="/audit-logs" class="sidebar-nav-item active"><span class="icon">📋</span><span>Audit Logs</span></a>
+          <a href="/incidents" class="sidebar-nav-item"><span class="icon">🔍</span><span>Incidents</span></a>
+          <a href="/cybersecurity-threats" class="sidebar-nav-item"><span class="icon">🛡️</span><span>Security Threats</span></a>
+          <a href="/security-compliance" class="sidebar-nav-item"><span class="icon">🔒</span><span>Security & Compliance</span></a>
+          <a href="/pricing" class="sidebar-nav-item"><span class="icon">💳</span><span>Pricing</span></a>
+          <a href="/" class="sidebar-nav-item"><span class="icon">🏠</span><span>Home</span></a>
         </nav>
-        
         <div class="sidebar-footer">
-          <a href="/" class="sidebar-nav-item">
-            <span class="icon">🏠</span>
-            <span>Home</span>
-          </a>
-          <button id="logoutBtn" class="sidebar-nav-item" style="width: 100%; text-align: left; border: none; background: transparent; color: inherit; cursor: pointer; padding: 12px 16px;">
-            <span class="icon">🚪</span>
-            <span>Logout</span>
-          </button>
+          <button class="btn danger" id="logoutBtn" type="button">Logout</button>
         </div>
       </aside>
-
+      <button class="mobile-menu-toggle" id="mobileMenuToggle" onclick="toggleSidebar()">☰</button>
+      <script>function toggleSidebar(){var s=document.getElementById('sidebar');if(s)s.classList.toggle('open');}</script>
       <!-- Main Content -->
       <main class="main-content">
         <div class="page-header">

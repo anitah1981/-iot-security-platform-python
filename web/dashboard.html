@@ -10,7 +10,7 @@
     <meta name="description" content="Monitor your IoT devices in real-time with comprehensive security alerts, device status tracking, network health monitoring, and advanced analytics. Professional smart home security dashboard for device management, threat detection, and instant notifications."/>
     <meta name="keywords" content="IoT dashboard, smart home security dashboard, device monitoring dashboard, IoT device management, real-time monitoring, security alerts dashboard, smart home device tracking, IoT security platform, home automation security, device status monitoring, network security dashboard"/>
     <link rel="canonical" href="https://iot-security-platform.com/dashboard"/>
-    <link rel="stylesheet" href="/assets/app.css?v=10"/>
+    <link rel="stylesheet" href="/assets/app.css?v=18"/>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
     <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
     <!-- Redirect to login if not authenticated; logged-in users see the page straight away -->
@@ -21,7 +21,7 @@
         }
       })();
     </script>
-    <script defer src="/assets/app.js?v=11"></script>
+    <script defer src="/assets/app.js?v=16"></script>
     <script defer src="/assets/charts.js?v=7"></script>
     <script defer src="/assets/websocket-client.js?v=7"></script>
   </head>
@@ -35,51 +35,20 @@
           </div>
           <div class="sidebar-user">
             <div id="who">Loading profile…</div>
-            <div id="wsStatus" class="ws-status" style="font-size: 11px; margin-top: 4px;">Connecting...</div>
+            <div id="wsStatus" class="ws-status" style="font-size: 11px; margin-top: 4px;">🟢 Connected</div>
           </div>
         </div>
         
         <nav class="sidebar-nav">
-          <a href="/dashboard" class="sidebar-nav-item active">
-            <span class="icon">📊</span>
-            <span>Dashboard</span>
-          </a>
-          <a href="/family" class="sidebar-nav-item">
-            <span class="icon">👨‍👩‍👧‍👦</span>
-            <span>Family</span>
-          </a>
-          <a href="/settings" class="sidebar-nav-item">
-            <span class="icon">⚙️</span>
-            <span>Settings</span>
-          </a>
-          <a href="/audit-logs" class="sidebar-nav-item">
-            <span class="icon">📋</span>
-            <span>Audit Logs</span>
-          </a>
-          <a href="/incidents" class="sidebar-nav-item">
-            <span class="icon">🔍</span>
-            <span>Incidents</span>
-          </a>
-          <a href="/cybersecurity-threats" class="sidebar-nav-item">
-            <span class="icon">🛡️</span>
-            <span>Security Threats</span>
-          </a>
-          <a href="/security-compliance" class="sidebar-nav-item">
-            <span class="icon">🔒</span>
-            <span>Security & Compliance</span>
-          </a>
-          <a href="/pricing" class="sidebar-nav-item">
-            <span class="icon">💳</span>
-            <span>Pricing</span>
-          </a>
-          <a href="/docs" class="sidebar-nav-item">
-            <span class="icon">📚</span>
-            <span>API Docs</span>
-          </a>
-          <a href="/" class="sidebar-nav-item">
-            <span class="icon">🏠</span>
-            <span>Home</span>
-          </a>
+          <a href="/dashboard" class="sidebar-nav-item active"><span class="icon">📊</span><span>Dashboard</span></a>
+          <a href="/family" class="sidebar-nav-item"><span class="icon">👨‍👩‍👧‍👦</span><span>Family</span></a>
+          <a href="/settings" class="sidebar-nav-item"><span class="icon">⚙️</span><span>Settings</span></a>
+          <a href="/audit-logs" class="sidebar-nav-item"><span class="icon">📋</span><span>Audit Logs</span></a>
+          <a href="/incidents" class="sidebar-nav-item"><span class="icon">🔍</span><span>Incidents</span></a>
+          <a href="/cybersecurity-threats" class="sidebar-nav-item"><span class="icon">🛡️</span><span>Security Threats</span></a>
+          <a href="/security-compliance" class="sidebar-nav-item"><span class="icon">🔒</span><span>Security & Compliance</span></a>
+          <a href="/pricing" class="sidebar-nav-item"><span class="icon">💳</span><span>Pricing</span></a>
+          <a href="/" class="sidebar-nav-item"><span class="icon">🏠</span><span>Home</span></a>
         </nav>
         
         <div class="sidebar-footer">
@@ -95,7 +64,7 @@
         <div id="dashboardRoot">
           <!-- Page Header -->
           <div style="margin-bottom: 24px;">
-            <h1 style="font-size: 28px; margin: 0 0 8px 0; font-weight: 600;">Alert-Pro Dashboard</h1>
+            <h1 style="font-size: 28px; margin: 0 0 8px 0; font-weight: 600;">Dashboard</h1>
             <p style="color: var(--muted); margin: 0;">Real-time monitoring of your smart home devices, security cameras, and IoT sensors with instant security alerts, comprehensive analytics, and advanced threat detection capabilities</p>
           </div>
 
@@ -107,7 +76,7 @@
 
           <!-- Devices & Alerts Tab -->
           <div id="tab-devices" class="tab-content active">
-            <div class="grid">
+            <div class="grid grid--stacked">
               <div class="card">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
                   <div>
@@ -304,21 +273,23 @@
                     </button>
                   </div>
                 </div>
-                <div id="alertsContent" style="overflow:auto; margin-top:10px;">
-                  <table>
+                <div id="activeAlertsPaginationTop" class="alerts-pagination" style="margin-bottom: 12px;"></div>
+                <div class="alerts-table-scroll" id="alertsContent">
+                  <table class="alerts-table">
                     <thead>
                       <tr>
+                        <th style="width: 90px;">Action</th>
                         <th>Severity</th>
                         <th>Type</th>
                         <th>Message</th>
                         <th>Device</th>
                         <th>When</th>
-                        <th>Action</th>
                       </tr>
                     </thead>
                     <tbody id="alerts"></tbody>
                   </table>
                 </div>
+                <div id="activeAlertsPagination" class="alerts-pagination"></div>
               </div>
             </div>
             
@@ -335,8 +306,8 @@
                   </button>
                 </div>
               </div>
-              <div id="resolvedAlertsContent" style="overflow:auto; margin-top:10px; display: none;">
-                <table>
+              <div id="resolvedAlertsContent" class="alerts-table-scroll" style="margin-top:10px; display: none;">
+                <table class="alerts-table">
                   <thead>
                     <tr>
                       <th>Severity</th>

@@ -46,31 +46,46 @@
     }
     </script>
     
-    <link rel="stylesheet" href="/assets/app.css?v=2"/>
-    <link rel="stylesheet" href="/assets/pricing.css?v=1"/>
-    <script defer src="/assets/app.js?v=2"></script>
+    <link rel="stylesheet" href="/assets/app.css?v=18"/>
+    <link rel="stylesheet" href="/assets/pricing.css?v=2"/>
+    <script defer src="/assets/app.js?v=16"></script>
   </head>
   <body>
-    <div class="wrap">
-      <div class="nav">
-        <div class="brand">
-          <img src="/assets/logo.png" alt="Alert-Pro Logo" class="logo" />
-        <div>
-          <h1>Choose Your Alert-Pro Plan</h1>
-          <p>Affordable smart home device monitoring and security alert plans. Start free, upgrade anytime.</p>
+    <div class="app-layout">
+      <aside class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+          <div class="sidebar-logo">
+            <img src="/assets/logo.png" alt="Alert-Pro Logo" class="logo" />
+          </div>
+          <div class="sidebar-user">
+            <div id="who">Guest</div>
+            <div id="wsStatus" class="ws-status" style="font-size: 11px; margin-top: 4px;">🟢 Connected</div>
+          </div>
         </div>
-        </div>
-        <div class="row">
-          <a class="btn" href="/login">Dashboard</a>
-          <a class="btn" href="/">Home</a>
+        <nav class="sidebar-nav">
+          <a href="/dashboard" class="sidebar-nav-item"><span class="icon">📊</span><span>Dashboard</span></a>
+          <a href="/family" class="sidebar-nav-item"><span class="icon">👨‍👩‍👧‍👦</span><span>Family</span></a>
+          <a href="/settings" class="sidebar-nav-item"><span class="icon">⚙️</span><span>Settings</span></a>
+          <a href="/audit-logs" class="sidebar-nav-item"><span class="icon">📋</span><span>Audit Logs</span></a>
+          <a href="/incidents" class="sidebar-nav-item"><span class="icon">🔍</span><span>Incidents</span></a>
+          <a href="/cybersecurity-threats" class="sidebar-nav-item"><span class="icon">🛡️</span><span>Security Threats</span></a>
+          <a href="/security-compliance" class="sidebar-nav-item"><span class="icon">🔒</span><span>Security & Compliance</span></a>
+          <a href="/pricing" class="sidebar-nav-item active"><span class="icon">💳</span><span>Pricing</span></a>
+          <a href="/" class="sidebar-nav-item"><span class="icon">🏠</span><span>Home</span></a>
+        </nav>
+        <div class="sidebar-footer">
           <button class="btn danger" id="logoutBtn" type="button" style="display:none;">Logout</button>
-          <a class="btn" href="/login" id="loginBtn">Login</a>
         </div>
-      </div>
-
-      <div class="hint" id="pricingmsg" style="margin: 20px 0;"></div>
-
-      <div class="pricing-grid">
+      </aside>
+      <button class="mobile-menu-toggle" id="mobileMenuToggle" onclick="toggleSidebar()">☰</button>
+      <main class="main-content">
+        <div class="wrap">
+          <div style="margin-bottom: 24px;">
+            <h1 style="font-size: 28px; margin: 0 0 8px 0; font-weight: 600;">Pricing</h1>
+            <p style="color: var(--muted); margin: 0;">Choose your plan. Affordable smart home device monitoring and security alert plans. Start free, upgrade anytime.</p>
+          </div>
+          <div class="hint" id="pricingmsg" style="margin: 20px 0;"></div>
+          <div class="pricing-grid">
         <!-- Free Plan -->
         <div class="pricing-card">
           <div class="plan-header">
@@ -181,19 +196,24 @@
         </div>
       </div>
 
-      <div class="footer" style="text-align: center; padding: 20px;">
-        <a href="/privacy" style="color: var(--primary); text-decoration: none; margin: 0 12px;">Privacy Policy</a>
-        <span style="color: var(--muted);">•</span>
-        <a href="/terms" style="color: var(--primary); text-decoration: none; margin: 0 12px;">Terms of Service</a>
-      </div>
+          <div class="footer" style="text-align: center; padding: 20px;">
+            <a href="/privacy" style="color: var(--primary); text-decoration: none; margin: 0 12px;">Privacy Policy</a>
+            <span style="color: var(--muted);">•</span>
+            <a href="/terms" style="color: var(--primary); text-decoration: none; margin: 0 12px;">Terms of Service</a>
+          </div>
+        </div>
+      </main>
     </div>
-
+    <script>
+      function toggleSidebar(){ var s=document.getElementById('sidebar'); if(s) s.classList.toggle('open'); }
+    </script>
     <script>
       // Check if user is logged in
       async function checkAuth() {
         try {
           const user = await api("/api/auth/me");
-          document.querySelector("#loginBtn").style.display = "none";
+          const whoEl = document.querySelector("#who");
+          if (whoEl) whoEl.textContent = (user.name || user.email) + (user.email ? " (" + user.email + ")" : "");
           document.querySelector("#logoutBtn").style.display = "block";
           
           // Update buttons based on current plan
@@ -202,7 +222,8 @@
           return user;
         } catch(e) {
           // Not logged in
-          document.querySelector("#loginBtn").style.display = "block";
+          const whoEl = document.querySelector("#who");
+          if (whoEl) whoEl.innerHTML = '<a href="/login" style="color: var(--primary-2);">Log in</a>';
           document.querySelector("#logoutBtn").style.display = "none";
           
           // Disable upgrade buttons if not logged in

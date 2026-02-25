@@ -53,18 +53,43 @@ class NetworkMonitor:
 
             await asyncio.sleep(0)
     
+    @staticmethod
+    def _is_likely_router_ip(ip: str) -> bool:
+        """Avoid creating 'IP changed to router' false alerts."""
+        if not ip or ip in ("0.0.0.0", "127.0.0.1"):
+            return True
+        parts = ip.strip().split(".")
+        if len(parts) != 4:
+            return False
+        try:
+            if int(parts[3]) == 1:
+                return True
+        except ValueError:
+            pass
+        return False
+
     async def _check_ip_change(self, device: Dict, current_ip: str, db):
         """Check if device IP has changed"""
         device_id = device.get("_id")
         device_name = device.get("name", "Unknown Device")
-        
+        # Don't create "IP changed to X" when X is a router/gateway (common false positive)
+        if self._is_likely_router_ip(current_ip):
+            return
+        # Optionally skip if current_ip matches user's configured router
+        user_id = device.get("userId") or device.get("user_id")
+        if user_id:
+            settings = await db.network_settings.find_one({"userId": user_id})
+            router = (settings or {}).get("routerIp") or (settings or {}).get("router_ip")
+            if router and (current_ip.strip() == router.strip()):
+                return
+
         # Get IP history
         ip_history = device.get("ipAddressHistory", [])
-        
+
         # Get last known IP from history
         if ip_history and len(ip_history) > 1:
             last_ip = ip_history[-2] if len(ip_history) >= 2 else ip_history[-1]
-            
+
             if last_ip != current_ip:
                 # IP has changed - check if we already alerted recently
                 recent_alert = await db.alerts.find_one({

@@ -280,7 +280,7 @@ def pricing_page():
     f = WEB_DIR / "pricing.html"
     if not f.exists():
         return JSONResponse(status_code=404, content={"detail": "Page not found"})
-    return FileResponse(str(f))
+    return FileResponse(str(f), headers={"Cache-Control": "no-cache, no-store, must-revalidate", "Pragma": "no-cache"})
 
 @app.get("/forgot-password")
 def forgot_password_page():

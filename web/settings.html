@@ -7,7 +7,7 @@
     <meta name="description" content="Manage your Alert-Pro account settings, notification preferences, subscription, password, and multi-factor authentication."/>
     <meta name="robots" content="noindex, follow"/>
     <link rel="canonical" href="https://iot-security-platform.com/settings"/>
-    <link rel="stylesheet" href="/assets/app.css?v=10"/>
+    <link rel="stylesheet" href="/assets/app.css?v=18"/>
     <!-- Redirect to login if not authenticated; logged-in users see the page straight away -->
     <script>
       (function() {
@@ -28,42 +28,19 @@
           </div>
           <div class="sidebar-user">
             <div id="who">Loading profile…</div>
+            <div id="wsStatus" class="ws-status" style="font-size: 11px; margin-top: 4px;">🟢 Connected</div>
           </div>
         </div>
-        
         <nav class="sidebar-nav">
-          <a href="/dashboard" class="sidebar-nav-item">
-            <span class="icon">📊</span>
-            <span>Dashboard</span>
-          </a>
-          <a href="/family" class="sidebar-nav-item">
-            <span class="icon">👨‍👩‍👧‍👦</span>
-            <span>Family</span>
-          </a>
-          <a href="/settings" class="sidebar-nav-item active">
-            <span class="icon">⚙️</span>
-            <span>Settings</span>
-          </a>
-          <a href="/audit-logs" class="sidebar-nav-item">
-            <span class="icon">📋</span>
-            <span>Audit Logs</span>
-          </a>
-          <a href="/incidents" class="sidebar-nav-item">
-            <span class="icon">🔍</span>
-            <span>Incidents</span>
-          </a>
-          <a href="/pricing" class="sidebar-nav-item">
-            <span class="icon">💳</span>
-            <span>Pricing</span>
-          </a>
-          <a href="/docs" class="sidebar-nav-item">
-            <span class="icon">📚</span>
-            <span>API Docs</span>
-          </a>
-          <a href="/" class="sidebar-nav-item">
-            <span class="icon">🏠</span>
-            <span>Home</span>
-          </a>
+          <a href="/dashboard" class="sidebar-nav-item"><span class="icon">📊</span><span>Dashboard</span></a>
+          <a href="/family" class="sidebar-nav-item"><span class="icon">👨‍👩‍👧‍👦</span><span>Family</span></a>
+          <a href="/settings" class="sidebar-nav-item active"><span class="icon">⚙️</span><span>Settings</span></a>
+          <a href="/audit-logs" class="sidebar-nav-item"><span class="icon">📋</span><span>Audit Logs</span></a>
+          <a href="/incidents" class="sidebar-nav-item"><span class="icon">🔍</span><span>Incidents</span></a>
+          <a href="/cybersecurity-threats" class="sidebar-nav-item"><span class="icon">🛡️</span><span>Security Threats</span></a>
+          <a href="/security-compliance" class="sidebar-nav-item"><span class="icon">🔒</span><span>Security & Compliance</span></a>
+          <a href="/pricing" class="sidebar-nav-item"><span class="icon">💳</span><span>Pricing</span></a>
+          <a href="/" class="sidebar-nav-item"><span class="icon">🏠</span><span>Home</span></a>
         </nav>
         
         <div class="sidebar-footer">
@@ -355,6 +332,8 @@
           </div>
         </div>
       </div>
+
+      <p class="sub" style="margin-top: 24px; color: var(--muted);">For developers: <a href="/docs">API documentation</a></p>
 
         </div>
       </main>

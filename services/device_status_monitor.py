@@ -96,6 +96,28 @@ _DEFAULT_NOTIFICATION_PREFS = {
 CONNECTIVITY_ALERT_SEVERITY = "critical"
 
 
+async def resolve_offline_alerts_for_device(device_mongo_id: ObjectId) -> int:
+    """
+    Mark all unresolved 'device is offline' connectivity alerts for this device as resolved.
+    Call when the device comes back online so the dashboard doesn't show stale offline alerts.
+    Returns the number of alerts resolved.
+    """
+    db = await get_database()
+    now = datetime.utcnow()
+    result = await db.alerts.update_many(
+        {
+            "deviceId": device_mongo_id,
+            "type": "connectivity",
+            "message": {"$regex": r"is offline$"},
+            "resolved": False,
+        },
+        {"$set": {"resolved": True, "resolvedAt": now, "updatedAt": now}},
+    )
+    if result.modified_count:
+        print(f"[MONITOR] Resolved {result.modified_count} offline alert(s) for device {device_mongo_id} (device back online)")
+    return result.modified_count
+
+
 async def _create_connectivity_alert(device_mongo_id: ObjectId, device_name: str, user_id: ObjectId) -> None:
     """Create a connectivity alert for offline device (deduped within 5 minutes)."""
     db = await get_database()
@@ -232,9 +254,11 @@ async def check_device_status_once() -> None:
                         "updatedAt": now
                     }}
                 )
-                
+                # When device comes back online, resolve any "device is offline" alerts for it
+                if new_status == "online":
+                    await resolve_offline_alerts_for_device(device["_id"])
                 # Create alert if device went offline
-                if new_status == "offline" and device.get("alertsEnabled", True):
+                elif new_status == "offline" and device.get("alertsEnabled", True):
                     user_id = device.get("userId") or device.get("user_id")
                     if user_id:
                         print(f"[MONITOR] Device '{device.get('name')}' ({ip}) went OFFLINE -> creating alert and sending notifications")
@@ -245,9 +269,10 @@ async def check_device_status_once() -> None:
                         )
                     else:
                         print(f"[WARNING] Device {device.get('name')} ({ip}) has no userId/user_id - skipping offline alert/notifications")
-                elif new_status == "offline" and not device.get("alertsEnabled", True):
-                    print(f"[MONITOR] Device {device.get('name')} ({ip}) went offline but alerts disabled for this device")
-                
+                else:
+                    if new_status == "offline" and not device.get("alertsEnabled", True):
+                        print(f"[MONITOR] Device {device.get('name')} ({ip}) went offline but alerts disabled for this device")
+
                 print(f"[MONITOR] Device {device.get('name')} ({ip}): {old_status} -> {new_status}")
         
         await asyncio.gather(*[check_device(d) for d in devices], return_exceptions=True)

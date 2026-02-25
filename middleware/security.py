@@ -116,8 +116,9 @@ class HttpsRedirectMiddleware(BaseHTTPMiddleware):
 
     async def dispatch(self, request: Request, call_next: Callable):
         # Check if we should enforce HTTPS
-        # Skip for health checks and internal endpoints
-        if request.url.path in ["/api/health", "/health"]:
+        # Skip for health checks, static files, and internal endpoints
+        path = request.url.path
+        if path in ["/api/health", "/health"] or path.startswith("/assets/") or path.startswith("/static/"):
             return await call_next(request)
         
         # Check host header if allowed_hosts specified

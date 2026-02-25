@@ -25,6 +25,31 @@ from services.device_agent_key_service import get_user_by_api_key
 router = APIRouter()
 
 
+def _is_likely_router_ip(ip: str) -> bool:
+    """Treat IP as router/gateway so we never store it as a device IP (avoids false 'IP changed to router' alerts)."""
+    if not ip or ip in ("0.0.0.0", "127.0.0.1"):
+        return True
+    parts = ip.strip().split(".")
+    if len(parts) != 4:
+        return False
+    try:
+        last_octet = int(parts[3])
+        if last_octet == 1:
+            return True  # Common gateway in .x.1
+    except ValueError:
+        pass
+    return False
+
+
+async def _is_user_router_ip(db, user_id: Optional[ObjectId], ip: str) -> bool:
+    """True if ip matches the user's configured router/gateway IP."""
+    if not ip or not user_id:
+        return False
+    settings = await db.network_settings.find_one({"userId": user_id})
+    router = (settings or {}).get("routerIp") or (settings or {}).get("router_ip")
+    return bool(router and (ip.strip() == router.strip()))
+
+
 async def _heartbeat_api_key_user(request: Request) -> Optional[dict]:
     """Resolve X-API-Key header to user (or None). Used to associate devices with account."""
     raw = request.headers.get("X-API-Key") or request.headers.get("Authorization", "").replace("Bearer ", "").strip()
@@ -59,17 +84,21 @@ async def receive_heartbeat(
             user_id = api_key_user["_id"] if isinstance(api_key_user["_id"], ObjectId) else ObjectId(api_key_user["_id"])
             family_id = api_key_user.get("_family_id")
 
+        # Never store router/gateway IP as device IP (avoids false "IP changed to router" alerts)
+        device_ip = payload.ip_address
+        if device_ip and (_is_likely_router_ip(device_ip) or await _is_user_router_ip(db, user_id, device_ip)):
+            device_ip = None
         device_doc: Dict[str, Any] = {
             "deviceId": payload.device_id,
             "name": (payload.metadata or {}).get("name") or payload.device_id,
             "type": (payload.metadata or {}).get("type", "Unknown"),
-            "ipAddress": payload.ip_address or "0.0.0.0",
+            "ipAddress": device_ip or "0.0.0.0",
             "status": payload.status,
             "lastSeen": now,
             "heartbeatInterval": 30,
             "alertsEnabled": True,
             "signalStrength": payload.signal_strength,
-            "ipAddressHistory": [payload.ip_address] if payload.ip_address else [],
+            "ipAddressHistory": [device_ip] if device_ip else [],
             "organization": None,
             "createdAt": now,
             "updatedAt": now,
@@ -117,20 +146,28 @@ async def receive_heartbeat(
 
     update_ops: Dict[str, Any] = {"$set": update_set}
 
-    if payload.ip_address and payload.ip_address != device.get("ipAddress"):
-        update_set["ipAddress"] = payload.ip_address
-        update_ops["$push"] = {"ipAddressHistory": payload.ip_address}
-        
+    # Only accept device IP updates when the reported IP is not a router/gateway (avoids false "IP changed to router" alerts)
+    device_owner_id = device.get("userId") or device.get("user_id")
+    new_ip = payload.ip_address
+    reject_ip = (
+        not new_ip
+        or _is_likely_router_ip(new_ip)
+        or await _is_user_router_ip(db, device_owner_id, new_ip)
+    )
+    if new_ip and new_ip != device.get("ipAddress") and not reject_ip:
+        update_set["ipAddress"] = new_ip
+        update_ops["$push"] = {"ipAddressHistory": new_ip}
+
         # Check for suspicious IP change
         from services.security_monitor import get_security_monitor
         security_monitor = get_security_monitor()
         anomaly = await security_monitor.check_ip_change_anomaly(
             db,
             str(device["_id"]),
-            payload.ip_address,
+            new_ip,
             device.get("ipAddress", "")
         )
-        
+
         if anomaly and device.get("alertsEnabled", True):
             alert_doc = {
                 "deviceId": device["_id"],
@@ -153,6 +190,11 @@ async def receive_heartbeat(
         update_set["family_id"] = family_id_obj
 
     await db.devices.update_one({"_id": device["_id"]}, update_ops)
+
+    # When device reports online, resolve any stale "device is offline" alerts so the dashboard stays accurate
+    if payload.status == "online":
+        from services.device_status_monitor import resolve_offline_alerts_for_device
+        await resolve_offline_alerts_for_device(device["_id"])
 
     # Optional: create a lightweight system alert on device-reported error status (MVP)
     if payload.status == "error" and device.get("alertsEnabled", True):
