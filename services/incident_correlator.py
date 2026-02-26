@@ -54,17 +54,23 @@ class IncidentCorrelator:
         if not device_ids:
             return []
         
-        # Get unresolved alerts
+        # Get unresolved alerts (support both deviceId/device_id and createdAt/created_at)
         alerts = await db.alerts.find({
-            "$or": [
-                {"deviceId": {"$in": device_ids}},
-                {"device_id": {"$in": device_ids}}
+            "$and": [
+                {
+                    "$or": [
+                        {"deviceId": {"$in": device_ids}},
+                        {"device_id": {"$in": device_ids}}
+                    ]
+                },
+                {
+                    "$or": [
+                        {"createdAt": {"$gte": cutoff_time}},
+                        {"created_at": {"$gte": cutoff_time}}
+                    ]
+                }
             ],
             "resolved": False,
-            "$or": [
-                {"createdAt": {"$gte": cutoff_time}},
-                {"created_at": {"$gte": cutoff_time}}
-            ]
         }).sort("createdAt", -1).to_list(100)
         
         if not alerts:

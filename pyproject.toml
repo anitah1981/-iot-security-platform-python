@@ -1,0 +1,18 @@
+[project]
+name = "iot-security-app"
+version = "2.0.0"
+description = "Alert-Pro IoT security monitoring platform"
+requires-python = ">=3.10"
+
+[tool.ruff]
+target-version = "py311"
+line-length = 120
+
+[tool.ruff.lint]
+ignore = ["E501", "E402", "F401", "F541", "F841", "E722", "F601", "E712"]
+exclude = [
+    ".git", ".venv", "venv", "__pycache__",
+    "QUICK_TEST_SCRIPT.py", "add_test_data.py", "create_test_data.py",
+    "upgrade_plan.py", "upgrade_to_pro.py", "agent", "scripts",
+    "test_all_features.py", "test_new_features.py",
+]
