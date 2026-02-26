@@ -1,0 +1,26 @@
+name: CI
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+jobs:
+  lint-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+      - name: Security gate
+        run: python scripts/security_gate.py
+        env:
+          JWT_SECRET: ci-placeholder
+          APP_ENV: local
+      - name: Lint
+        run: pip install ruff; ruff check . --ignore E501
+      - name: Tests
+        run: python -m pytest tests/ -v --tb=short

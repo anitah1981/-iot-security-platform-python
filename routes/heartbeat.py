@@ -134,9 +134,30 @@ async def receive_heartbeat(
                 )
         # else: device has no owner (orphan) — we'll set userId/family_id below to claim it
 
-    # Update existing device
+    # Update existing device: status and lastSeen
+    # When agent reports "offline", don't flip immediately if device was recently online (avoids
+    # flaky reachability checks e.g. phones that block ping/port 80). Require sustained offline.
+    heartbeat_interval = int(device.get("heartbeatInterval", 30))
+    grace_sec = max(60, heartbeat_interval * 2)
+    if payload.status == "offline" and device.get("status") == "online":
+        last_seen = device.get("lastSeen")
+        if last_seen:
+            try:
+                age = (now - last_seen).total_seconds()
+            except TypeError:
+                age = 999
+            if age < grace_sec:
+                # Keep showing online; agent's check may be flaky (e.g. device blocks port 80)
+                update_set_status = "online"
+            else:
+                update_set_status = "offline"
+        else:
+            update_set_status = "offline"
+    else:
+        update_set_status = payload.status
+
     update_set: Dict[str, Any] = {
-        "status": payload.status,
+        "status": update_set_status,
         "lastSeen": now,
         "updatedAt": now,
     }

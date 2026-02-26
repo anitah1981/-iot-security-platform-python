@@ -4,15 +4,16 @@ Tests all major components of the IoT Security Platform
 """
 
 import asyncio
+import os
 import requests
 import json
 from datetime import datetime
 import sys
 
-# Configuration
-BASE_URL = "http://localhost:8000"
-TEST_EMAIL = "anitah1981@gmail.com"
-TEST_PASSWORD = "Test123!!Test"
+# Configuration – use env vars only (no hardcoded credentials)
+BASE_URL = os.getenv("TEST_BASE_URL", "http://localhost:8000")
+TEST_EMAIL = os.getenv("TEST_EMAIL", "")
+TEST_PASSWORD = os.getenv("TEST_PASSWORD", "")
 
 # Colors for terminal output
 class Colors:
@@ -49,8 +50,16 @@ def test_health_check():
         response = requests.get(f"{BASE_URL}/api/health", timeout=5)
         if response.status_code == 200:
             data = response.json()
-            print_success(f"Server is running: {data.get('status')}")
-            print_success(f"Database: {data.get('database')}")
+            print_success(f"Server is running: {data.get('status', 'alive')}")
+            # Readiness (DB) is on /api/ready
+            try:
+                r2 = requests.get(f"{BASE_URL}/api/ready", timeout=3)
+                if r2.status_code == 200:
+                    print_success(f"Database: {r2.json().get('database', 'connected')}")
+                else:
+                    print_warning(f"Readiness: {r2.status_code}")
+            except Exception:
+                print_warning("Readiness check skipped")
             return True
         else:
             print_error(f"Health check failed: {response.status_code}")
@@ -63,9 +72,12 @@ def test_health_check():
         return False
 
 def test_login():
-    """Test authentication"""
+    """Test authentication. Requires TEST_EMAIL and TEST_PASSWORD env vars (no hardcoded credentials)."""
     global auth_token
     print_test("User Authentication (Login)")
+    if not TEST_EMAIL.strip() or not TEST_PASSWORD:
+        print_warning("Skipped: set TEST_EMAIL and TEST_PASSWORD env vars to run auth tests.")
+        return False
     try:
         response = requests.post(
             f"{BASE_URL}/api/auth/login",
@@ -304,7 +316,7 @@ def run_all_tests():
     """Run all system tests"""
     print_section("IoT SECURITY PLATFORM - SYSTEM TEST")
     print(f"Testing server at: {BASE_URL}")
-    print(f"Test user: {TEST_EMAIL}")
+    print(f"Auth tests: {'enabled (TEST_EMAIL set)' if TEST_EMAIL.strip() and TEST_PASSWORD else 'skipped (set TEST_EMAIL and TEST_PASSWORD to run)'}")
     print(f"Time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     
     results = {}

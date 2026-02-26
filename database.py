@@ -1,21 +1,34 @@
 # database.py - MongoDB Connection
 from motor.motor_asyncio import AsyncIOMotorClient
 from typing import Optional
+from urllib.parse import urlparse
 
 # Global database connection
 mongodb_client: Optional[AsyncIOMotorClient] = None
 database = None
 
+def _db_name_from_uri(mongo_uri: str) -> str:
+    """Parse database name from MONGO_URI; fallback to iot_security."""
+    try:
+        parsed = urlparse(mongo_uri)
+        if parsed.scheme not in ("mongodb", "mongodb+srv"):
+            return "iot_security"
+        path = (parsed.path or "").strip("/")
+        if path:
+            # path can be "dbname" or "dbname?options"
+            name = path.split("?")[0].strip("/") or "iot_security"
+            return name
+    except Exception:
+        pass
+    return "iot_security"
+
 async def init_db(mongo_uri: str):
     """Connect to MongoDB"""
     global mongodb_client, database
-    
+
     try:
         mongodb_client = AsyncIOMotorClient(mongo_uri)
-        
-        # Get database name from URI or use default
-        # Use default database name for Atlas
-        db_name = 'iot_security'
+        db_name = _db_name_from_uri(mongo_uri)
         database = mongodb_client[db_name]
         
         # Test connection

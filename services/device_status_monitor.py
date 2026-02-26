@@ -243,6 +243,24 @@ async def check_device_status_once() -> None:
             # so the device would stay "online" when it's actually offline.
             new_status = "online" if is_online else "offline"
             old_status = device.get("status")
+
+            # When server would mark device offline: if we have a very recent heartbeat, trust it.
+            # The device agent runs on the user's network and can reach devices; the server often
+            # cannot (e.g. cloud or different subnet), so server ping fails and would wrongly
+            # mark devices offline. Skip overwriting to offline when lastSeen is recent.
+            if new_status == "offline":
+                last_seen = device.get("lastSeen")
+                heartbeat_interval = int(device.get("heartbeatInterval", 30))
+                grace_seconds = max(120, heartbeat_interval * 4)
+                if last_seen:
+                    try:
+                        age_sec = (now - last_seen).total_seconds()
+                    except TypeError:
+                        age_sec = (now - last_seen.replace(tzinfo=None) if getattr(last_seen, "tzinfo", None) else now - last_seen).total_seconds()
+                    if age_sec < grace_seconds:
+                        # Agent reported recently; don't overwrite with server's failed ping
+                        return
+                # No recent lastSeen: allow marking offline (sweep would do it anyway)
             
             # Update if status changed
             if old_status != new_status:

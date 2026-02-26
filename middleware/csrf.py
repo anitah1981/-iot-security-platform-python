@@ -25,7 +25,8 @@ class CSRFProtectionMiddleware(BaseHTTPMiddleware):
     EXEMPT_PATHS = [
         "/api/heartbeat",  # Device agent endpoints
         "/api/webhooks",   # External webhooks
-        "/api/health",     # Health checks
+        "/api/health",     # Liveness
+        "/api/ready",     # Readiness (DB check)
     ]
     
     def __init__(self, app):

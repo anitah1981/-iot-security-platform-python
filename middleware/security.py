@@ -3,16 +3,22 @@ Security Middleware
 Implements comprehensive security measures for the API
 """
 
+import time
+import uuid
+from typing import Callable
+
+import os
+import secrets
 from fastapi import Request, HTTPException, status
 from fastapi.responses import JSONResponse, RedirectResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
-import time
-from typing import Callable
-import os
-import secrets
+
+from utils.structured_log import get_logger
+
+log = get_logger("security")
 
 
 # Rate limiter configuration
@@ -49,62 +55,49 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         return response
 
 
+class RequestIdMiddleware(BaseHTTPMiddleware):
+    """Set request_id on state for correlation in logs."""
+    async def dispatch(self, request: Request, call_next: Callable):
+        request.state.request_id = str(uuid.uuid4())[:8]
+        return await call_next(request)
+
+
 class RequestLoggingMiddleware(BaseHTTPMiddleware):
-    """Log all requests for security audit"""
-    
+    """Structured request logging with severity and optional request_id."""
     async def dispatch(self, request: Request, call_next: Callable):
         start_time = time.time()
-        
-        # Log request (ASCII only for Windows consoles)
+        rid = getattr(request.state, "request_id", None)
         client_host = request.client.host if request.client else "unknown"
-        print(f"[IN] {request.method} {request.url.path} from {client_host}")
-        
+        extra = {"request_id": rid} if rid else {}
+        log.info("IN %s %s from %s", request.method, request.url.path, client_host, extra=extra)
         try:
             response = await call_next(request)
-            
-            # Log response
             process_time = time.time() - start_time
-            print(f"[OUT] {request.method} {request.url.path} - {response.status_code} ({process_time:.3f}s)")
-            
+            log.info("OUT %s %s %s %.3fs", request.method, request.url.path, response.status_code, process_time, extra=extra)
             return response
         except Exception as e:
-            print(f"[ERROR] {request.method} {request.url.path} - ERROR: {str(e)}")
+            log.error("ERROR %s %s: %s", request.method, request.url.path, str(e), extra=extra)
             raise
 
 
 class InputSanitizationMiddleware(BaseHTTPMiddleware):
-    """Sanitize and validate input data"""
-    
-    SUSPICIOUS_PATTERNS = [
-        "<script", "javascript:", "onerror=", "onload=",
-        "../", "..\\", "DROP TABLE", "DELETE FROM",
-        "INSERT INTO", "UPDATE ", "UNION SELECT"
-    ]
-    
+    """
+    Minimal request hardening: path traversal only.
+    XSS/SQL injection are handled by Pydantic validation and context-aware escaping in responses.
+    Keep rules here auditable and minimal to avoid false positives/negatives.
+    """
+    # Path traversal only; do not block query/body by substring (validation is per-endpoint)
+    PATH_TRAVERSAL = ("../", "..\\")
+
     async def dispatch(self, request: Request, call_next: Callable):
-        # Check URL for suspicious patterns
-        url_path = str(request.url.path).lower()
-        for pattern in self.SUSPICIOUS_PATTERNS:
-            if pattern.lower() in url_path:
-                print(f"[SECURITY] Suspicious pattern detected in URL: {pattern}")
+        url_path = request.url.path
+        for pattern in self.PATH_TRAVERSAL:
+            if pattern in url_path:
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
-                    detail="Invalid request"
+                    detail="Invalid path",
                 )
-        
-        # Check query parameters
-        for key, value in request.query_params.items():
-            value_lower = str(value).lower()
-            for pattern in self.SUSPICIOUS_PATTERNS:
-                if pattern.lower() in value_lower:
-                    print(f"[SECURITY] Suspicious pattern detected in query param {key}: {pattern}")
-                    raise HTTPException(
-                        status_code=status.HTTP_400_BAD_REQUEST,
-                        detail="Invalid request parameters"
-                    )
-        
-        response = await call_next(request)
-        return response
+        return await call_next(request)
 
 
 class HttpsRedirectMiddleware(BaseHTTPMiddleware):
@@ -118,7 +111,7 @@ class HttpsRedirectMiddleware(BaseHTTPMiddleware):
         # Check if we should enforce HTTPS
         # Skip for health checks, static files, and internal endpoints
         path = request.url.path
-        if path in ["/api/health", "/health"] or path.startswith("/assets/") or path.startswith("/static/"):
+        if path in ["/api/health", "/api/ready", "/health"] or path.startswith("/assets/") or path.startswith("/static/"):
             return await call_next(request)
         
         # Check host header if allowed_hosts specified

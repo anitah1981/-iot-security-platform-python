@@ -10,7 +10,7 @@ import platform
 from concurrent.futures import ThreadPoolExecutor
 
 from database import get_database
-from routes.auth import get_current_user
+from routes.auth import get_current_user, require_admin
 from services.network_monitor import NetworkMonitor, start_network_monitoring, stop_network_monitoring, is_network_monitoring_enabled
 from middleware.security import limiter
 
@@ -214,11 +214,6 @@ def _get_arp_table_sync() -> Dict[str, str]:
     except Exception:
         pass
     return result
-
-def _require_admin(user: dict):
-    if user.get("role") != "admin":
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required")
-
 
 @router.post("/check-device-status")
 @limiter.limit("20/minute")
@@ -648,18 +643,15 @@ async def verify_device_connection(
         }
 
 @router.get("/monitoring/status")
-async def monitoring_status(current_user: dict = Depends(get_current_user)):
-    _require_admin(current_user)
+async def monitoring_status(current_user: dict = Depends(require_admin)):
     return {"enabled": is_network_monitoring_enabled()}
 
 @router.post("/monitoring/enable")
-async def enable_monitoring(current_user: dict = Depends(get_current_user)):
-    _require_admin(current_user)
+async def enable_monitoring(current_user: dict = Depends(require_admin)):
     start_network_monitoring()
     return {"enabled": is_network_monitoring_enabled()}
 
 @router.post("/monitoring/disable")
-async def disable_monitoring(current_user: dict = Depends(get_current_user)):
-    _require_admin(current_user)
+async def disable_monitoring(current_user: dict = Depends(require_admin)):
     stop_network_monitoring()
     return {"enabled": is_network_monitoring_enabled()}

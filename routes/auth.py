@@ -238,6 +238,14 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(s
             detail="Invalid authentication credentials"
         )
 
+
+async def require_admin(current_user: dict = Depends(get_current_user)) -> dict:
+    """Shared dependency: require authenticated user with role admin. Use on sensitive admin-only endpoints."""
+    if current_user.get("role") != "admin":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required")
+    return current_user
+
+
 @router.post("/signup", response_model=TokenResponse, status_code=status.HTTP_201_CREATED)
 @limiter.limit("3/minute")
 async def signup(user_data: UserCreate, request: Request, background_tasks: BackgroundTasks):
@@ -744,10 +752,7 @@ async def logout(body: LogoutRequest, request: Request, current_user = Depends(g
 
 @router.post("/unlock/{user_id}")
 @limiter.limit("5/minute")
-async def unlock_account(user_id: str, request: Request, current_user = Depends(get_current_user)):
-    if current_user.get("role") != "admin":
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required")
-
+async def unlock_account(user_id: str, request: Request, current_user: dict = Depends(require_admin)):
     db = await get_database()
     from bson import ObjectId
     try:

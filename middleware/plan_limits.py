@@ -40,10 +40,11 @@ class PlanLimits:
         if device_limit < 0:
             return True
         
-        # Count user's devices (exclude soft-deleted devices)
+        # Count user's devices (exclude soft-deleted; support both user_id and userId)
         db = await get_database()
+        uid = user["_id"]
         device_count = await db.devices.count_documents({
-            "userId": user["_id"],
+            "$or": [{"user_id": uid}, {"userId": uid}],
             "isDeleted": {"$ne": True}
         })
         
@@ -80,10 +81,11 @@ class PlanLimits:
         
         device_limit = plan_config["device_limit"]
         
-        # Count user's devices (exclude soft-deleted devices)
+        # Count user's devices (exclude soft-deleted; support both user_id and userId)
         db = await get_database()
+        uid = user["_id"]
         device_count = await db.devices.count_documents({
-            "userId": user["_id"],
+            "$or": [{"user_id": uid}, {"userId": uid}],
             "isDeleted": {"$ne": True}
         })
         
@@ -122,11 +124,14 @@ class PlanLimits:
         retention_days = plan_config["history_days"]
         cutoff_date = datetime.utcnow() - timedelta(days=retention_days)
         
-        # Delete old alerts
+        # Delete old alerts (support both user_id/userId and created_at/createdAt)
         db = await get_database()
+        uid = user["_id"]
         result = await db.alerts.delete_many({
-            "userId": user["_id"],
-            "createdAt": {"$lt": cutoff_date}
+            "$and": [
+                {"$or": [{"user_id": uid}, {"userId": uid}]},
+                {"$or": [{"created_at": {"$lt": cutoff_date}}, {"createdAt": {"$lt": cutoff_date}}]}
+            ]
         })
         
         return result.deleted_count

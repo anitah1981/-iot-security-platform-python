@@ -99,8 +99,8 @@ uvicorn main:app --reload --port 8000
 
 #### 5) Access the application
 - **Web UI**: http://localhost:8000
-- **API Docs**: http://localhost:8000/docs
 - **Health Check**: http://localhost:8000/api/health
+- **API Docs** (`/docs` and `/redoc`): **Require authentication.** Log in via the Web UI or `POST /api/auth/login`, then open http://localhost:8000/docs in the same browser (session/cookie) or send the `Authorization: Bearer <access_token>` header when requesting `/docs` or `/redoc`.
 
 ## 🚀 Make the web app live (production)
 
