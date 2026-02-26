@@ -6,7 +6,10 @@ from pathlib import Path
 try:
     from dotenv import load_dotenv
     load_dotenv(Path(__file__).resolve().parent.parent / ".env")
-except Exception: pass
+except Exception:
+    pass
+
+
 def main():
     failed = []
     jwt = os.getenv("JWT_SECRET", "")
@@ -15,12 +18,19 @@ def main():
     env = os.getenv("APP_ENV", "local").lower()
     if env == "production":
         m = os.getenv("MONGO_URI", "")
-        if not m or "localhost" in m: failed.append("MONGO_URI not localhost in prod")
-        if not os.getenv("APP_BASE_URL", "").strip(): failed.append("APP_BASE_URL required")
-        if not os.getenv("CORS_ORIGINS", "").strip(): failed.append("CORS_ORIGINS required")
+        if not m or "localhost" in m:
+            failed.append("MONGO_URI not localhost in prod")
+        if not os.getenv("APP_BASE_URL", "").strip():
+            failed.append("APP_BASE_URL required")
+        if not os.getenv("CORS_ORIGINS", "").strip():
+            failed.append("CORS_ORIGINS required")
     if failed:
-        for f in failed: print("[FAIL]", f)
+        for f in failed:
+            print("[FAIL]", f)
         return 1
     print("Security gate passed.")
     return 0
-if __name__ == '__main__': sys.exit(main())
+
+
+if __name__ == "__main__":
+    sys.exit(main())
