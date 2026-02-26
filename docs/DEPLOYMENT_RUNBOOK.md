@@ -30,6 +30,13 @@ Single entry point for deploying and operating Alert-Pro in production.
 - **Health**: `GET /api/health` (liveness), `GET /api/ready` (readiness), `GET /api/startup` (task status).
 - **API docs**: `/docs` and `/redoc` require authentication — see [README](../README.md) “Access the application”.
 - **Audit**: Review [docs/SECURITY_CHECKLIST.md](SECURITY_CHECKLIST.md) and fix any unchecked items.
+- **Data migration (naming)**: After deploying the compatibility code, run the userId→user_id backfill once per environment:
+  ```bash
+  # Make sure MONGO_URI points at the target cluster
+  export MONGO_URI="mongodb+srv://user:pass@cluster.mongodb.net/iot_security"
+  python scripts/migrate_userid_to_user_id.py
+  ```
+  This only fills in missing `user_id` / `created_at` fields and is safe to re-run.
 
 ## Quick links
 

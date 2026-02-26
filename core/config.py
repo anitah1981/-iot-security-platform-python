@@ -24,8 +24,9 @@ if _sentry_dsn:
             integrations=[FastApiIntegration()],
         )
         sentry_enabled = True
-    except Exception:
-        pass
+    except Exception as e:
+        # Log explicitly so Sentry misconfiguration is visible in logs.
+        print(f"[SENTRY] Initialization failed: {e}")
 
 # Paths and core settings
 BASE_DIR = Path(__file__).resolve().parent.parent

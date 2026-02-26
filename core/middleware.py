@@ -50,9 +50,14 @@ def setup_middleware(app: FastAPI) -> None:
                     import sentry_sdk
                     sentry_sdk.capture_exception(exc)
                 except Exception:
-                    pass
-            print(f"[ERROR] Unhandled exception: {exc}")
-            return JSONResponse(status_code=500, content={"detail": "Internal server error"})
+                    # If Sentry itself fails, fall back to logs only.
+                    print(f"[SENTRY] capture_exception failed: {exc}")
+            rid = getattr(request.state, "request_id", None)
+            print(f"[ERROR] Unhandled exception: {exc} (request_id={rid})")
+            payload = {"detail": "Internal server error"}
+            if rid:
+                payload["request_id"] = rid
+            return JSONResponse(status_code=500, content=payload)
 
     cors_origins = get_cors_origins()
     allow_credentials = "*" not in cors_origins

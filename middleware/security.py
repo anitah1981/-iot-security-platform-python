@@ -59,7 +59,13 @@ class RequestIdMiddleware(BaseHTTPMiddleware):
     """Set request_id on state for correlation in logs."""
     async def dispatch(self, request: Request, call_next: Callable):
         request.state.request_id = str(uuid.uuid4())[:8]
-        return await call_next(request)
+        response = await call_next(request)
+        try:
+            response.headers["X-Request-ID"] = request.state.request_id
+        except Exception:
+            # If for some reason we can't set the header, don't break the request.
+            pass
+        return response
 
 
 class RequestLoggingMiddleware(BaseHTTPMiddleware):

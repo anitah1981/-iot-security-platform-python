@@ -280,7 +280,7 @@ This project follows standard contribution guidelines. Feel free to submit issue
 ## 🔗 Links
 
 - **Documentation**: See `docs/` folder
-- **API Docs**: http://your-domain.com/docs
+- **API Docs**: `https://your-domain.com/docs` (**requires authentication**, same as local `/docs` / `/redoc`)
 - **Branding Guide**: `docs/branding.md`
 
 ---
