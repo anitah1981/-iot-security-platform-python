@@ -37,10 +37,21 @@ def hash_token(token: str) -> str:
     return hashlib.sha256(token.encode()).hexdigest()
 
 
+def _reset_base_url() -> str:
+    """Base URL for reset links. Must be set in production so the link points to your live site."""
+    base = (os.getenv("APP_BASE_URL") or "").strip().rstrip("/")
+    if not base:
+        base = "http://localhost:8000"
+    if os.getenv("APP_ENV", "").lower() == "production" and "localhost" in base:
+        print("[WARNING] APP_BASE_URL is localhost in production; reset links in emails will be wrong. Set APP_BASE_URL to your live URL in Railway.")
+    return base
+
+
 async def send_reset_email(email: str, token: str, user_name: str):
     """Send password reset email"""
-    base_url = os.getenv("APP_BASE_URL", "http://localhost:8000")
+    base_url = _reset_base_url()
     reset_link = f"{base_url}/reset-password?token={token}"
+    print(f"[INFO] Password reset link base: {base_url}")
     
     subject = "Password Reset Request - IoT Security Platform"
     
@@ -122,56 +133,39 @@ async def send_reset_email(email: str, token: str, user_name: str):
         raise
 
 
+async def _do_forgot_password_work(email: str) -> None:
+    """Run in background: look up user, store token, send email. No await in request path so no cold-start timeout."""
+    db = await get_database()
+    user = await db.users.find_one({"email": email})
+    if not user:
+        print(f"[INFO] Password reset requested for non-existent email: {email}")
+        return
+    token = generate_reset_token()
+    token_hash = hash_token(token)
+    expires_at = datetime.utcnow() + timedelta(hours=1)
+    await db.users.update_one(
+        {"_id": user["_id"]},
+        {"$set": {
+            "reset_token": token_hash,
+            "reset_token_expires": expires_at,
+            "updatedAt": datetime.utcnow()
+        }}
+    )
+    await send_reset_email(email, token, user.get("name", "User"))
+    print(f"[OK] Password reset requested for {email}")
+
+
 @router.post("/forgot-password")
 async def forgot_password(
     request: ForgotPasswordRequest,
     background_tasks: BackgroundTasks
 ):
     """
-    Request a password reset link
-    
-    - Validates email exists
-    - Generates secure reset token
-    - Sends email with reset link
-    - Token expires in 1 hour
+    Request a password reset link. Returns immediately; DB and email run in background
+    so Railway cold start does not cause a timeout.
     """
-    db = await get_database()
-    
-    # Find user by email
-    user = await db.users.find_one({"email": request.email.lower()})
-    
-    # Always return success to prevent email enumeration
-    # But only send email if user exists
-    if user:
-        # Generate reset token
-        token = generate_reset_token()
-        token_hash = hash_token(token)
-        
-        # Store token in database with expiration
-        expires_at = datetime.utcnow() + timedelta(hours=1)
-        
-        await db.users.update_one(
-            {"_id": user["_id"]},
-            {"$set": {
-                "reset_token": token_hash,
-                "reset_token_expires": expires_at,
-                "updatedAt": datetime.utcnow()
-            }}
-        )
-        
-        # Send reset email in background
-        background_tasks.add_task(
-            send_reset_email,
-            request.email.lower(),
-            token,
-            user.get("name", "User")
-        )
-        
-        print(f"[OK] Password reset requested for {request.email}")
-    else:
-        print(f"[INFO] Password reset requested for non-existent email: {request.email}")
-    
-    # Always return success message
+    email = request.email.lower()
+    background_tasks.add_task(_do_forgot_password_work, email)
     return {
         "message": "If an account exists with that email, a password reset link has been sent."
     }

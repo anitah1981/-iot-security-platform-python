@@ -122,3 +122,4 @@ Update `MONGO_URI` (with the new password) in **every** place the app or scripts
 | [PRODUCTION_EMAIL_SETUP.md](PRODUCTION_EMAIL_SETUP.md) | **Production email** – set SMTP in Railway so password reset and verification work |
 | [MONGODB_MANUAL_BACKUP.md](MONGODB_MANUAL_BACKUP.md) | Manual backup (Python script or mongodump), restore drill, retention |
 | [RESTORE_NOTES.md](RESTORE_NOTES.md) | Restore from Python backup (JSON) and retention policy |
+| [TAKE_SITE_OFFLINE.md](TAKE_SITE_OFFLINE.md) | How to take the website offline on Railway (stop/pause service) |

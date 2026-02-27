@@ -1,4 +1,4 @@
-﻿# Production email (password reset, verification, alerts)
+# Production email (password reset, verification, alerts)
 
 For password reset, signup verification, and alert emails to work in production, the app must have SMTP configured. You set these once in your host (e.g. Railway), not per user.
 
@@ -6,14 +6,20 @@ For password reset, signup verification, and alert emails to work in production,
 
 1. Open Railway -> your project -> your service (the app).
 2. Go to Variables.
-3. Add these three variables:
+3. Add these variables (required for email):
 
-   SMTP_USER    = Your Gmail address (e.g. you@gmail.com)
+   SMTP_USER     = Your Gmail address (e.g. you@gmail.com)
    SMTP_PASSWORD = Gmail App Password (from Google App Passwords)
-   FROM_EMAIL   = Same as SMTP_USER
+   FROM_EMAIL    = Same as SMTP_USER
 
-4. Save. Railway will redeploy.
-5. After deploy open: https://your-app.up.railway.app/api/health
+4. Set the reset link domain (required so the link in the email goes to your live site):
+
+   APP_BASE_URL  = https://iot-security-platform-python-production.up.railway.app
+
+   (Use your exact Railway URL with https, no trailing slash.)
+
+5. Save. Railway will redeploy.
+6. After deploy open: https://your-app.up.railway.app/api/health
    You should see "email_configured": true. If false, one of the three is missing or wrong.
 
 ## Gmail App Password
