@@ -1,6 +1,7 @@
 """
 API router: health/ready/startup and all API sub-routers.
 """
+import os
 from datetime import datetime, timezone
 from fastapi import APIRouter
 from fastapi.responses import JSONResponse
@@ -29,11 +30,14 @@ def get_api_router():
 
     @router.get("/health")
     def health():
+        # Expose whether email (password reset, verification, alerts) can be sent - no secrets
+        email_configured = bool(os.getenv("SMTP_USER") and os.getenv("SMTP_PASSWORD") and os.getenv("FROM_EMAIL"))
         return {
             "ok": True,
             "service": "alert-pro",
             "status": "alive",
             "timestamp": datetime.now(timezone.utc).isoformat(),
+            "email_configured": email_configured,
         }
 
     @router.get("/ready")

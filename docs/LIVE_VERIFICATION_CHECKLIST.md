@@ -2,8 +2,10 @@
 
 Use this checklist to explicitly verify and sign off security and behaviour **against the live app** (not local). Fill in **Env URL** and **Verified on** when done.
 
-**Env URL:** _________________________________________  
-**Verified on (date):** _________________________________________
+**Env URL:** `https://iot-security-platform-python-production.up.railway.app`  
+**Verified on (date):** _________________________ (e.g. 2026-02-28)
+
+**Automated checks (2026-02-27):** Health 200 OK; /docs unauthenticated → 401; backup script ran successfully.
 
 ---
 

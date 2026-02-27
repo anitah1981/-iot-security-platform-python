@@ -29,6 +29,7 @@ from models import (
 )
 from database import get_database
 from middleware.security import limiter
+from bson import ObjectId
 from services.notification_service import NotificationService
 from services.audit_logger import AuditLogger
 try:
@@ -334,7 +335,30 @@ async def signup(user_data: UserCreate, request: Request, background_tasks: Back
     # Insert into database
     result = await db.users.insert_one(user_doc)
     user_id = str(result.inserted_id)
-    
+    user_oid = result.inserted_id
+
+    # Create default notification preferences so user can receive alerts and password-reset flow has a record
+    default_prefs = {
+        "userId": user_oid,
+        "emailEnabled": True,
+        "smsEnabled": False,
+        "whatsappEnabled": False,
+        "voiceEnabled": False,
+        "emailSeverities": ["low", "medium", "high", "critical"],
+        "smsSeverities": ["high", "critical"],
+        "whatsappSeverities": ["medium", "high", "critical"],
+        "voiceSeverities": ["critical"],
+        "phoneNumber": None,
+        "whatsappNumber": None,
+        "quietHoursEnabled": False,
+        "quietHoursStart": None,
+        "quietHoursEnd": None,
+        "escalationEnabled": True,
+        "escalationDelayMinutes": 15,
+        "updatedAt": datetime.utcnow(),
+    }
+    await db.notification_preferences.insert_one(default_prefs)
+
     # Create response user object (no password)
     safe_user = UserResponse(
         id=user_id,

@@ -103,17 +103,20 @@ async def send_reset_email(email: str, token: str, user_name: str):
     </html>
     """
     
-    # Send email using notification service
+    # Send email using notification service (requires SMTP_USER, SMTP_PASSWORD, FROM_EMAIL in production)
     notification_service = NotificationService()
     try:
-        await notification_service._send_email(
+        sent = await notification_service._send_email(
             to_email=email,
             subject=subject,
             message=html_content,
             severity="info",
             alert_id="password-reset"
         )
-        print(f"[OK] Password reset email sent to {email}")
+        if sent:
+            print(f"[OK] Password reset email sent to {email}")
+        else:
+            print(f"[WARNING] Password reset email NOT sent (SMTP not configured?). Check SMTP_USER, SMTP_PASSWORD, FROM_EMAIL in env.")
     except Exception as e:
         print(f"[ERROR] Failed to send password reset email: {e}")
         raise

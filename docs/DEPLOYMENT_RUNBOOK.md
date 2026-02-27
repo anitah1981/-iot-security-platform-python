@@ -89,9 +89,9 @@ See [GO_LIVE_STEPS.md](GO_LIVE_STEPS.md) for migration commands per environment.
 
 ## Backup and restore operational readiness
 
-- **Schedule:** Run a manual backup regularly (e.g. weekly). Use `python scripts/backup_manual.py` (output under `C:\backups` or `BACKUP_BASE_DIR`). See [MONGODB_MANUAL_BACKUP.md](MONGODB_MANUAL_BACKUP.md).
-- **Restore drill:** At least once, restore from a backup (e.g. use backup JSON or mongorestore) into a test DB and confirm app works against it. Document the steps that work for your setup.
-- **Retention:** Decide how many backup copies to keep (e.g. last 4 weekly) and where they are stored; prune older ones.
+- **Schedule:** Run a manual backup regularly (e.g. weekly). Use `python scripts/backup_manual.py` (output under `C:\backups` or `BACKUP_BASE_DIR`). On Windows, a weekly task **"MongoDB backup IoT app"** can run `scripts/run_backup.ps1` (e.g. Sunday 02:00). See [MONGODB_MANUAL_BACKUP.md](MONGODB_MANUAL_BACKUP.md) and [RESTORE_NOTES.md](RESTORE_NOTES.md).
+- **Restore drill:** At least once, restore from a backup (e.g. use backup JSON or mongorestore) into a test DB and confirm app works against it. Document the steps in [RESTORE_NOTES.md](RESTORE_NOTES.md).
+- **Retention:** Decide how many backup copies to keep (e.g. last 4 weekly) and where they are stored; prune older ones. See [RESTORE_NOTES.md](RESTORE_NOTES.md).
 
 ## When you change the MongoDB password
 
@@ -111,6 +111,7 @@ Update `MONGO_URI` (with the new password) in **every** place the app or scripts
 
 | Doc | Purpose |
 |-----|--------|
+| [TASKS_2_3_4_WALKTHROUGH.md](TASKS_2_3_4_WALKTHROUGH.md) | **Tasks 2–4** – What was done for you and what you still do (live verification, backups, post-migration) |
 | [WHATS_LEFT_NOW.md](WHATS_LEFT_NOW.md) | **What's left to do now** (your actions vs done in code) |
 | [GO_LIVE_STEPS.md](GO_LIVE_STEPS.md) | **How to** run migration + five production security steps (copy-paste commands) |
 | [SECURITY_CHECKLIST.md](SECURITY_CHECKLIST.md) | Pre-production security checks |
@@ -118,4 +119,6 @@ Update `MONGO_URI` (with the new password) in **every** place the app or scripts
 | [MAKE_APP_LIVE.md](MAKE_APP_LIVE.md) | Get live quickly (Railway/Render) |
 | [REVERSE_PROXY_SETUP.md](REVERSE_PROXY_SETUP.md) | HTTPS and reverse proxy |
 | [API_KEYS_SETUP.md](API_KEYS_SETUP.md) | API keys (email, SMS, payments) |
+| [PRODUCTION_EMAIL_SETUP.md](PRODUCTION_EMAIL_SETUP.md) | **Production email** – set SMTP in Railway so password reset and verification work |
 | [MONGODB_MANUAL_BACKUP.md](MONGODB_MANUAL_BACKUP.md) | Manual backup (Python script or mongodump), restore drill, retention |
+| [RESTORE_NOTES.md](RESTORE_NOTES.md) | Restore from Python backup (JSON) and retention policy |
