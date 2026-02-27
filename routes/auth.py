@@ -246,6 +246,16 @@ async def require_admin(current_user: dict = Depends(get_current_user)) -> dict:
     return current_user
 
 
+async def require_business_plan(current_user: dict = Depends(get_current_user)) -> dict:
+    """Shared dependency: require authenticated user with Business plan. Use for Business-only features (e.g. audit logs)."""
+    if current_user.get("plan") != "business":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="This feature requires a Business plan. Please upgrade your plan.",
+        )
+    return current_user
+
+
 @router.post("/signup", response_model=TokenResponse, status_code=status.HTTP_201_CREATED)
 @limiter.limit("3/minute")
 async def signup(user_data: UserCreate, request: Request, background_tasks: BackgroundTasks):

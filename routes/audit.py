@@ -7,7 +7,7 @@ import csv
 import io
 
 from database import get_database
-from routes.auth import get_current_user
+from routes.auth import require_business_plan
 from models import AuditLogEntry
 
 router = APIRouter()
@@ -20,21 +20,13 @@ async def get_audit_logs(
     days: int = Query(30, ge=1, le=365, description="Number of days to include"),
     page: int = Query(1, ge=1, description="Page number"),
     limit: int = Query(50, ge=1, le=1000, description="Items per page"),
-    current_user: dict = Depends(get_current_user)
+    current_user: dict = Depends(require_business_plan),
 ):
     """
     Get audit logs with pagination (Business plan feature)
     """
     db = await get_database()
     user_id = current_user["_id"]
-    
-    # Check plan (Business only)
-    plan = current_user.get("plan", "free")
-    if plan != "business":
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Audit logs are a Business plan feature. Please upgrade your plan."
-        )
     
     # Build filter
     filter_query = {"user_id": user_id}
@@ -95,19 +87,11 @@ async def get_audit_logs(
 @router.get("/logs/stats")
 async def get_audit_stats(
     days: int = Query(30, ge=1, le=365),
-    current_user: dict = Depends(get_current_user)
+    current_user: dict = Depends(require_business_plan),
 ):
-    """Get audit log statistics"""
+    """Get audit log statistics (Business plan feature)"""
     db = await get_database()
     user_id = current_user["_id"]
-    
-    # Check plan
-    plan = current_user.get("plan", "free")
-    if plan != "business":
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Audit logs are a Business plan feature."
-        )
     
     # Build filter (same as get_audit_logs)
     filter_query = {"user_id": user_id}
@@ -162,19 +146,11 @@ async def export_audit_logs(
     action: Optional[str] = Query(None),
     resource_type: Optional[str] = Query(None),
     days: int = Query(30, ge=1, le=365),
-    current_user: dict = Depends(get_current_user)
+    current_user: dict = Depends(require_business_plan),
 ):
     """Export audit logs (Business plan feature)"""
     db = await get_database()
     user_id = current_user["_id"]
-    
-    # Check plan
-    plan = current_user.get("plan", "free")
-    if plan != "business":
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Audit logs are a Business plan feature."
-        )
     
     # Build filter (same as get_audit_logs)
     filter_query = {"user_id": user_id}
