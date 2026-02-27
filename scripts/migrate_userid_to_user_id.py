@@ -7,8 +7,23 @@ compatibility code. Safe to run multiple times; it only updates docs
 missing the new fields.
 """
 import os
+import sys
+from pathlib import Path
+
+# Ensure project root is on path so "database" can be imported when run as script
+_root = Path(__file__).resolve().parent.parent
+if str(_root) not in sys.path:
+    sys.path.insert(0, str(_root))
+
+# Load .env from project root so MONGO_URI can be set there (no need to set in shell)
+try:
+    from dotenv import load_dotenv
+    load_dotenv(_root / ".env")
+except ImportError:
+    pass
 
 from pymongo import MongoClient
+from pymongo.errors import OperationFailure
 
 from database import _db_name_from_uri
 

@@ -13,7 +13,8 @@ except Exception:
 def main():
     failed = []
     jwt = os.getenv("JWT_SECRET", "")
-    if not jwt or jwt.strip() in ("change-me-in-production", "changeme", "secret"):
+    forbidden = ("change-me-in-production", "changeme", "secret", "your-super-secret-key-change-in-production")
+    if not jwt or jwt.strip() in forbidden:
         failed.append("JWT_SECRET must be set")
     env = os.getenv("APP_ENV", "local").lower()
     if env == "production":

@@ -2,6 +2,18 @@
 
 Single entry point for deploying and operating Alert-Pro in production.
 
+## Immediate next actions (ongoing)
+
+- **CI signal:** Run `python -m pytest tests/ -v -W default` locally; fix any new warnings so CI stays clean.
+- **Migration:** After confirming backups, run the naming migration **once per deployed environment** (see [Data migration (naming)](#after-deploy) below).
+- **Authz:** Keep using the shared dependencies from `routes.auth`: `get_current_user` for authenticated routes, `require_admin` for **platform** admin-only routes (e.g. unlock account, network monitoring). Family/audit “admin” is per-family role, not platform admin; platform admin = `require_admin` only.
+- **Production security (before go-live):**  
+  (1) Generate and set a strong `JWT_SECRET` and all production env vars.  
+  (2) Enable HTTPS and restrict `ALLOWED_HOSTS` / `CORS_ORIGINS`.  
+  (3) Harden MongoDB (auth, TLS, backups).  
+  (4) Run `scripts/security_gate.py` before each release.  
+  (5) Walk through `docs/SECURITY_CHECKLIST.md` and verify each item in production.
+
 ## Before you deploy
 
 1. **Security checklist (mandatory)**  
@@ -38,10 +50,26 @@ Single entry point for deploying and operating Alert-Pro in production.
   ```
   This only fills in missing `user_id` / `created_at` fields and is safe to re-run.
 
+## When you change the MongoDB password
+
+Update `MONGO_URI` (with the new password) in **every** place the app or scripts read it:
+
+| Where | What to do |
+|-------|------------|
+| **MongoDB Atlas** | Change the database user password (you did this). |
+| **Local `.env`** | Update `MONGO_URI=...` with the new connection string. |
+| **Render** | Dashboard → your service → Environment → edit `MONGO_URI`, save. Redeploy if needed so the new value is used. |
+| **Railway** (if used) | Variables → set `MONGO_URI` to the new connection string. |
+| **Any other host** | Set the `MONGO_URI` environment variable (or secrets) to the new value. |
+
+**Do not push or commit the password to GitHub.** `.env` is in `.gitignore` and must stay that way. Secrets live only in your local `.env` and in each host’s environment (Render, Railway, etc.). There is nothing to commit for a password change.
+
 ## Quick links
 
 | Doc | Purpose |
 |-----|--------|
+| [WHATS_LEFT_NOW.md](WHATS_LEFT_NOW.md) | **What's left to do now** (your actions vs done in code) |
+| [GO_LIVE_STEPS.md](GO_LIVE_STEPS.md) | **How to** run migration + five production security steps (copy-paste commands) |
 | [SECURITY_CHECKLIST.md](SECURITY_CHECKLIST.md) | Pre-production security checks |
 | [DEPLOYMENT.md](DEPLOYMENT.md) | Full deployment options and steps |
 | [MAKE_APP_LIVE.md](MAKE_APP_LIVE.md) | Get live quickly (Railway/Render) |

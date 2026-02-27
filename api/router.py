@@ -1,7 +1,7 @@
 """
 API router: health/ready/startup and all API sub-routers.
 """
-from datetime import datetime
+from datetime import datetime, timezone
 from fastapi import APIRouter
 from fastapi.responses import JSONResponse
 
@@ -33,7 +33,7 @@ def get_api_router():
             "ok": True,
             "service": "alert-pro",
             "status": "alive",
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
         }
 
     @router.get("/ready")
@@ -45,7 +45,7 @@ def get_api_router():
             return {
                 "ok": True,
                 "database": "connected",
-                "timestamp": datetime.utcnow().isoformat(),
+                "timestamp": datetime.now(timezone.utc).isoformat(),
             }
         except Exception as e:
             return JSONResponse(
@@ -54,7 +54,7 @@ def get_api_router():
                     "ok": False,
                     "database": "disconnected",
                     "error": str(e),
-                    "timestamp": datetime.utcnow().isoformat(),
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
                 },
             )
 
@@ -63,7 +63,7 @@ def get_api_router():
         return {
             "ok": True,
             "tasks": get_startup_results(),
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
         }
 
     router.include_router(auth_router, prefix="/auth", tags=["Authentication"])
