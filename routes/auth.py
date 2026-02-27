@@ -682,7 +682,6 @@ async def regenerate_backup_codes(body: MfaVerifyRequest, request: Request, curr
 @router.post("/refresh", response_model=TokenResponse)
 @limiter.limit("10/minute")
 async def refresh_token(body: RefreshTokenRequest, request: Request):
-    from bson import ObjectId
     db = await get_database()
     token_hash = _hash_refresh_token(body.refresh_token)
     stored = await db.refresh_tokens.find_one({"token_hash": token_hash})
@@ -788,7 +787,6 @@ async def logout(body: LogoutRequest, request: Request, current_user = Depends(g
 @limiter.limit("5/minute")
 async def unlock_account(user_id: str, request: Request, current_user: dict = Depends(require_admin)):
     db = await get_database()
-    from bson import ObjectId
     try:
         target_id = ObjectId(user_id)
     except Exception:
