@@ -75,3 +75,4 @@ Update `MONGO_URI` (with the new password) in **every** place the app or scripts
 | [MAKE_APP_LIVE.md](MAKE_APP_LIVE.md) | Get live quickly (Railway/Render) |
 | [REVERSE_PROXY_SETUP.md](REVERSE_PROXY_SETUP.md) | HTTPS and reverse proxy |
 | [API_KEYS_SETUP.md](API_KEYS_SETUP.md) | API keys (email, SMS, payments) |
+| [MONGODB_MANUAL_BACKUP.md](MONGODB_MANUAL_BACKUP.md) | Manual backup with mongodump (M0 / no Atlas backup) |

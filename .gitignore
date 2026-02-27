@@ -20,6 +20,9 @@ env/
 *.db
 *.sqlite3
 
+# Local backup output (keep on C:\backups or similar, do not commit)
+backups/
+
 # Logs
 *.log
 logs/
