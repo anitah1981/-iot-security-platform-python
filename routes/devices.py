@@ -88,13 +88,13 @@ async def get_devices(
         
         # Start with user/family filter
         if family_id:
-            # Show all family devices
             filter_query = {"family_id": family_id}
         else:
-            # Show only user's devices (check both user_id and userId for compatibility)
-            # Use simpler approach - try userId first (most common)
-            filter_query = {"userId": user_id}
-        
+            # Only this user's devices: match either userId or user_id (compatibility)
+            filter_query = {
+                "$or": [{"userId": user_id}, {"user_id": user_id}],
+            }
+
         # Exclude soft-deleted devices
         filter_query["isDeleted"] = {"$ne": True}
 
@@ -125,16 +125,6 @@ async def get_devices(
             except Exception as e2:
                 print(f"[ERROR] Failed to query devices (no sort): {e2}")
                 devices_raw = []
-        
-        # If no devices found and we're using userId, try user_id as fallback
-        if len(devices_raw) == 0 and not family_id and "userId" in filter_query:
-            # Try with user_id instead
-            fallback_query = filter_query.copy()
-            fallback_query["user_id"] = fallback_query.pop("userId")
-            cursor = db.devices.find(fallback_query).skip(skip).limit(limit).sort([("status", 1), ("lastSeen", -1)])
-            devices_raw = await cursor.to_list(length=limit)
-            if len(devices_raw) > 0:
-                filter_query = fallback_query
         
         # Get total count
         try:

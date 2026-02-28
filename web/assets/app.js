@@ -214,13 +214,22 @@ async function loginFlow(){
   }
 }
 
+function timeoutPromise(ms, label) {
+  return new Promise((_, reject) =>
+    setTimeout(() => reject(new Error(label || "Request timed out")), ms)
+  );
+}
+
 async function loadDashboard(){
   const msg = qs("#dashmsg");
   const who = qs("#who");
   if (who) who.textContent = "Loading profile…";
 
   try{
-    const me = await api("/api/auth/me");
+    const me = await Promise.race([
+      api("/api/auth/me"),
+      timeoutPromise(20000, "Profile load timed out")
+    ]);
     if (who) who.textContent = `${me.name} (${me.email})`;
     const wsEl = qs("#wsStatus");
     if (wsEl) { wsEl.textContent = "🟢 Connected"; wsEl.style.color = "var(--ok)"; wsEl.className = "ws-status connected"; }
@@ -231,7 +240,6 @@ async function loadDashboard(){
       window.location.href = `/login?redirect=${encodeURIComponent(currentPath)}`;
       return;
     }
-    // Auth-related message but flag not set (e.g. 403): still redirect to login
     const errMsg = (e?.message || "").toLowerCase();
     if (errMsg.includes("not authenticated") || errMsg.includes("invalid authentication") || errMsg.includes("credentials")) {
       clearAuth();
@@ -246,8 +254,11 @@ async function loadDashboard(){
   if (msg) msg.textContent = "Loading…";
 
   try{
-    // Load critical data first (devices and groups) - alerts can load after
-    await Promise.all([loadDevices(), loadGroups()]);
+    const loadTimeout = 25000;
+    await Promise.race([
+      Promise.all([loadDevices(), loadGroups()]),
+      timeoutPromise(loadTimeout, "Dashboard load timed out. Check your connection and refresh.")
+    ]);
     updateLastRefreshTime();
 
     if (msg) msg.textContent = "";
@@ -287,8 +298,7 @@ async function loadDashboard(){
       msg.textContent = "Error loading dashboard: " + (e.message || "Unknown error");
     }
   }
-  
-  // Start auto-refresh for real-time updates
+
   startAutoRefreshDashboard();
 }
 
@@ -408,8 +418,12 @@ function buildDevicesQuery(){
 
 async function loadDevices(){
   const data = await api(buildDevicesQuery());
-  renderDevices(data.devices || []);
-  
+  const devices = data.devices || [];
+  const total = data.total != null ? data.total : devices.length;
+  const countEl = document.getElementById("deviceCountSummary");
+  if (countEl) countEl.textContent = total === 0 ? "Your devices: none yet" : `Your devices: ${total} registered`;
+  renderDevices(devices);
+
   // Removed: Don't check device status on every load - it blocks page load (30+ seconds)
   // Device status will be checked after page loads via delayed call in loadDashboard()
   // checkDeviceStatus().catch(err => console.log("Device status check:", err.message));
