@@ -31,11 +31,10 @@
         </div>
       </nav>
 
-      <main id="main-content" role="main" style="margin-top:18px;">
-        <div class="grid">
-          <div class="card">
+      <main id="main-content" role="main" class="login-main">
+        <div class="card login-card">
             <h2>Welcome back</h2>
-            <p class="sub">Use your email + password. JWT is stored locally in your browser.</p>
+            <p class="sub">Sign in to access your devices and alerts.</p>
             <form id="loginForm" aria-label="Sign in form" novalidate>
               <div class="field">
                 <label for="email">Email</label>
@@ -89,21 +88,8 @@
               </div>
               <div id="msg" class="msg" role="alert" aria-live="polite"></div>
             </form>
-          </div>
-
-        <div class="card">
-          <h2>Security note</h2>
-          <p class="sub">
-            For launch, we’ll add secure cookie-based sessions or refresh tokens, plus rate limiting.
-            This UI is the starting dashboard for consumers.
-          </p>
-          <div class="pillrow">
-            <span class="pill"><span class="dot"></span> Trusted blue</span>
-            <span class="pill"><span class="dot"></span> Teal verification</span>
-            <span class="pill"><span class="dot"></span> High contrast</span>
-          </div>
         </div>
-      </div>
+      </main>
     </div>
     
     <div class="footer" style="text-align: center; padding: 20px;">

@@ -88,64 +88,57 @@ class NotificationService:
         subject: str,
         message: str,
         severity: str,
-        alert_id: str
+        alert_id: str,
+        *,
+        body_is_html: bool = False,
     ) -> bool:
-        """Send email notification via Gmail SMTP with HTML formatting"""
-        
+        """Send email via Gmail SMTP. If body_is_html=True, message is sent as-is (full HTML). Otherwise use alert template."""
         if not self.smtp_user or not self.smtp_password:
             print("[WARNING] Gmail SMTP not configured - skipping email")
             return False
-        
+        if not self.from_email:
+            print("[WARNING] FROM_EMAIL not set - cannot send email")
+            return False
         try:
             import smtplib
             from email.mime.text import MIMEText
             from email.mime.multipart import MIMEMultipart
-            
-            # Create HTML email body
-            html_content = f"""
-            <html>
-                <body style="font-family: Arial, sans-serif; padding: 20px;">
-                    <div style="background: {'#dc2626' if severity == 'critical' else '#f59e0b' if severity == 'high' else '#3b82f6'}; 
-                                color: white; padding: 15px; border-radius: 5px; margin-bottom: 20px;">
-                        <h2 style="margin: 0;">🚨 Alert-Pro Alert</h2>
-                    </div>
-                    
-                    <div style="background: #f3f4f6; padding: 20px; border-radius: 5px; margin-bottom: 20px;">
-                        <p style="font-size: 18px; margin: 0;"><strong>{message}</strong></p>
-                    </div>
-                    
-                    <p><strong>Severity:</strong> {severity.upper()}</p>
-                    <p><strong>Time:</strong> {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S UTC')}</p>
-                    
-                    <hr style="margin: 30px 0; border: none; border-top: 1px solid #e5e7eb;">
-                    
-                    <p style="color: #6b7280; font-size: 12px;">
-                        You're receiving this because you have Alert-Pro monitoring enabled.
-                    </p>
-                </body>
-            </html>
-            """
-            
-            # Create message
+
+            if body_is_html:
+                html_content = message
+            else:
+                html_content = f"""
+                <html>
+                    <body style="font-family: Arial, sans-serif; padding: 20px;">
+                        <div style="background: {'#dc2626' if severity == 'critical' else '#f59e0b' if severity == 'high' else '#3b82f6'};
+                                    color: white; padding: 15px; border-radius: 5px; margin-bottom: 20px;">
+                            <h2 style="margin: 0;">🚨 Alert-Pro Alert</h2>
+                        </div>
+                        <div style="background: #f3f4f6; padding: 20px; border-radius: 5px; margin-bottom: 20px;">
+                            <p style="font-size: 18px; margin: 0;"><strong>{message}</strong></p>
+                        </div>
+                        <p><strong>Severity:</strong> {severity.upper()}</p>
+                        <p><strong>Time:</strong> {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S UTC')}</p>
+                        <hr style="margin: 30px 0; border: none; border-top: 1px solid #e5e7eb;">
+                        <p style="color: #6b7280; font-size: 12px;">You're receiving this because you have Alert-Pro monitoring enabled.</p>
+                    </body>
+                </html>
+                """
             msg = MIMEMultipart('alternative')
             msg['Subject'] = subject
             msg['From'] = self.from_email
             msg['To'] = to_email
-            
-            html_part = MIMEText(html_content, 'html')
-            msg.attach(html_part)
-            
-            # Send via Gmail SMTP
+            msg.attach(MIMEText(html_content, 'html'))
             with smtplib.SMTP(self.smtp_host, self.smtp_port) as server:
                 server.starttls()
                 server.login(self.smtp_user, self.smtp_password)
                 server.send_message(msg)
-            
             print(f"[OK] Email sent to {to_email}")
             return True
-        
         except Exception as e:
+            import traceback
             print(f"[ERROR] Email error: {e}")
+            traceback.print_exc()
             return False
 
     def send_email(self, to_email: str, subject: str, content: str) -> NotificationResult:

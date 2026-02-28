@@ -193,7 +193,8 @@ async def _send_verification_email(email: str, token: str, user_name: str):
         subject=subject,
         message=html_content,
         severity="info",
-        alert_id="verify-email"
+        alert_id="verify-email",
+        body_is_html=True,
     )
 
 async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)):

@@ -32,3 +32,17 @@ For password reset, signup verification, and alert emails to work in production,
 ## Check
 
 GET /api/health -> email_configured: true means password reset and verification emails can be sent.
+
+## Still no reset email?
+
+1. **Check Railway logs** – In Railway, open your service -> Deployments -> click the latest deployment -> **View Logs**. Trigger "Forgot password" again, then look for:
+   - `[INFO] Attempting to send password reset email to ...` – request reached the server
+   - `[OK] Password reset email sent to ...` – email was sent
+   - `[WARNING] Gmail SMTP not configured` or `FROM_EMAIL not set` – add or fix variables
+   - `[ERROR] Email error: ...` – the message after this is the real reason (e.g. wrong app password, Gmail blocking)
+
+2. **Check spam/junk** – Look in Spam and "All Mail" for the sender (your Gmail address).
+
+3. **Confirm the email exists** – Use the exact address the account was created with. If it’s wrong, the app still says "link sent" but does not send an email.
+
+4. **Verify variables** – In Railway Variables, names must be exactly: SMTP_USER, SMTP_PASSWORD, FROM_EMAIL (no typos). Redeploy after changing.

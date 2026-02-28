@@ -298,6 +298,22 @@ a:hover{ text-decoration:underline; }
   box-shadow: 0 20px 60px rgba(0,0,0,.5);
 }
 
+/* Sign-in page: single centered card */
+.login-main{
+  margin-top: 24px;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+}
+.login-card{
+  max-width: 420px;
+  width: 100%;
+}
+.login-card:hover{
+  transform: none;
+  box-shadow: var(--shadow);
+}
+
 .card h2{ 
   margin:0 0 8px; 
   font-size: 20px; 
