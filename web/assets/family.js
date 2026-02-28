@@ -3,19 +3,28 @@
 let currentFamily = null;
 let currentUser = null;
 
+function timeout(ms, msg) {
+  return new Promise((_, reject) => setTimeout(() => reject(new Error(msg || 'Request timed out')), ms));
+}
+
 async function loadFamilyPage() {
   const who = document.getElementById('who');
-  
+  const nameDisplay = document.getElementById('familyNameDisplay');
+
   try {
-    // Get current user
-    currentUser = await api('/api/auth/me');
+    currentUser = await Promise.race([
+      api('/api/auth/me'),
+      timeout(20000, 'Profile load timed out')
+    ]);
     if (who) {
       who.textContent = `${currentUser.name} (${currentUser.email})`;
     }
-    
-    // Try to load family
+
     try {
-      currentFamily = await api('/api/family/my-family');
+      currentFamily = await Promise.race([
+        api('/api/family/my-family'),
+        timeout(20000, 'Family load timed out')
+      ]);
       showHasFamily();
       await loadFamilyDetails();
     } catch (error) {
@@ -41,13 +50,13 @@ async function loadFamilyPage() {
       window.location.href = `/login?redirect=${encodeURIComponent(currentPath)}`;
       return;
     }
-    // Always show something - default to no family state
     showNoFamily();
     const msgEl = document.getElementById('createMsg');
     if (msgEl) {
       msgEl.textContent = error?.message || 'Failed to load. Please try again.';
       msgEl.className = 'msg bad';
     }
+    if (nameDisplay) nameDisplay.textContent = 'Could not load';
   }
 }
 
@@ -101,20 +110,23 @@ async function createFamily(event) {
 
 async function loadFamilyDetails() {
   if (!currentFamily) return;
-  
-  // Update family info
-  document.getElementById('familyName').textContent = currentFamily.name;
-  document.getElementById('familyDescription').textContent = currentFamily.description || 'No description';
-  
-  // Update stats
-  document.getElementById('memberCount').textContent = currentFamily.members.length;
-  document.getElementById('deviceCount').textContent = currentFamily.total_devices;
-  
-  // Load invitations
-  await loadInvitations();
-  
-  // Render members table
-  renderMembers(currentFamily.members);
+
+  const nameEl = document.getElementById('familyNameDisplay');
+  const descEl = document.getElementById('familyDescription');
+  const memberCountEl = document.getElementById('memberCount');
+  const deviceCountEl = document.getElementById('deviceCount');
+
+  if (nameEl) nameEl.textContent = currentFamily.name;
+  if (descEl) descEl.textContent = currentFamily.description || 'No description';
+  if (memberCountEl) memberCountEl.textContent = (currentFamily.members && currentFamily.members.length) || 0;
+  if (deviceCountEl) deviceCountEl.textContent = currentFamily.total_devices != null ? currentFamily.total_devices : 0;
+
+  try {
+    await loadInvitations();
+  } catch (e) {
+    console.error('Failed to load invitations:', e);
+  }
+  renderMembers(currentFamily.members || []);
 }
 
 function renderMembers(members) {

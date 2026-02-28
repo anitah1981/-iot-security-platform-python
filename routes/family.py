@@ -152,8 +152,11 @@ async def get_my_family(current_user: dict = Depends(get_current_user)):
     # Get all members
     members = await db.family_members.find({"family_id": family_id}).to_list(100)
     
-    # Get device count
-    device_count = await db.devices.count_documents({"family_id": family_id})
+    # Get device count (exclude soft-deleted)
+    device_count = await db.devices.count_documents({
+        "family_id": family_id,
+        "isDeleted": {"$ne": True}
+    })
     family_doc["device_count"] = device_count
     
     return _family_doc_to_response(family_doc, members)
@@ -190,9 +193,12 @@ async def update_family(
     # Return updated family
     family_doc = await db.families.find_one({"_id": family_id})
     members = await db.family_members.find({"family_id": family_id}).to_list(100)
-    device_count = await db.devices.count_documents({"family_id": family_id})
+    device_count = await db.devices.count_documents({
+        "family_id": family_id,
+        "isDeleted": {"$ne": True}
+    })
     family_doc["device_count"] = device_count
-    
+
     return _family_doc_to_response(family_doc, members)
 
 
