@@ -9,6 +9,7 @@ from typing import Dict
 
 from database import get_database
 from services.stripe_service import StripeService
+from middleware.plan_limits import get_effective_plan
 
 
 async def cleanup_old_alerts_for_all_users():
@@ -27,7 +28,7 @@ async def cleanup_old_alerts_for_all_users():
     
     for user in users:
         try:
-            plan_name = user.get("plan", "free")
+            plan_name = get_effective_plan(user)
             plan_config = StripeService.get_plan_config(plan_name)
             
             if not plan_config:
@@ -73,7 +74,7 @@ async def cleanup_old_alerts_for_user(user_id: str) -> int:
     if not user:
         return 0
     
-    plan_name = user.get("plan", "free")
+    plan_name = get_effective_plan(user)
     plan_config = StripeService.get_plan_config(plan_name)
     
     if not plan_config:

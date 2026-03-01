@@ -11,6 +11,11 @@ from database import get_database
 from services.stripe_service import StripeService
 
 
+def get_effective_plan(user: dict) -> str:
+    """Plan used for limits and features. plan_override (e.g. for beta testers) takes precedence over plan."""
+    return (user.get("plan_override") or user.get("plan") or "free").lower()
+
+
 class PlanLimits:
     """Helper class to check and enforce plan limits"""
     
@@ -25,7 +30,7 @@ class PlanLimits:
         Returns:
             True if under limit, raises HTTPException if over limit
         """
-        plan_name = user.get("plan", "free")
+        plan_name = get_effective_plan(user)
         plan_config = StripeService.get_plan_config(plan_name)
         
         if not plan_config:
@@ -73,7 +78,7 @@ class PlanLimits:
         Returns:
             Dict with current count, limit, and percentage
         """
-        plan_name = user.get("plan", "free")
+        plan_name = get_effective_plan(user)
         plan_config = StripeService.get_plan_config(plan_name)
         
         if not plan_config:
@@ -115,7 +120,7 @@ class PlanLimits:
         Returns:
             Number of alerts deleted
         """
-        plan_name = user.get("plan", "free")
+        plan_name = get_effective_plan(user)
         plan_config = StripeService.get_plan_config(plan_name)
         
         if not plan_config:
@@ -148,7 +153,7 @@ class PlanLimits:
         Returns:
             True if feature is available, raises HTTPException if not
         """
-        plan_name = user.get("plan", "free")
+        plan_name = get_effective_plan(user)
         
         # Feature access by plan
         FEATURE_PLANS = {

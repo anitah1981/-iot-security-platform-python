@@ -89,6 +89,19 @@ def _is_valid_ip(s):
     return all(0 <= int(g) <= 255 for g in m.groups())
 
 
+def _is_private_or_unicast(ip):
+    """Exclude multicast (224-239), reserved, and link-local (169.254) from 'unknown device' alerts."""
+    if not _is_valid_ip(ip):
+        return False
+    parts = [int(p) for p in ip.split(".")]
+    first = parts[0]
+    if first == 224 or first == 225 or (first >= 226 and first <= 239):
+        return False
+    if first == 169 and parts[1] == 254:
+        return False
+    return True
+
+
 def check_dns_change():
     current = get_current_dns_servers()
     expected = get_expected_dns()
@@ -151,7 +164,7 @@ def scan_network_for_devices(prefix, known_ips):
                 pass
     arp_ips = set(_get_arp_ips())
     discovered = set(reachable) | arp_ips
-    unknown = [ip for ip in discovered if ip not in known_ips and _is_valid_ip(ip)]
+    unknown = [ip for ip in discovered if ip not in known_ips and _is_valid_ip(ip) and _is_private_or_unicast(ip)]
     return sorted(set(unknown))
 
 
@@ -182,7 +195,13 @@ def send_security_report(base_url, api_key, payload):
     headers = {"Content-Type": "application/json", "X-API-Key": api_key}
     try:
         r = requests.post(url, json=payload, headers=headers, timeout=15)
-        return r.status_code in (200, 201)
+        if r.status_code in (200, 201):
+            return True
+        print("[Watchdog] Report rejected:", r.status_code, r.text[:200] if r.text else "")
+        return False
+    except requests.exceptions.ConnectionError as e:
+        print("[Watchdog] Cannot reach platform (check API_BASE_URL and that the server is running):", e)
+        return False
     except Exception as e:
         print("[Watchdog] Report failed:", e)
         return False

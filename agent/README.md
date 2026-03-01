@@ -84,7 +84,13 @@ ENABLE_NETWORK_WATCHDOG=true
 WATCHDOG_INTERVAL=60
 ```
 
-Set `EXPECTED_DNS` to your router and/or preferred DNS (comma-separated). Run standalone: `python network_watchdog.py`.
+Set `EXPECTED_DNS` to your **actual** router/DNS (comma-separated). Example: if your router is `192.168.0.1`, use `EXPECTED_DNS=192.168.0.1,8.8.8.8` so you don't get false "DNS changed" alerts. Run standalone: `python network_watchdog.py`.
+
+**Watchdog troubleshooting**
+
+- **"Failed to send security report to platform"** – Check: (1) `API_BASE_URL` is reachable from the machine running the agent (e.g. `http://127.0.0.1:8000` if the app runs on the same PC; use the real URL if the app is on another machine or in the cloud). (2) `DEVICE_AGENT_API_KEY` in `.env` matches the key from the app **Settings → Connect real devices**. If the key is wrong, the log will show "Report rejected: 401" or similar.
+- **"Unknown devices" includes 224.x.x.x** – Multicast addresses (224.0.0.x) are now filtered out; update the agent script if you still see them.
+- **DNS changed when you didn't change it** – Set `EXPECTED_DNS` to match your real router (e.g. `192.168.0.1` for a 192.168.0.x network).
 
 ## How it works
 

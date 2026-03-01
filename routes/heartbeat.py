@@ -100,7 +100,7 @@ async def receive_heartbeat(
             "signalStrength": payload.signal_strength,
             "ipAddressHistory": [device_ip] if device_ip else [],
             "organization": None,
-            "offlineOnlyWhenMissedHeartbeats": False,
+            "offlineOnlyWhenMissedHeartbeats": True,
             "createdAt": now,
             "updatedAt": now,
         }

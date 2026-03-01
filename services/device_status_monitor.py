@@ -244,11 +244,11 @@ async def check_device_status_once() -> None:
             new_status = "online" if is_online else "offline"
             old_status = device.get("status")
 
-            # When server would mark device offline: if we have a very recent heartbeat, trust it.
-            # The device agent runs on the user's network and can reach devices; the server often
-            # cannot (e.g. cloud or different subnet), so server ping fails and would wrongly
-            # mark devices offline. Skip overwriting to offline when lastSeen is recent.
+            # CIA: For agent-managed devices (userId/user_id + recent lastSeen), only the heartbeat
+            # sweep should mark offline. Server-side ping often fails (cloud can't reach 192.168.x,
+            # or device blocks ICMP), causing false positives. Trust heartbeats as source of truth.
             if new_status == "offline":
+                has_owner = bool(device.get("userId") or device.get("user_id"))
                 last_seen = device.get("lastSeen")
                 heartbeat_interval = int(device.get("heartbeatInterval", 30))
                 grace_seconds = max(120, heartbeat_interval * 4)
@@ -258,9 +258,12 @@ async def check_device_status_once() -> None:
                     except TypeError:
                         age_sec = (now - last_seen.replace(tzinfo=None) if getattr(last_seen, "tzinfo", None) else now - last_seen).total_seconds()
                     if age_sec < grace_seconds:
-                        # Agent reported recently; don't overwrite with server's failed ping
+                        return  # Recent heartbeat; don't overwrite with server's failed ping
+                    # If device is agent-managed (has owner), never mark offline from server ping –
+                    # only the heartbeat sweep should mark offline (missed heartbeats).
+                    if has_owner:
                         return
-                # No recent lastSeen: allow marking offline (sweep would do it anyway)
+                # No owner or no recent lastSeen: allow marking offline (sweep would do it anyway)
             
             # Update if status changed
             if old_status != new_status:

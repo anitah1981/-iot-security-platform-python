@@ -89,12 +89,14 @@ async def sweep_once() -> None:
         should_be_offline = now - last_seen > offline_after
 
         if should_be_offline and d.get("status") != "offline":
+            # Require confirmed stale (one extra sweep cycle) before creating alert – CIA: integrity of alerts.
+            # Reduces false positives from a single missed heartbeat or brief agent/server glitch.
+            confirmed_stale = (now - last_seen).total_seconds() > (offline_after_sec + DEFAULT_SWEEP_INTERVAL_SECONDS)
             await db.devices.update_one(
                 {"_id": d["_id"]},
                 {"$set": {"status": "offline", "updatedAt": now}},
             )
-
-            if d.get("alertsEnabled", True):
+            if d.get("alertsEnabled", True) and confirmed_stale:
                 await _create_connectivity_alert_if_needed(
                     d["_id"], "Device appears offline (missed heartbeats)"
                 )

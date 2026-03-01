@@ -2,6 +2,21 @@
 
 A comprehensive IoT security monitoring platform with real-time device tracking, multi-channel alerting, and threat detection.
 
+---
+
+## Run the app (quick reference)
+
+| What you want | Where to be | Command |
+|---------------|-------------|---------|
+| **Web app** (dashboard in browser) | **Project root** `C:\IoT-security-app-python` | `python -m uvicorn main:app --host 127.0.0.1 --port 8000` |
+| **Device agent** (report device status from your network) | **Project root** is fine | `python agent\device_agent.py` |
+
+- **Web app:** `main.py` is in the project root. Run uvicorn **from the project root**. Do not `cd agent` and run uvicorn there (there is no `main.py` in `agent`).
+- **Device agent:** `device_agent.py` is in the `agent` folder. From project root use `python agent\device_agent.py`. Or do `cd agent` then `python device_agent.py`.
+- Use **`python -m uvicorn`** (not `uvicorn` alone) so Python finds uvicorn.
+
+---
+
 ## 🚀 Deploy Now (Make It Live)
 
 **Ready to go live?** Follow these steps:
@@ -93,11 +108,34 @@ TWILIO_WHATSAPP_NUMBER=whatsapp:+14155238886
 ```
 
 #### 4) Start the server
+
+**From the project root** (`C:\IoT-security-app-python` or wherever the repo is):
+
 ```bash
-uvicorn main:app --reload --port 8000
+python -m uvicorn main:app --host 127.0.0.1 --port 8000
 ```
 
-#### 5) Access the application
+Use `python -m uvicorn` so the correct Python environment is used (required on Windows if `uvicorn` is not on PATH). Optional: add `--reload` for auto-restart on code changes.
+
+**Port 8000 already in use?** Find and stop the process:
+```powershell
+netstat -ano | findstr :8000
+taskkill /PID <pid> /F
+```
+Use the PID from the line that shows `LISTENING` on port 8000.
+
+#### 5) Run the device agent (optional)
+
+The **device agent** lives in the `agent` folder. Run it **from the agent folder**:
+
+```powershell
+cd agent
+python device_agent.py
+```
+
+Or from the project root: `python agent/device_agent.py`. Do **not** run uvicorn from inside `agent` (there is no `main.py` there).
+
+#### 6) Access the application
 - **Web UI**: http://localhost:8000
 - **Health Check**: http://localhost:8000/api/health
 - **API Docs** (`/docs` and `/redoc`): **Require authentication.** Log in via the Web UI or `POST /api/auth/login`, then open http://localhost:8000/docs in the same browser (session/cookie) or send the `Authorization: Bearer <access_token>` header when requesting `/docs` or `/redoc`.

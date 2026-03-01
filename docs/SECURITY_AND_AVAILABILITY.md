@@ -44,6 +44,21 @@ Different devices listen on different ports. To **cover all bases** for all IoT 
 
 This keeps detection **fast and realistic** for security (WiFi/DNS/device compromise) while keeping the system **correct and available** with minimal false offline/online flapping.
 
+## Reducing false positives (CIA: integrity of alerts)
+
+To keep alerts **correct** and avoid "device offline" when the device is actually online:
+
+1. **Devices that don’t respond to port checks** (e.g. many doorbells, cloud-only cameras):  
+   - In the **agent** `devices.json`, set **`"check": "none"`** so the agent always reports **online** when it’s running; the platform will mark the device offline **only when heartbeats stop** (sweep).  
+   - In the **app** (Dashboard → edit device), enable **"Offline only when missed heartbeats"** so the platform **ignores** any agent-reported "offline" and only uses the heartbeat sweep.  
+   Together this removes false "offline" from failed port checks.
+
+2. **Platform behaviour (CIA):**  
+   - **Heartbeat sweep:** An offline alert is created only after the device has been stale for **one extra sweep cycle** (confirmed offline), so a single missed heartbeat or brief glitch doesn’t create an alert.  
+   - **Server-side ping:** For **agent-managed** devices (with an owner and heartbeats), the server **never** marks them offline based on its own ping/port check. Only the **heartbeat sweep** (missed heartbeats) can mark them offline. This avoids false positives when the server is in the cloud and can’t reach private IPs, or when the device blocks ping.
+
+3. **Summary:** Use **check: "none"** and **Offline only when missed heartbeats** for any device that often fails port checks; the platform then relies on **heartbeats only** for those devices and only creates an offline alert after **confirmed** missed heartbeats.
+
 ---
 
 ## Practical next steps: DNS and unknown device detection

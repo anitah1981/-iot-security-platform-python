@@ -28,6 +28,7 @@ from models import (
     MfaBackupCodesResponse,
 )
 from database import get_database
+from middleware.plan_limits import get_effective_plan
 from middleware.security import limiter
 from bson import ObjectId
 from services.notification_service import NotificationService
@@ -250,7 +251,7 @@ async def require_admin(current_user: dict = Depends(get_current_user)) -> dict:
 
 async def require_business_plan(current_user: dict = Depends(get_current_user)) -> dict:
     """Shared dependency: require authenticated user with Business plan. Use for Business-only features (e.g. audit logs)."""
-    if current_user.get("plan") != "business":
+    if get_effective_plan(current_user) != "business":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="This feature requires a Business plan. Please upgrade your plan.",
@@ -368,7 +369,7 @@ async def signup(user_data: UserCreate, request: Request, background_tasks: Back
         role=user_doc["role"],
         organization=user_doc.get("organization"),
         organization_role=user_doc.get("organizationRole"),
-        plan=user_doc.get("plan", "free"),
+        plan=get_effective_plan(user_doc),
         subscription_id=user_doc.get("subscription_id"),
         subscription_status=user_doc.get("subscription_status"),
         stripe_customer_id=user_doc.get("stripe_customer_id"),
@@ -497,7 +498,7 @@ async def login(credentials: UserLogin, request: Request):
         role=user["role"],
         organization=org,
         organization_role=user.get("organizationRole"),
-        plan=user.get("plan", "free"),
+        plan=get_effective_plan(user),
         subscription_id=user.get("subscription_id"),
         subscription_status=user.get("subscription_status"),
         stripe_customer_id=user.get("stripe_customer_id"),
@@ -547,6 +548,7 @@ async def get_current_user_info(current_user = Depends(get_current_user)):
         role=current_user["role"],
         organization=org,
         organization_role=current_user.get("organizationRole"),
+        plan=get_effective_plan(current_user),
         mfa_enabled=current_user.get("mfa_enabled", False),
         created_at=current_user.get("createdAt", datetime.utcnow())
     )
@@ -716,7 +718,7 @@ async def refresh_token(body: RefreshTokenRequest, request: Request):
         role=user["role"],
         organization=None,
         organization_role=user.get("organizationRole"),
-        plan=user.get("plan", "free"),
+        plan=get_effective_plan(user),
         subscription_id=user.get("subscription_id"),
         subscription_status=user.get("subscription_status"),
         stripe_customer_id=user.get("stripe_customer_id"),

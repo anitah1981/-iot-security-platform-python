@@ -11,6 +11,7 @@ from datetime import datetime
 from database import get_database
 from routes.auth import get_current_user
 from services.stripe_service import StripeService
+from middleware.plan_limits import get_effective_plan
 
 router = APIRouter(prefix="/api/payments", tags=["payments"])
 
@@ -90,7 +91,7 @@ async def get_subscription(user: dict = Depends(get_current_user)):
     
     if not subscription_id:
         return {
-            "plan": user.get("plan", "free"),
+            "plan": get_effective_plan(user),
             "status": "none",
             "message": "No active subscription"
         }
@@ -100,13 +101,13 @@ async def get_subscription(user: dict = Depends(get_current_user)):
         
         if not subscription:
             return {
-                "plan": user.get("plan", "free"),
+                "plan": get_effective_plan(user),
                 "status": "none",
                 "message": "Subscription not found"
             }
         
         return {
-            "plan": user.get("plan", "free"),
+            "plan": get_effective_plan(user),
             "status": subscription["status"],
             "current_period_end": subscription["current_period_end"],
             "cancel_at_period_end": subscription["cancel_at_period_end"]
@@ -305,7 +306,7 @@ async def get_usage(user: dict = Depends(get_current_user)):
     Get user's current usage against their plan limits
     """
     db = await get_database()
-    plan_name = user.get("plan", "free")
+    plan_name = get_effective_plan(user)
     plan_config = StripeService.get_plan_config(plan_name)
     
     if not plan_config:
