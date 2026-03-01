@@ -51,7 +51,11 @@ Each entry can have:
 | `name`      | Yes      | Display name (e.g. "Ring Doorbell"). |
 | `type`      | Yes      | One of: Camera, Router, Sensor, Smart Speaker, Doorbell, etc. |
 | `ip`        | Yes      | IP or hostname on your LAN (e.g. `192.168.1.50`). |
-| `port`      | No       | Port to check (default 80). Use 443 for HTTPS-only devices. |
+| `port`      | No       | Single port to check (default 80). Use 443 for HTTPS-only devices. |
+| `ports`     | No       | **List of ports** to try; device is online if **any** port accepts a connection. Use for devices that may use different services (e.g. `[80, 443, 8080]`). Covers all common IoT bases. |
+| `check`     | No       | Set to `"none"` for devices that don't respond to port checks (e.g. doorbells, cameras). The app will mark them offline only when heartbeats stop. |
+
+**Common ports by device type:** See **docs/SECURITY_AND_AVAILABILITY.md** for the full table. Quick reference: Cameras 80, 443, 554 (RTSP), 8080, 37777, 34567; smart speakers 80, 443; doorbells often cloud-only → use `"check": "none"`. When unsure, use `"ports": [80, 443]`.
 
 Example:
 
@@ -61,22 +65,100 @@ Example:
     "device_id": "ring-front-door",
     "name": "Ring Doorbell",
     "type": "Doorbell",
-    "ip": "192.168.1.50"
+    "ip": "192.168.1.50",
+    "check": "none"
   }
 ]
 ```
 
+## Network watchdog (DNS + unknown devices)
+
+The agent includes a **network watchdog** that runs alongside heartbeats (default every 60s). It detects:
+- **DNS server changes** – if your DNS servers differ from `EXPECTED_DNS` in `.env`, an alert is sent
+- **Unknown devices on the network** – scans your LAN for devices not in `devices.json`, alerts if found
+
+**Setup:** Add to `.env`:
+```
+EXPECTED_DNS=192.168.1.1,8.8.8.8
+ENABLE_NETWORK_WATCHDOG=true
+WATCHDOG_INTERVAL=60
+```
+
+Set `EXPECTED_DNS` to your router and/or preferred DNS (comma-separated). Run standalone: `python network_watchdog.py`.
+
 ## How it works
 
-- The agent checks each device by opening a **TCP connection** to `ip:port` (default port 80). If the connection succeeds, the device is reported as **online**; otherwise **offline**.
+- The agent checks each device by opening a **TCP connection** to `ip:port` (or, if `ports` is set, tries each port until one accepts). If any connection succeeds, the device is **online**; otherwise **offline**.
 - It sends a heartbeat to `POST /api/heartbeat` with your **X-API-Key** so devices are linked to your account.
 - If a device is not yet in the app, it is **auto-enrolled** and appears in your dashboard. You can also add devices manually in the app and use the same `device_id` in `devices.json` so the agent updates their status.
 
-## Run as a service (optional)
+## Run automatically (as a service)
 
-- **Linux (systemd):** Create a unit file that runs `python /path/to/agent/device_agent.py` and restart on failure.
-- **Windows:** Use Task Scheduler or NSSM to run the script at startup.
-- **Docker:** Use a small image with Python and `requests`, mount `.env` and `devices.json`, and run `device_agent.py`.
+### Windows
+
+**Option A – Task Scheduler (built-in)**
+
+1. Open **Task Scheduler** (search "Task Scheduler" in Start).
+2. **Create Basic Task** → Name: e.g. "Alert-Pro Device Agent" → Next.
+3. Trigger: **When the computer starts** → Next.
+4. Action: **Start a program** → Next.
+5. Program: `python` (or full path, e.g. `C:\Python311\python.exe`).
+6. Add arguments: `device_agent.py`.
+7. Start in: folder where the agent lives, e.g. `C:\IoT-security-app-python\agent`.
+8. Finish, then right‑click the task → **Properties** → enable **Run whether user is logged on or not** if you want it to run before login; set **Run with highest privileges** only if needed.
+9. Optional: **If the task fails, restart every** 1 minute.
+
+**Option B – NSSM (run as Windows service)**
+
+1. Download [NSSM](https://nssm.cc/download).
+2. Open Command Prompt as Administrator:
+   ```cmd
+   nssm install AlertProAgent "C:\Python311\python.exe" "C:\IoT-security-app-python\agent\device_agent.py"
+   ```
+3. In the NSSM window, set **Startup directory** to `C:\IoT-security-app-python\agent`.
+4. Install service. Start it: `nssm start AlertProAgent`.
+
+### Linux (systemd)
+
+1. Create a unit file, e.g. `/etc/systemd/system/alertpro-agent.service`:
+
+   ```ini
+   [Unit]
+   Description=Alert-Pro Device Agent
+   After=network-online.target
+   Wants=network-online.target
+
+   [Service]
+   Type=simple
+   User=pi
+   WorkingDirectory=/home/pi/agent
+   ExecStart=/usr/bin/python3 /home/pi/agent/device_agent.py
+   Restart=always
+   RestartSec=30
+
+   [Install]
+   WantedBy=multi-user.target
+   ```
+
+2. Adjust `User`, `WorkingDirectory`, and `ExecStart` to your paths.
+3. Enable and start:
+   ```bash
+   sudo systemctl daemon-reload
+   sudo systemctl enable alertpro-agent
+   sudo systemctl start alertpro-agent
+   sudo systemctl status alertpro-agent
+   ```
+
+### Docker
+
+Use an image with Python and `requests`, mount `.env` and `devices.json`, and run `device_agent.py`. Example:
+
+```bash
+docker run -d --restart unless-stopped \
+  -v /path/to/agent/.env:/app/.env \
+  -v /path/to/agent/devices.json:/app/devices.json \
+  your-image python device_agent.py
+```
 
 ## Security
 

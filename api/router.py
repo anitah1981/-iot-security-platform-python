@@ -12,6 +12,7 @@ from routes.network_settings import router as network_settings_router
 from routes.alerts import router as alerts_router
 from routes.heartbeat import router as heartbeat_router
 from routes.device_agent_key import router as device_agent_key_router
+from routes.agent_security import router as agent_security_router
 from routes.discovery import router as discovery_router
 from routes.notification_preferences import router as notification_prefs_router
 from routes.analytics import router as analytics_router
@@ -76,6 +77,7 @@ def get_api_router():
     router.include_router(alerts_router, prefix="/alerts", tags=["Alerts"])
     router.include_router(heartbeat_router, prefix="/heartbeat", tags=["Heartbeat"])
     router.include_router(device_agent_key_router, prefix="/device-agent-key", tags=["Device Agent Key"])
+    router.include_router(agent_security_router, prefix="/agent", tags=["Agent Security"])
     router.include_router(discovery_router, prefix="/discovery", tags=["Discovery"])
     router.include_router(notification_prefs_router, prefix="/notification-preferences", tags=["Notification Preferences"])
     router.include_router(analytics_router, prefix="/analytics", tags=["Analytics"])

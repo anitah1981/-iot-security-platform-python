@@ -157,6 +157,8 @@ async def get_devices(
                 last_seen=d.get("lastSeen") or d.get("last_seen"),
                 heartbeat_interval=d.get("heartbeatInterval", d.get("heartbeat_interval", 30)),
                 alerts_enabled=d.get("alertsEnabled", d.get("alerts_enabled", True)),
+                offline_only_when_missed_heartbeats=d.get("offlineOnlyWhenMissedHeartbeats", False),
+                offline_after_seconds=d.get("offlineAfterSeconds"),
                 signal_strength=d.get("signalStrength") or d.get("signal_strength"),
                 ip_address_history=d.get("ipAddressHistory", d.get("ip_address_history", [])),
                 organization=str(d["organization"]) if d.get("organization") else None,
@@ -315,6 +317,7 @@ async def create_device(device: DeviceCreate, user: dict = Depends(get_current_u
         "signalStrength": None,
         "ipAddressHistory": [device.device_ip] if device.device_ip else [],
         "organization": ObjectId(device.organization) if device.organization else None,
+        "offlineOnlyWhenMissedHeartbeats": getattr(device, "offline_only_when_missed_heartbeats", False),
         "createdAt": datetime.utcnow(),
         "updatedAt": datetime.utcnow(),
         "isDeleted": False,
@@ -324,6 +327,8 @@ async def create_device(device: DeviceCreate, user: dict = Depends(get_current_u
     # Add family_id if user is in a family
     if family_id:
         device_doc["family_id"] = family_id
+    if getattr(device, "offline_after_seconds", None) is not None:
+        device_doc["offlineAfterSeconds"] = device.offline_after_seconds
     
     result = await db.devices.insert_one(device_doc)
 
@@ -357,6 +362,8 @@ async def create_device(device: DeviceCreate, user: dict = Depends(get_current_u
         last_seen=device_doc["lastSeen"],
         heartbeat_interval=device.heartbeat_interval,
         alerts_enabled=device.alerts_enabled,
+        offline_only_when_missed_heartbeats=device_doc.get("offlineOnlyWhenMissedHeartbeats", False),
+        offline_after_seconds=device_doc.get("offlineAfterSeconds"),
         signal_strength=None,
         ip_address_history=[device.device_ip] if device.device_ip else [],
         organization=device.organization,
@@ -440,6 +447,12 @@ async def update_device(device_id: str, updates: DeviceUpdate, user: dict = Depe
     if updates.alerts_enabled is not None:
         update_doc["alertsEnabled"] = updates.alerts_enabled
         changes["alerts_enabled"] = updates.alerts_enabled
+    if updates.offline_only_when_missed_heartbeats is not None:
+        update_doc["offlineOnlyWhenMissedHeartbeats"] = updates.offline_only_when_missed_heartbeats
+        changes["offline_only_when_missed_heartbeats"] = updates.offline_only_when_missed_heartbeats
+    if "offline_after_seconds" in updates.model_dump(exclude_unset=True):
+        update_doc["offlineAfterSeconds"] = updates.offline_after_seconds
+        changes["offline_after_seconds"] = updates.offline_after_seconds
     
     # Update device
     update_payload = {"$set": update_doc}
@@ -482,6 +495,8 @@ async def update_device(device_id: str, updates: DeviceUpdate, user: dict = Depe
         last_seen=updated_device.get("lastSeen"),
         heartbeat_interval=updated_device["heartbeatInterval"],
         alerts_enabled=updated_device["alertsEnabled"],
+        offline_only_when_missed_heartbeats=updated_device.get("offlineOnlyWhenMissedHeartbeats", False),
+        offline_after_seconds=updated_device.get("offlineAfterSeconds"),
         signal_strength=updated_device.get("signalStrength"),
         ip_address_history=updated_device.get("ipAddressHistory", []),
         organization=str(updated_device["organization"]) if updated_device.get("organization") else None,

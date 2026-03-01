@@ -100,6 +100,7 @@ async def receive_heartbeat(
             "signalStrength": payload.signal_strength,
             "ipAddressHistory": [device_ip] if device_ip else [],
             "organization": None,
+            "offlineOnlyWhenMissedHeartbeats": False,
             "createdAt": now,
             "updatedAt": now,
         }
@@ -135,26 +136,32 @@ async def receive_heartbeat(
         # else: device has no owner (orphan) — we'll set userId/family_id below to claim it
 
     # Update existing device: status and lastSeen
-    # When agent reports "offline", don't flip immediately if device was recently online (avoids
-    # flaky reachability checks e.g. phones that block ping/port 80). Require sustained offline.
-    heartbeat_interval = int(device.get("heartbeatInterval", 30))
-    grace_sec = max(60, heartbeat_interval * 2)
-    if payload.status == "offline" and device.get("status") == "online":
-        last_seen = device.get("lastSeen")
-        if last_seen:
-            try:
-                age = (now - last_seen).total_seconds()
-            except TypeError:
-                age = 999
-            if age < grace_sec:
-                # Keep showing online; agent's check may be flaky (e.g. device blocks port 80)
-                update_set_status = "online"
+    # When device has offlineOnlyWhenMissedHeartbeats, never set offline from payload – only
+    # the sweep can mark offline when heartbeats stop. Use for doorbells/cameras that don't
+    # respond to port checks.
+    offline_only_when_missed = device.get("offlineOnlyWhenMissedHeartbeats", False)
+    if offline_only_when_missed:
+        # Any received heartbeat = online; sweep will set offline if heartbeats stop
+        update_set_status = "online"
+    else:
+        # When agent reports "offline", short grace then flip (security: detect issues quickly).
+        heartbeat_interval = int(device.get("heartbeatInterval", 30))
+        grace_sec = max(30, min(90, heartbeat_interval * 2))
+        if payload.status == "offline" and device.get("status") == "online":
+            last_seen = device.get("lastSeen")
+            if last_seen:
+                try:
+                    age = (now - last_seen).total_seconds()
+                except TypeError:
+                    age = 999
+                if age < grace_sec:
+                    update_set_status = "online"
+                else:
+                    update_set_status = "offline"
             else:
                 update_set_status = "offline"
         else:
-            update_set_status = "offline"
-    else:
-        update_set_status = payload.status
+            update_set_status = payload.status
 
     update_set: Dict[str, Any] = {
         "status": update_set_status,

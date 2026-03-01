@@ -84,6 +84,16 @@ class DeviceCreate(DeviceBase):
     device_id: Optional[str] = Field(None, description="Optional; auto-generated from name if not provided")
     heartbeat_interval: int = Field(30, ge=10, description="Seconds between heartbeats")
     alerts_enabled: bool = True
+    offline_only_when_missed_heartbeats: bool = Field(
+        False,
+        description="If True, device is marked offline only when heartbeats stop (sweep), not from agent reachability. Use for doorbells/cameras that don't respond to port checks.",
+    )
+    offline_after_seconds: Optional[int] = Field(
+        None,
+        ge=30,
+        le=300,
+        description="Seconds without heartbeats before marking offline (overrides default 2× interval). Use 30–45 for high-security devices.",
+    )
     organization: Optional[str] = None
 
 class DeviceUpdate(BaseModel):
@@ -96,6 +106,16 @@ class DeviceUpdate(BaseModel):
     signal_strength: Optional[int] = None
     alerts_enabled: Optional[bool] = None
     heartbeat_interval: Optional[int] = Field(None, ge=10, description="Seconds between heartbeats")
+    offline_only_when_missed_heartbeats: Optional[bool] = Field(
+        None,
+        description="If True, mark offline only when heartbeats are missed; ignore agent-reported offline (recommended for doorbells, cameras).",
+    )
+    offline_after_seconds: Optional[int] = Field(
+        None,
+        ge=30,
+        le=300,
+        description="Seconds without heartbeats before marking offline (30–300). Lower = faster detection for high-security devices.",
+    )
 
 class DeviceResponse(DeviceBase):
     id: str
@@ -103,6 +123,8 @@ class DeviceResponse(DeviceBase):
     last_seen: Optional[datetime] = None
     heartbeat_interval: int
     alerts_enabled: bool
+    offline_only_when_missed_heartbeats: bool = False
+    offline_after_seconds: Optional[int] = None
     signal_strength: Optional[int] = None
     ip_address_history: Optional[List[str]] = []
     organization: Optional[str] = None

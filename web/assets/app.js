@@ -748,7 +748,9 @@ function setDeviceFormMode(mode, device = null){
       device_ip: deviceIpVal,
       router_ip: routerIpVal,
       heartbeat_interval: device.heartbeat_interval || 30,
-      alerts_enabled: device.alerts_enabled !== false
+      alerts_enabled: device.alerts_enabled !== false,
+      offline_only_when_missed_heartbeats: device.offline_only_when_missed_heartbeats === true,
+      offline_after_seconds: device.offline_after_seconds != null ? device.offline_after_seconds : null
     };
     if(title) title.textContent = "Edit Device";
     if(submitBtn) submitBtn.textContent = "Save Changes";
@@ -763,6 +765,10 @@ function setDeviceFormMode(mode, device = null){
     document.getElementById('device_type').value = device.type || "";
     document.getElementById('device_heartbeat').value = device.heartbeat_interval || 30;
     document.getElementById('device_alerts').checked = device.alerts_enabled !== false;
+    const heartbeatOnlyEl = document.getElementById('device_heartbeat_only_offline');
+    if (heartbeatOnlyEl) heartbeatOnlyEl.checked = device.offline_only_when_missed_heartbeats === true;
+    const offlineAfterEl = document.getElementById('device_offline_after_sec');
+    if (offlineAfterEl) offlineAfterEl.value = device.offline_after_seconds != null ? String(device.offline_after_seconds) : '';
     document.getElementById('router_ip_display').value = device.router_ip || device.routerIp || "";
     const deviceIpEl = document.getElementById('device_ip');
     if(deviceIpEl) deviceIpEl.value = device.device_ip || device.deviceIp || "";
@@ -797,6 +803,10 @@ async function showAddDeviceForm(){
     if(deviceIpEl) deviceIpEl.value = '';
     document.getElementById('device_heartbeat').value = '30';
     document.getElementById('device_alerts').checked = true;
+    const heartbeatOnlyEl = document.getElementById('device_heartbeat_only_offline');
+    if (heartbeatOnlyEl) heartbeatOnlyEl.checked = false;
+    const offlineAfterEl = document.getElementById('device_offline_after_sec');
+    if (offlineAfterEl) offlineAfterEl.value = '';
     
     // Load router IP and auto-fill
     try {
@@ -1248,6 +1258,10 @@ async function submitDeviceForm(event){
   const deviceIp = deviceIpEl ? deviceIpEl.value.trim() : null;
   const heartbeatInterval = parseInt(document.getElementById('device_heartbeat').value) || 30;
   const alertsEnabled = document.getElementById('device_alerts').checked;
+  const heartbeatOnlyOffline = document.getElementById('device_heartbeat_only_offline') && document.getElementById('device_heartbeat_only_offline').checked;
+  const offlineAfterSecEl = document.getElementById('device_offline_after_sec');
+  const offlineAfterSec = offlineAfterSecEl && offlineAfterSecEl.value.trim() !== '' ? parseInt(offlineAfterSecEl.value, 10) : null;
+  const offlineAfterSeconds = (offlineAfterSec != null && !isNaN(offlineAfterSec) && offlineAfterSec >= 30 && offlineAfterSec <= 300) ? offlineAfterSec : null;
 
   // Validation: name, type, and router IP (from settings) required; device_id is optional
   if(!name || !type || !routerIp) {
@@ -1278,7 +1292,9 @@ async function submitDeviceForm(event){
           device_ip: (deviceIp && deviceIp.trim()) ? deviceIp.trim() : null,
           router_ip: (routerIp && routerIp.trim()) ? routerIp.trim() : null,
           heartbeat_interval: heartbeatInterval,
-          alerts_enabled: alertsEnabled
+          alerts_enabled: alertsEnabled,
+          offline_only_when_missed_heartbeats: heartbeatOnlyOffline,
+          offline_after_seconds: offlineAfterSeconds
         }
       });
 
@@ -1294,7 +1310,9 @@ async function submitDeviceForm(event){
         router_ip: routerIp,
         device_ip: deviceIp || null,
         heartbeat_interval: heartbeatInterval,
-        alerts_enabled: alertsEnabled
+        alerts_enabled: alertsEnabled,
+        offline_only_when_missed_heartbeats: heartbeatOnlyOffline,
+        offline_after_seconds: offlineAfterSeconds
       };
       if(deviceId) deviceData.device_id = deviceId;
 
@@ -1345,13 +1363,21 @@ function setDeviceSubmitEnabled(enabled){
 function getDeviceFormState(){
   const deviceIpEl = document.getElementById('device_ip');
   const routerIpEl = document.getElementById('router_ip_display');
+  const heartbeatOnlyEl = document.getElementById('device_heartbeat_only_offline');
   return {
     name: document.getElementById('device_name').value.trim(),
     type: document.getElementById('device_type').value,
     device_ip: (deviceIpEl && deviceIpEl.value) ? deviceIpEl.value.trim() : "",
     router_ip: (routerIpEl && routerIpEl.value) ? routerIpEl.value.trim() : "",
     heartbeat_interval: parseInt(document.getElementById('device_heartbeat').value) || 30,
-    alerts_enabled: document.getElementById('device_alerts').checked
+    alerts_enabled: document.getElementById('device_alerts').checked,
+    offline_only_when_missed_heartbeats: heartbeatOnlyEl ? heartbeatOnlyEl.checked : false,
+    offline_after_seconds: (() => {
+      const el = document.getElementById('device_offline_after_sec');
+      if (!el || el.value.trim() === '') return null;
+      const n = parseInt(el.value, 10);
+      return (!isNaN(n) && n >= 30 && n <= 300) ? n : null;
+    })()
   };
 }
 
@@ -1633,7 +1659,7 @@ window.addEventListener("DOMContentLoaded", () => {
       });
     }
 
-    ['device_name', 'device_type', 'device_ip', 'router_ip_display', 'device_heartbeat', 'device_alerts'].forEach((id) => {
+    ['device_name', 'device_type', 'device_ip', 'router_ip_display', 'device_heartbeat', 'device_alerts', 'device_offline_after_sec', 'device_heartbeat_only_offline'].forEach((id) => {
       const el = document.getElementById(id);
       if(el){
         el.addEventListener('input', refreshDeviceFormState);

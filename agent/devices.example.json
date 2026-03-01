@@ -1,21 +1,5 @@
 [
-  {
-    "device_id": "ring-front-door",
-    "name": "Ring Doorbell",
-    "type": "Doorbell",
-    "ip": "192.168.1.50"
-  },
-  {
-    "device_id": "alexa-living-room",
-    "name": "Living Room Alexa",
-    "type": "Smart Speaker",
-    "ip": "192.168.1.51"
-  },
-  {
-    "device_id": "camera-garage",
-    "name": "Garage Camera",
-    "type": "Camera",
-    "ip": "192.168.1.52",
-    "port": 80
-  }
+  {"device_id":"ring-front-door","name":"Ring Doorbell","type":"Doorbell","ip":"192.168.1.50","check":"none"},
+  {"device_id":"alexa-living-room","name":"Living Room Alexa","type":"Smart Speaker","ip":"192.168.1.51","ports":[80,443]},
+  {"device_id":"camera-garage","name":"Garage Camera","type":"Camera","ip":"192.168.1.52","ports":[80,443,554,8080],"check":"none"}
 ]

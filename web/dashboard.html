@@ -208,6 +208,16 @@
                               <span>Enable Alerts</span>
                             </label>
                           </div>
+                          <div>
+                            <label style="display: block; margin-bottom: 4px; font-weight: 500;" title="Seconds without heartbeats before marking offline. 30–45 for high-security; leave blank for default (2× heartbeat).">Offline after (sec)</label>
+                            <input type="number" id="device_offline_after_sec" placeholder="Default: 2× heartbeat" min="30" max="300" step="1" style="width: 100%; padding: 8px; border: 1px solid var(--border); border-radius: 4px; background: var(--bg); color: var(--text);">
+                          </div>
+                          <div style="display: flex; align-items: center; grid-column: 1 / -1;">
+                            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;" title="Use for doorbells, cameras, etc. that don't respond to port checks. Offline only when heartbeats stop.">
+                              <input type="checkbox" id="device_heartbeat_only_offline" style="cursor: pointer;">
+                              <span>Mark offline only when heartbeats stop (recommended for doorbells &amp; cameras)</span>
+                            </label>
+                          </div>
                         </div>
                       </details>
                     </div>

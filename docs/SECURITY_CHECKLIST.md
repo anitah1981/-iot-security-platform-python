@@ -2,6 +2,8 @@
 
 Use this checklist before deploying to production.
 
+**See also:** [SECURITY_AND_AVAILABILITY.md](SECURITY_AND_AVAILABILITY.md) for offline detection thresholds, multi-port coverage for IoT devices, and CIA (Confidentiality, Integrity, Availability) alignment.
+
 ## Pre-Deployment
 
 ### Critical Security

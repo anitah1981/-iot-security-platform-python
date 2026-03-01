@@ -26,6 +26,8 @@ CONFIG_DIR = os.getenv("DEVICE_AGENT_CONFIG_DIR", str(SCRIPT_DIR))
 DEVICES_FILE = Path(CONFIG_DIR) / "devices.json"
 INTERVAL_SEC = int(os.getenv("DEVICE_AGENT_INTERVAL", "30"))
 TIMEOUT_SEC = float(os.getenv("DEVICE_AGENT_TIMEOUT", "5"))
+WATCHDOG_INTERVAL = int(os.getenv("WATCHDOG_INTERVAL", "60"))
+ENABLE_WATCHDOG = os.getenv("ENABLE_NETWORK_WATCHDOG", "true").lower() == "true"
 
 
 def load_env():
@@ -64,6 +66,38 @@ def check_reachable(host: str, port: int = 80, timeout: float = TIMEOUT_SEC) -> 
         return False
 
 
+def check_reachable_multi(host: str, ports: list, timeout: float = TIMEOUT_SEC) -> bool:
+    """Try TCP connect to host on any of the given ports. Online if any succeeds."""
+    for port in ports:
+        try:
+            p = int(port)
+            if 1 <= p <= 65535 and check_reachable(host, p, timeout):
+                return True
+        except (ValueError, TypeError):
+            continue
+    return False
+
+
+def get_ports_to_check(dev: dict) -> list:
+    """Resolve port(s) to probe: 'ports' (list) or single 'port'. Covers all common IoT bases."""
+    ports = dev.get("ports")
+    if isinstance(ports, list) and len(ports) > 0:
+        return [int(p) for p in ports if str(p).isdigit() or isinstance(p, int)]
+    port = dev.get("port", 80)
+    try:
+        return [int(port)]
+    except (TypeError, ValueError):
+        return [80]
+
+
+def is_reachable_any_port(host: str, ports: list, timeout: float = TIMEOUT_SEC) -> bool:
+    """True if any of the given ports accepts a TCP connection (covers different IoT services)."""
+    for port in ports:
+        if check_reachable(host, port, timeout):
+            return True
+    return False
+
+
 def send_heartbeat(base_url: str, api_key: str, device_id: str, status: str, ip_address: str = None, name: str = None, device_type: str = None):
     url = f"{base_url}/api/heartbeat"
     headers = {"Content-Type": "application/json", "X-API-Key": api_key}
@@ -99,21 +133,37 @@ def main():
         sys.exit(1)
 
     print(f"Device agent started. Reporting {len(devices)} device(s) every {INTERVAL_SEC}s to {base_url}")
+    if ENABLE_WATCHDOG:
+        print("Network watchdog enabled (DNS + unknown device detection)")
+    last_watchdog = 0
     while True:
         for dev in devices:
             device_id = dev.get("device_id") or dev.get("id") or dev.get("name", "unknown")
             name = dev.get("name") or device_id
             device_type = dev.get("type", "Unknown")
             ip = dev.get("ip") or dev.get("ip_address") or dev.get("host")
-            port = int(dev.get("port", 80))
+            # "check": "none" or "skip_reachability": true = don't probe device (e.g. doorbells that
+            # don't listen on common ports). Platform marks offline only when heartbeats stop.
+            skip_check = dev.get("check") == "none" or dev.get("skip_reachability") is True
             if not ip:
                 send_heartbeat(base_url, api_key, device_id, "offline", None, name, device_type)
                 continue
-            reachable = check_reachable(ip, port, TIMEOUT_SEC)
-            status = "online" if reachable else "offline"
+            if skip_check:
+                status = "online"
+            else:
+                ports = get_ports_to_check(dev)
+                reachable = is_reachable_any_port(ip, ports, TIMEOUT_SEC)
+                status = "online" if reachable else "offline"
             ok, err = send_heartbeat(base_url, api_key, device_id, status, ip, name, device_type)
             if not ok:
                 print(f"[WARN] {device_id}: {err}")
+        if ENABLE_WATCHDOG and (time.time() - last_watchdog) >= WATCHDOG_INTERVAL:
+            try:
+                from network_watchdog import run_watchdog
+                run_watchdog(base_url, api_key)
+                last_watchdog = time.time()
+            except Exception as e:
+                print(f"[WARN] Watchdog error: {e}")
         time.sleep(INTERVAL_SEC)
 
 
