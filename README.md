@@ -117,6 +117,8 @@ python -m uvicorn main:app --host 127.0.0.1 --port 8000
 
 Use `python -m uvicorn` so the correct Python environment is used (required on Windows if `uvicorn` is not on PATH). Optional: add `--reload` for auto-restart on code changes.
 
+**Before you push:** Run `python -m ruff check .` and `python -m pytest tests/ -v --tb=short` (or `python scripts/release_gate.py`) so CI doesn’t fail on lint/tests.
+
 **Port 8000 already in use?** Find and stop the process:
 ```powershell
 netstat -ano | findstr :8000
