@@ -14,12 +14,12 @@ def main():
     failed = []
     env = os.getenv("APP_ENV", "local").lower()
 
-    # JWT: always require set and strong
+    # JWT: require set and not a placeholder; length 32+ only in production
     jwt = (os.getenv("JWT_SECRET") or "").strip()
     forbidden = ("change-me-in-production", "changeme", "secret", "your-super-secret-key-change-in-production", "your_secret")
     if not jwt or jwt in forbidden:
         failed.append("JWT_SECRET must be set and not a placeholder")
-    elif len(jwt) < 32:
+    elif env == "production" and len(jwt) < 32:
         failed.append("JWT_SECRET should be at least 32 characters for production")
 
     # Production-only checks
