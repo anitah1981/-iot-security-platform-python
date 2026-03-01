@@ -2,6 +2,8 @@
 
 Follow these in order: **migration** (after backups), then the **five security steps** before go-live.
 
+For a time-boxed plan (manual tests, production env, email, security gates, staged launch), see **docs/PRE_LAUNCH_48H_PLAN.md**.
+
 ---
 
 ## Part 1: Run the migration in each deployed environment

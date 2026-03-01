@@ -1,11 +1,19 @@
 # Live environment verification sign-off
 
-Use this checklist to explicitly verify and sign off security and behaviour **against the live app** (not local). Fill in **Env URL** and **Verified on** when done.
+Use this checklist to explicitly verify and sign off security and behaviour **against the live app** (not local). Run after `scripts/security_gate.py` passes. Fill in **Env URL** and **Verified on** when done.
 
 **Env URL:** `https://iot-security-platform-python-production.up.railway.app`  
 **Verified on (date):** _________________________ (e.g. 2026-02-28)
 
-**Automated checks (2026-02-27):** Health 200 OK; /docs unauthenticated → 401; backup script ran successfully.
+---
+
+## Before-production security gates (run first)
+
+- [ ] **Config gate** – `python scripts/security_gate.py` passes (JWT, CORS, MONGO_URI, APP_BASE_URL, SMTP, Stripe as appropriate).
+- [ ] **Verification requirement** – If you require email verification, signup sends verification email and unverified users cannot log in until verified; ensure `REQUIRE_EMAIL_VERIFICATION` and SMTP are set.
+- [ ] **SSL/TLS** – App is served over HTTPS only; no plain HTTP for sensitive routes (handled by reverse proxy or host).
+- [ ] **Reverse proxy** – If using nginx/Caddy/traefik, HTTPS termination and headers are correct; `X-Forwarded-Proto` / `X-Forwarded-For` set if needed.
+- [ ] **Monitoring** – Health/ready/startup endpoints monitored; logging or APM in place for production errors.
 
 ---
 
@@ -21,7 +29,7 @@ Use this checklist to explicitly verify and sign off security and behaviour **ag
 - [ ] **Admin: unlock account** – Admin user can unlock a locked account (test with admin role).
 - [ ] **Admin: network monitoring** – Only admin can access network monitoring enable/disable/status.
 - [ ] **Audit (Business plan)** – Non-Business user gets 403 on audit logs; Business user can access.
-- [ ] **Health/ready/startup** – `GET /api/health`, `/api/ready`, `/api/startup` return 200 with expected body.
+- [ ] **Health/ready/startup** – `GET /api/health`, `/api/ready`, `/api/startup` return 200; `email_configured: true` when SMTP is set.
 
 ---
 

@@ -4,6 +4,17 @@ Use this checklist to track your deployment progress.
 
 ## 📋 Pre-Deployment
 
+### Lock production env and secrets (before launch cutover)
+
+Set and verify in production; do not launch with defaults or placeholders:
+
+- [ ] `CORS_ORIGINS` = production domain(s) only (no `*`)
+- [ ] `JWT_SECRET` = strong 32+ chars (e.g. `python scripts/generate_secrets.py`)
+- [ ] `MONGO_URI` = production MongoDB (auth + TLS)
+- [ ] `APP_BASE_URL` = production HTTPS URL (for email links)
+- [ ] Live Stripe keys and webhook when accepting real payments
+- [ ] See `docs/PRE_LAUNCH_48H_PLAN.md` for full checklist.
+
 ### Gmail SMTP Setup
 - [ ] Enabled 2FA on Gmail account
 - [ ] Created App Password

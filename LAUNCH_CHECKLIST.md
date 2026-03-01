@@ -1,7 +1,62 @@
 # 🚀 IoT Security Platform - Launch Checklist
 
 **Status:** Ready for MVP Launch (98% Complete)  
-**Last Updated:** January 13, 2026
+**Last Updated:** January 2026
+
+**Before any customer launch:** Complete the **priority order** below (1 → 2 → 3 → 4). Do **staged launch** only after steps 1–4 are green; do not market until then. Details are in the sections below.
+
+---
+
+## 📌 What to do next (priority order)
+
+1. **Close the manual test checklist first** (core + payments + new features). The critical items below must all be checked: auth flow, dashboard behavior, exports, family invite flow, Stripe upgrade/cancel.
+2. **Lock in production env config and secrets.** Set/verify production `CORS_ORIGINS`, strong `JWT_SECRET`, production `MONGO_URI`, and live Stripe keys before launch cutover. See **Production Env and Secrets** below.
+3. **Finish email delivery setup** (not just console logging). SMTP must be fully configured for real delivery; verification and reset emails must arrive. See **Email delivery** and `docs/PRODUCTION_EMAIL_SETUP.md`.
+4. **Run the “before production” security gates.** Verification requirement, SSL/TLS, reverse proxy, and monitoring must be enabled and tested under production-like conditions. See **Before-Production Security Gates** and `docs/LIVE_VERIFICATION_CHECKLIST.md`.
+5. **Do a staged launch (soft launch), then market.** Only after steps 1–4 are green, to avoid support churn early on.
+
+---
+
+## ⚠️ CRITICAL – CLOSE BEFORE LAUNCH (Step 1)
+
+These must be verified (on staging/production) before inviting real users:
+
+- [ ] **Auth flow (live):** Sign up → verification email received (if verification on) → verify → log in; forgot password → reset email in inbox → link works; change password in Settings.
+- [ ] **Dashboard behavior:** Loads without stuck state; device count correct; add/edit/delete device; refresh works.
+- [ ] **Exports:** Alert export (PDF/CSV if enabled) downloads without error.
+- [ ] **Family invite flow:** Send invite → invitee receives email → accept → shared devices visible.
+- [ ] **Stripe upgrade/cancel:** Upgrade to Pro (test/live card) → plan shows Pro; open Customer Portal → cancel → plan reverts to Free.
+
+Then complete: **Production env and secrets** (Step 2), **email delivery** (Step 3), and **security gates** (Step 4). See sections below.
+
+---
+
+## 📋 Run-through results (local / CI)
+
+Use this to record what was verified. Re-run on staging/production before go-live.
+
+| Check | How to run | Result (fill in) |
+|-------|------------|-------------------|
+| Security gate | `python scripts/security_gate.py` | Passed (run in repo with prod env for prod) |
+| Health + email | `GET /api/health` → `ok: true`, `email_configured: true` | Verified locally |
+| Auth flow | `python test_auth_flows.py` (server running) | 10/11 passed (password validation edge cases) |
+| Dashboard APIs | With valid token: GET /api/devices, /api/alerts | Manual or set TEST_EMAIL/TEST_PASSWORD and run test_system.py |
+| Exports | POST /api/exports/pdf or /csv (Pro user) | Manual: Settings or dashboard export |
+| Family invite | Send invite → accept → shared devices | Manual: two accounts |
+| Stripe | Upgrade to Pro, Customer Portal, cancel | Manual: pricing page + test card |
+
+**On the live URL:** Complete `docs/LIVE_VERIFICATION_CHECKLIST.md` (HTTPS, headers, rate limit, lockout, MFA, reset, health with `email_configured: true`). Then proceed to staged launch.
+
+---
+
+## 🚀 Staged launch (soft launch) – then market
+
+Only after **Steps 1–4** and the run-through above are green:
+
+1. **Complete live verification** – Run through `docs/LIVE_VERIFICATION_CHECKLIST.md` on your production URL (HTTPS, security headers, auth, password reset, health).
+2. **Invite 5–10 beta users** – Real accounts on production; monitor logs and support.
+3. **Fix any issues** that appear; re-verify critical flows if needed.
+4. **Open to broader marketing** – Only when stable and you’re confident in reliability (no early support churn).
 
 ---
 
@@ -96,6 +151,16 @@ STRIPE_WEBHOOK_SECRET=whsec_...
 
 ---
 
+## 🎯 PRIORITY ORDER (What to Do Next)
+
+1. **Close manual test checklist first** – Auth flow, dashboard, exports, family invite, Stripe upgrade/cancel (all boxes below).
+2. **Lock production env and secrets** – CORS_ORIGINS, JWT_SECRET, MONGO_URI, live Stripe keys (see CONFIGURATION NEEDED and Production Env below).
+3. **Finish email delivery** – SMTP for real delivery; verification and reset emails must arrive (see docs/PRODUCTION_EMAIL_SETUP.md).
+4. **Run before-production security gates** – Run `python scripts/security_gate.py`; complete docs/LIVE_VERIFICATION_CHECKLIST.md on production.
+5. **Staged launch, then market** – Only after 1–4 are green.
+
+---
+
 ## 🧪 PRE-LAUNCH TESTING
 
 ### ✅ System Tests (Completed)
@@ -147,6 +212,34 @@ Run: `python test_system.py`
 - [ ] Cancel subscription
 - [ ] Reactivate subscription
 
+**Exports & Family (if enabled):**
+- [ ] Alert export (PDF/CSV) works
+- [ ] Family invite: send → invitee gets email → accept → shared devices visible
+
+**Email delivery (must be real, not just logs):**
+- [ ] Forgot password → email received in inbox; reset link works
+- [ ] Signup verification email received (if verification required)
+- [ ] GET /api/health shows `email_configured: true` in production (see docs/PRODUCTION_EMAIL_SETUP.md)
+
+---
+
+## 🔒 Production Env and Secrets (Lock Before Cutover)
+
+- [ ] CORS_ORIGINS = production domain only (no * in production)
+- [ ] JWT_SECRET = strong 32+ chars (run `python scripts/generate_secrets.py`)
+- [ ] MONGO_URI = production MongoDB with auth and TLS
+- [ ] APP_BASE_URL = https://your-domain (no trailing slash; for email links)
+- [ ] SMTP_USER, SMTP_PASSWORD, FROM_EMAIL set; emails deliver in production
+- [ ] Stripe live keys and webhook when accepting real payments
+
+---
+
+## 🛡️ Before-Production Security Gates
+
+- [ ] `python scripts/security_gate.py` passes (run with production env)
+- [ ] HTTPS only; security headers present
+- [ ] docs/LIVE_VERIFICATION_CHECKLIST.md completed on production URL
+
 ---
 
 ## 🎯 LAUNCH OPTIONS
@@ -195,6 +288,8 @@ Run: `python test_system.py`
 
 **Timeline:** 2-4 weeks
 
+**Note:** Staged launch (invite beta users) and public marketing only after: manual test checklist closed, production env locked, email delivery verified, and security gates passed (see priority order at top).
+
 ---
 
 ## 🚀 LAUNCH STEPS (Option 1 - Recommended)
@@ -239,6 +334,16 @@ Run: `python test_system.py`
 - [ ] Monitor for issues
 - [ ] Respond to feedback
 - [ ] Start tracking metrics
+
+---
+
+## ⏱️ Recommended 48-Hour Immediate Plan
+
+**Do not market or soft-launch until the priority order (top of this doc) steps 1–4 are green.**
+
+**Day 1:** Run full manual test checklist above; fix any failure. Lock production env (Production Env and Secrets section). Verify email delivery (forgot password and verification in inbox). Run `python scripts/security_gate.py` with production env; fix any [FAIL].
+
+**Day 2:** Complete docs/LIVE_VERIFICATION_CHECKLIST.md on production URL. Final pass: signup → verify → login → add device → upgrade to Pro → cancel in portal → confirm plan reverts. If all green: staged launch – invite 5–10 beta users, monitor logs and support. If anything red: fix before inviting users; do not market yet.
 
 ---
 
@@ -339,6 +444,8 @@ Run: `python test_system.py`
 - `ALTERNATIVE_NOTIFICATION_SERVICES.md` - If Twilio doesn't work
 - `PAYMENT_INTEGRATION_COMPLETE.md` - Payment features
 - `LAUNCH_CHECKLIST.md` - This file
+- `docs/GO_LIVE_STEPS.md` - Migration and security steps
+- `docs/LIVE_VERIFICATION_CHECKLIST.md` - Live security sign-off
 
 ### Testing
 - `test_system.py` - Comprehensive system test

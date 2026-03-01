@@ -1,5 +1,7 @@
 # Production email (password reset, verification, alerts)
 
+**Must-fix before customers:** Email must be fully configured for real delivery (not just console logging). Verification and password-reset emails must arrive in the user's inbox for signup and reset flows to work reliably. In production there is no "console only" path—SMTP must be configured or verification/reset will not work.
+
 For password reset, signup verification, and alert emails to work in production, the app must have SMTP configured. You set these once in your host (e.g. Railway), not per user.
 
 ## What you need to do (Railway)
