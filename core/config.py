@@ -19,7 +19,7 @@ if _sentry_dsn:
         sentry_sdk.init(
             dsn=_sentry_dsn,
             environment=os.getenv("APP_ENV", "local"),
-            release=os.getenv("SENTRY_RELEASE", "alert-pro@2.0.0"),
+            release=os.getenv("SENTRY_RELEASE", "pro-alert@2.0.0"),
             traces_sample_rate=0.1,
             integrations=[FastApiIntegration()],
         )

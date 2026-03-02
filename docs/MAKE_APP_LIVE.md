@@ -82,9 +82,25 @@ The script prints the exact variables to set and links to this doc. For more det
 
 ## After Going Live
 
-- **Custom domain (optional):** In Railway or Render, add your domain in settings and point DNS as instructed.
+- **Custom domain (optional):** See **Custom domain (your own URL)** below for linking a purchased domain to Railway.
 - **Mobile app:** In `mobile/app.json` (or your config), set the API URL to your live URL so the app talks to the same backend.
 - **Device agent / discovery:** In the agent’s `.env`, set `API_BASE_URL` to your live URL.
+
+---
+
+## Custom domain (your own URL)
+
+To use a domain you purchased (e.g. proalert.com) instead of the Railway URL:
+
+1. **Railway:** Open your service, **Settings**, **Networking**, **Add custom domain**. Enter your domain (e.g. yourdomain.com or app.yourdomain.com). Railway will show the DNS target to use.
+
+2. **DNS at your registrar:** Where you bought the domain (GoDaddy, Namecheap, Cloudflare, etc.), add a **CNAME** record pointing your domain (or subdomain) to the Railway domain Railway showed you. For root domains (yourdomain.com), some providers need CNAME flattening or an A/ALIAS record; use the value Railway displays.
+
+3. **Railway Variables:** Set `APP_BASE_URL` and `CORS_ORIGINS` to `https://yourdomain.com` (no trailing slash). If you use both root and www, set CORS to both: `https://yourdomain.com,https://www.yourdomain.com`. Redeploy.
+
+4. **Wait:** DNS can take minutes to 48 hours; SSL on Railway is automatic and may take up to an hour after DNS is correct. Then open https://yourdomain.com and test login.
+
+See `docs/CUSTOM_DOMAIN_RAILWAY.md` for a full checklist and root vs www notes.
 
 ---
 
@@ -93,3 +109,4 @@ The script prints the exact variables to set and links to this doc. For more det
 - **Full deployment options:** `docs/DEPLOYMENT.md`
 - **Checklist:** `DEPLOYMENT_CHECKLIST.md`
 - **Security:** `docs/SECURITY_CHECKLIST.md`
+- **Custom domain on Railway:** `docs/CUSTOM_DOMAIN_RAILWAY.md`

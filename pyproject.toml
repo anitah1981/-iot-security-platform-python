@@ -1,7 +1,7 @@
 [project]
 name = "iot-security-app"
 version = "2.0.0"
-description = "Alert-Pro IoT security monitoring platform"
+description = "Pro-Alert IoT security monitoring platform"
 requires-python = ">=3.10"
 
 [tool.ruff]

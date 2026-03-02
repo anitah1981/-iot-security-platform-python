@@ -28,7 +28,7 @@ For password reset, signup verification, and alert emails to work in production,
 
 1. Turn on 2-Step Verification for your Google account.
 2. Go to App passwords (myaccount.google.com/apppasswords).
-3. Create app password for Mail / Other (e.g. Alert-Pro).
+3. Create app password for Mail / Other (e.g. Pro-Alert).
 4. Use that 16-character password as SMTP_PASSWORD.
 
 ## Check

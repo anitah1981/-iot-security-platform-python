@@ -1,4 +1,4 @@
-# Alert-Pro: Full Project Evolution Report
+# Pro-Alert: Full Project Evolution Report
 
 **Report date:** January 2026  
 **Repository:** https://github.com/anitah1981/-iot-security-platform-python
@@ -220,4 +220,4 @@ The project began as an **IoT Security Monitoring Platform** – a web applicati
 
 ## 7. Summary
 
-**Alert-Pro** started as an IoT monitoring MVP with devices, alerts, and email. It evolved into a full SaaS platform with subscriptions, multi-channel notifications, a device agent for real hardware, family sharing, security monitoring, and a network watchdog for DNS and unknown-device detection. Recent work focused on accuracy (offline detection, device counts), security posture (shorter thresholds, DNS/unknown-device alerts), and UX (modern UI, agent auto-run). The app is deployable to Railway and ready for production use.
+**Pro-Alert** started as an IoT monitoring MVP with devices, alerts, and email. It evolved into a full SaaS platform with subscriptions, multi-channel notifications, a device agent for real hardware, family sharing, security monitoring, and a network watchdog for DNS and unknown-device detection. Recent work focused on accuracy (offline detection, device counts), security posture (shorter thresholds, DNS/unknown-device alerts), and UX (modern UI, agent auto-run). The app is deployable to Railway and ready for production use.

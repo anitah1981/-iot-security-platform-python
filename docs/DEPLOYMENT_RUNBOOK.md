@@ -1,6 +1,6 @@
 # Deployment Runbook
 
-Single entry point for deploying and operating Alert-Pro in production.
+Single entry point for deploying and operating Pro-Alert in production.
 
 ## Immediate next actions (ongoing)
 

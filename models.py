@@ -1,4 +1,4 @@
-# models.py - Data Models for Alert-Pro
+# models.py - Data Models for Pro-Alert
 from pydantic import BaseModel, EmailStr, Field, validator
 from typing import Optional, List, Literal, Dict, Any
 from datetime import datetime

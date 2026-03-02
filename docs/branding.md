@@ -1,5 +1,7 @@
 # Brand / UI Theme (Security + Trust)
 
+**Product name:** Pro-Alert.
+
 This project uses a “calm security” theme:
 - Deep navy backgrounds (serious, stable)
 - Trusted blue primary actions (confidence)

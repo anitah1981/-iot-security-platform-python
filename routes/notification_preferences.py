@@ -60,7 +60,7 @@ async def _send_verification_to_all_channels(
         try:
             ok = await service._send_email(
                 to_email=user_email,
-                subject="Alert-Pro – your email is set up",
+                subject="Pro-Alert – your email is set up",
                 message="This is a verification. Your email is set up correctly. You'll receive alerts here when a device goes offline.",
                 severity="low",
                 alert_id="verification",
@@ -74,21 +74,21 @@ async def _send_verification_to_all_channels(
 
     # SMS
     if preferences.sms_enabled and phone:
-        result = service.send_sms(phone, "Alert-Pro: Your number is set up correctly. You'll receive alerts here when a device goes offline.")
+        result = service.send_sms(phone, "Pro-Alert: Your number is set up correctly. You'll receive alerts here when a device goes offline.")
         verification_sent["sms"] = result.ok
         if not result.ok:
             verification_failed.append({"channel": "sms", "message": "We couldn't send a verification text. Please check your number and try again."})
 
     # WhatsApp
     if preferences.whatsapp_enabled and whatsapp_number:
-        result = service.send_whatsapp(whatsapp_number, "Alert-Pro: Your number is set up correctly. You'll receive alerts here when a device goes offline.")
+        result = service.send_whatsapp(whatsapp_number, "Pro-Alert: Your number is set up correctly. You'll receive alerts here when a device goes offline.")
         verification_sent["whatsapp"] = result.ok
         if not result.ok:
             verification_failed.append({"channel": "whatsapp", "message": "We couldn't send a verification to WhatsApp. Please check the number and try again."})
 
     # Voice
     if preferences.voice_enabled and phone:
-        twiml = "<Response><Say>This is a verification call from Alert-Pro. Your number is set up correctly. You will receive alert calls here when a device goes offline.</Say></Response>"
+        twiml = "<Response><Say>This is a verification call from Pro-Alert. Your number is set up correctly. You will receive alert calls here when a device goes offline.</Say></Response>"
         result = service.make_voice_call(phone, twiml)
         verification_sent["voice"] = result.ok
         if not result.ok:
@@ -222,8 +222,8 @@ async def test_notification_channel(
     result: NotificationResult
 
     if channel == "email":
-        subject = "Test notification — Alert-Pro"
-        message = "This is a test email notification from your Alert-Pro settings."
+        subject = "Test notification — Pro-Alert"
+        message = "This is a test email notification from your Pro-Alert settings."
         success = await service._send_email(
             to_email=current_user.get("email", ""),
             subject=subject,
@@ -241,17 +241,17 @@ async def test_notification_channel(
         phone_number = prefs.get("phoneNumber")
         if not phone_number:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Phone number is required for SMS")
-        result = service.send_sms(phone_number, "Test SMS from Alert-Pro.")
+        result = service.send_sms(phone_number, "Test SMS from Pro-Alert.")
     elif channel == "whatsapp":
         whatsapp_number = prefs.get("whatsappNumber")
         if not whatsapp_number:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="WhatsApp number is required")
-        result = service.send_whatsapp(whatsapp_number, "Test WhatsApp message from Alert-Pro.")
+        result = service.send_whatsapp(whatsapp_number, "Test WhatsApp message from Pro-Alert.")
     else:
         phone_number = prefs.get("phoneNumber")
         if not phone_number:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Phone number is required for voice calls")
-        twiml = "<Response><Say>This is a test call from Alert-Pro.</Say></Response>"
+        twiml = "<Response><Say>This is a test call from Pro-Alert.</Say></Response>"
         result = service.make_voice_call(phone_number, twiml)
 
     return {

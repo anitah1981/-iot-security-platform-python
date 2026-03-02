@@ -1,4 +1,4 @@
-/* Minimal frontend for the Alert-Pro API */
+/* Minimal frontend for the Pro-Alert API */
 
 const API_BASE = ""; // same-origin
 

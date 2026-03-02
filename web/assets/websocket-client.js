@@ -172,7 +172,7 @@ function handleNewAlert(data) {
   
   // Show browser notification if permitted
   if (Notification.permission === 'granted') {
-    new Notification('New Alert-Pro Alert', {
+    new Notification('New Pro-Alert Alert', {
       body: `${alert.severity.toUpperCase()}: ${alert.message}`,
       icon: '/assets/logo.png',
       tag: alert.id

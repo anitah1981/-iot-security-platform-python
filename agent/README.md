@@ -105,7 +105,7 @@ Set `EXPECTED_DNS` to your **actual** router/DNS (comma-separated). Example: if 
 **Option A – Task Scheduler (built-in)**
 
 1. Open **Task Scheduler** (search "Task Scheduler" in Start).
-2. **Create Basic Task** → Name: e.g. "Alert-Pro Device Agent" → Next.
+2. **Create Basic Task** → Name: e.g. "Pro-Alert Device Agent" → Next.
 3. Trigger: **When the computer starts** → Next.
 4. Action: **Start a program** → Next.
 5. Program: `python` (or full path, e.g. `C:\Python311\python.exe`).
@@ -119,18 +119,18 @@ Set `EXPECTED_DNS` to your **actual** router/DNS (comma-separated). Example: if 
 1. Download [NSSM](https://nssm.cc/download).
 2. Open Command Prompt as Administrator:
    ```cmd
-   nssm install AlertProAgent "C:\Python311\python.exe" "C:\IoT-security-app-python\agent\device_agent.py"
+   nssm install ProAlertAgent "C:\Python311\python.exe" "C:\IoT-security-app-python\agent\device_agent.py"
    ```
 3. In the NSSM window, set **Startup directory** to `C:\IoT-security-app-python\agent`.
-4. Install service. Start it: `nssm start AlertProAgent`.
+4. Install service. Start it: `nssm start ProAlertAgent`.
 
 ### Linux (systemd)
 
-1. Create a unit file, e.g. `/etc/systemd/system/alertpro-agent.service`:
+1. Create a unit file, e.g. `/etc/systemd/system/proalert-agent.service`:
 
    ```ini
    [Unit]
-   Description=Alert-Pro Device Agent
+   Description=Pro-Alert Device Agent
    After=network-online.target
    Wants=network-online.target
 
@@ -150,9 +150,9 @@ Set `EXPECTED_DNS` to your **actual** router/DNS (comma-separated). Example: if 
 3. Enable and start:
    ```bash
    sudo systemctl daemon-reload
-   sudo systemctl enable alertpro-agent
-   sudo systemctl start alertpro-agent
-   sudo systemctl status alertpro-agent
+   sudo systemctl enable proalert-agent
+   sudo systemctl start proalert-agent
+   sudo systemctl status proalert-agent
    ```
 
 ### Docker

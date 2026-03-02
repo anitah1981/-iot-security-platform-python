@@ -112,7 +112,7 @@ class NotificationService:
                     <body style="font-family: Arial, sans-serif; padding: 20px;">
                         <div style="background: {'#dc2626' if severity == 'critical' else '#f59e0b' if severity == 'high' else '#3b82f6'};
                                     color: white; padding: 15px; border-radius: 5px; margin-bottom: 20px;">
-                            <h2 style="margin: 0;">🚨 Alert-Pro Alert</h2>
+                            <h2 style="margin: 0;">🚨 Pro-Alert Alert</h2>
                         </div>
                         <div style="background: #f3f4f6; padding: 20px; border-radius: 5px; margin-bottom: 20px;">
                             <p style="font-size: 18px; margin: 0;"><strong>{message}</strong></p>
@@ -120,7 +120,7 @@ class NotificationService:
                         <p><strong>Severity:</strong> {severity.upper()}</p>
                         <p><strong>Time:</strong> {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S UTC')}</p>
                         <hr style="margin: 30px 0; border: none; border-top: 1px solid #e5e7eb;">
-                        <p style="color: #6b7280; font-size: 12px;">You're receiving this because you have Alert-Pro monitoring enabled.</p>
+                        <p style="color: #6b7280; font-size: 12px;">You're receiving this because you have Pro-Alert monitoring enabled.</p>
                     </body>
                 </html>
                 """
@@ -312,7 +312,7 @@ async def send_alert_notification(
           f"whatsapp={notification_prefs.get('whatsappEnabled')} wa_num={bool(notification_prefs.get('whatsappNumber'))} voice={notification_prefs.get('voiceEnabled')}")
     
     # Format the alert message for email
-    subject = f"[{alert_severity.upper()}] Alert-Pro Alert - {device_name}"
+    subject = f"[{alert_severity.upper()}] Pro-Alert Alert - {device_name}"
     email_message = f"Device: {device_name}\n\n{alert_message}"
     
     # Check if in quiet hours

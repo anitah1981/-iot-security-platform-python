@@ -27,7 +27,7 @@ async def lifespan(app: FastAPI):
         "network_monitoring": "pending",
         "twilio": "pending",
     }
-    print("Starting Alert-Pro Backend...")
+    print("Starting Pro-Alert Backend...")
 
     try:
         import twilio  # noqa: F401

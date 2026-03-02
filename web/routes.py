@@ -39,7 +39,7 @@ def register_web_routes(app, web_dir: Path) -> None:
         index = web_dir / "index.html"
         if index.exists():
             return FileResponse(str(index))
-        return {"message": "Alert-Pro API", "version": "2.0.0", "status": "running"}
+        return {"message": "Pro-Alert API", "version": "2.0.0", "status": "running"}
 
     @app.get("/login")
     def login_page():

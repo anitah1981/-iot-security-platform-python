@@ -35,7 +35,7 @@ Every time **before** you deploy (e.g. before you push to main if Railway auto-d
 
 1. In the browser, open (replace `<your-live-url>` with your real URL):
    - `https://<your-live-url>/api/health`
-   - You should see something like: `{"ok":true,"service":"alert-pro","status":"alive",...}` and the page should load (no error).
+   - You should see something like: `{"ok":true,"service":"pro-alert","status":"alive",...}` and the page should load (no error).
 2. Then open:
    - `https://<your-live-url>/api/ready`
    - You should see something like: `{"ok":true,"database":"connected",...}`.

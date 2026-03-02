@@ -1,5 +1,5 @@
 """
-Alert-Pro FastAPI application. Config, startup, middleware, and routes are in core/, web/, api/.
+Pro-Alert FastAPI application. Config, startup, middleware, and routes are in core/, web/, api/.
 """
 from fastapi import FastAPI, Depends
 from fastapi.staticfiles import StaticFiles
@@ -12,7 +12,7 @@ from api.router import get_api_router
 
 # Build app
 app = FastAPI(
-    title="Alert-Pro",
+    title="Pro-Alert",
     version="2.0.0",
     lifespan=lifespan,
     docs_url=None,

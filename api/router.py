@@ -35,7 +35,7 @@ def get_api_router():
         email_configured = bool(os.getenv("SMTP_USER") and os.getenv("SMTP_PASSWORD") and os.getenv("FROM_EMAIL"))
         return {
             "ok": True,
-            "service": "alert-pro",
+            "service": "pro-alert",
             "status": "alive",
             "timestamp": datetime.now(timezone.utc).isoformat(),
             "email_configured": email_configured,

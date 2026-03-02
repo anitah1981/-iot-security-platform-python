@@ -1,6 +1,6 @@
 # Security, availability and CIA alignment
 
-Alert-Pro is designed for **fast, accurate detection** of device loss and network compromise (WiFi interception, DNS change, device offline) with **minimal false positives** and **high availability**. Design goal: **maximize correctness and availability** with strong CIA (Confidentiality, Integrity, Availability) posture.
+Pro-Alert is designed for **fast, accurate detection** of device loss and network compromise (WiFi interception, DNS change, device offline) with **minimal false positives** and **high availability**. Design goal: **maximize correctness and availability** with strong CIA (Confidentiality, Integrity, Availability) posture.
 
 ## Offline detection (security-focused)
 
