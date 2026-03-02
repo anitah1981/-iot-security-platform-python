@@ -55,7 +55,7 @@ async def _ensure_unique_device_id(db, device_id: str, user_id: ObjectId, family
         device_id = f"{_slug_device_id(device_id)}-{secrets.token_hex(2)}"
     return f"device-{secrets.token_hex(4)}"
 
-@router.get("/", response_model=DeviceListResponse)
+@router.get("", response_model=DeviceListResponse)
 async def get_devices(
     device_type: Optional[str] = Query(None, alias="type", description="Filter by device type"),
     status: Optional[str] = Query(None, description="Filter by status"),
@@ -228,7 +228,7 @@ async def get_device_status(device_id: str):
         }
     }
 
-@router.post("/", response_model=DeviceResponse, status_code=status.HTTP_201_CREATED)
+@router.post("", response_model=DeviceResponse, status_code=status.HTTP_201_CREATED)
 async def create_device(device: DeviceCreate, user: dict = Depends(get_current_user), request: Request = None):
     """
     Register a new device

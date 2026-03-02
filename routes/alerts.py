@@ -65,7 +65,7 @@ async def send_alert_notifications(alert_id: str, device_id: str, alert_message:
     except Exception as e:
         print(f"Error sending alert notifications: {e}")
 
-@router.post("/", response_model=AlertResponse, status_code=status.HTTP_201_CREATED)
+@router.post("", response_model=AlertResponse, status_code=status.HTTP_201_CREATED)
 async def create_alert(alert: AlertCreate, background_tasks: BackgroundTasks):
     """
     Create an alert (manual or auto from monitoring)
@@ -176,7 +176,7 @@ async def create_alert(alert: AlertCreate, background_tasks: BackgroundTasks):
         created_at=alert_doc["createdAt"]
     )
 
-@router.get("/", response_model=AlertListResponse)
+@router.get("", response_model=AlertListResponse)
 async def get_alerts(
     device_id: Optional[str] = Query(None, description="Filter by device MongoDB ObjectId"),
     severity: Optional[str] = Query(None, description="Filter by severity"),
