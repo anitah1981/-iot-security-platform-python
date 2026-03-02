@@ -3,13 +3,49 @@ import Constants from 'expo-constants';
 import axios from 'axios/dist/axios.js';
 import * as SecureStore from 'expo-secure-store';
 
-// Get API URL from config or use default
-const API_URL = Constants.expoConfig?.extra?.apiUrl || 'http://localhost:8000';
+const BUILTIN_URL = Constants.expoConfig?.extra?.apiUrl || 'http://localhost:8000';
+const OVERRIDE_KEY = 'api_url_override';
 
-// Create axios instance
+/** Get the effective API base URL (override if set, else built-in). Exported for display. */
+let effectiveBaseUrl = BUILTIN_URL;
+
+/** Set base URL override (call with url or null to clear). Updates axios and persists. */
+async function setBaseUrlOverride(url) {
+  const trimmed = (url || '').trim();
+  if (trimmed) {
+    effectiveBaseUrl = trimmed.replace(/\/+$/, ''); // no trailing slash
+    api.defaults.baseURL = effectiveBaseUrl;
+    await SecureStore.setItemAsync(OVERRIDE_KEY, effectiveBaseUrl);
+  } else {
+    effectiveBaseUrl = BUILTIN_URL;
+    api.defaults.baseURL = BUILTIN_URL;
+    await SecureStore.deleteItemAsync(OVERRIDE_KEY);
+  }
+  return effectiveBaseUrl;
+}
+
+/** Load saved override on startup. Call once when app starts. */
+async function loadBaseUrlOverride() {
+  try {
+    const saved = await SecureStore.getItemAsync(OVERRIDE_KEY);
+    if (saved) {
+      effectiveBaseUrl = saved.replace(/\/+$/, '');
+      api.defaults.baseURL = effectiveBaseUrl;
+    }
+  } catch (e) {
+    console.warn('Could not load API URL override:', e);
+  }
+  return effectiveBaseUrl;
+}
+
+function getEffectiveApiUrl() {
+  return effectiveBaseUrl;
+}
+
+// Create axios instance (baseURL can be changed via setBaseUrlOverride)
 const api = axios.create({
-  baseURL: API_URL,
-  timeout: 10000,
+  baseURL: BUILTIN_URL,
+  timeout: 15000,
   headers: {
     'Content-Type': 'application/json',
   },
@@ -52,4 +88,4 @@ api.interceptors.response.use(
 );
 
 export default api;
-export { API_URL };
+export { BUILTIN_URL as API_URL, getEffectiveApiUrl, setBaseUrlOverride, loadBaseUrlOverride };

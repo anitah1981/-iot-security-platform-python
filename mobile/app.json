@@ -52,7 +52,7 @@
       ]
     ],
     "extra": {
-      "apiUrl": "https://nonspectrally-unindignant-alivia.ngrok-free.dev",
+      "apiUrl": "https://iot-security-platform-python-production.up.railway.app",
       "eas": {
         "projectId": "217e28ef-7185-442c-9983-53eec6f29fe3"
       }
