@@ -27,6 +27,8 @@ def main():
         m = os.getenv("MONGO_URI", "")
         if not m or "localhost" in m.lower():
             failed.append("MONGO_URI must point to production DB (not localhost)")
+        elif "mongodb+srv://" not in m and "ssl=true" not in m.lower():
+            failed.append("MONGO_URI should use TLS: use mongodb+srv:// (Atlas) or add ?ssl=true")
         if not (os.getenv("APP_BASE_URL") or "").strip():
             failed.append("APP_BASE_URL required (e.g. https://your-domain.com)")
         cors = (os.getenv("CORS_ORIGINS") or "").strip()

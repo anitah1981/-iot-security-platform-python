@@ -17,13 +17,19 @@ Use this checklist before deploying to production.
   - [ ] Secret is random (not a word/password)
   - [ ] Secret is stored securely (not in code/git)
 
+- [ ] **Run security gate before deploy**
+  ```bash
+  APP_ENV=production python scripts/security_gate.py
+  ```
+  - [ ] Fix any reported failures (JWT_SECRET, MONGO_URI TLS, APP_BASE_URL, CORS_ORIGINS, SMTP, etc.)
+
 - [ ] **Environment Variables Set**
   - [ ] `APP_ENV=production`
   - [ ] `JWT_SECRET=<generated-secret>`
   - [ ] `ALLOWED_HOSTS=yourdomain.com,www.yourdomain.com`
   - [ ] `CORS_ORIGINS=https://yourdomain.com`
-  - [ ] `FORCE_HTTPS=true`
-  - [ ] `MONGO_URI` with authentication
+  - [ ] `FORCE_HTTPS=true` (and `ENABLE_HSTS=true` recommended)
+  - [ ] `MONGO_URI` with authentication and TLS (`mongodb+srv://` or `?ssl=true`)
   - [ ] All API keys configured (SMTP, Twilio, Stripe)
 
 - [ ] **HTTPS Configured**
