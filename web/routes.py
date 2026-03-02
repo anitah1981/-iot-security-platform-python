@@ -1,9 +1,13 @@
 """
 Register HTML page routes (/, /login, /dashboard, etc.) on the FastAPI app.
+Protected pages (dashboard, settings, family, audit-logs, incidents) require authentication;
+unauthenticated requests are redirected to /login.
 """
 from pathlib import Path
-from fastapi import Request
+from fastapi import Request, Depends
 from fastapi.responses import FileResponse, JSONResponse
+
+from routes.auth import get_current_user_for_pages
 
 
 def register_web_routes(app, web_dir: Path) -> None:
@@ -55,14 +59,14 @@ def register_web_routes(app, web_dir: Path) -> None:
             return JSONResponse(status_code=404, content={"detail": "Page not found"})
         return FileResponse(str(f))
 
-    @app.get("/dashboard")
+    @app.get("/dashboard", dependencies=[Depends(get_current_user_for_pages)])
     def dashboard_page(request: Request):
         f = web_dir / "dashboard.html"
         if not f.exists():
             return JSONResponse(status_code=404, content={"detail": "Page not found"})
         return FileResponse(str(f))
 
-    @app.get("/settings")
+    @app.get("/settings", dependencies=[Depends(get_current_user_for_pages)])
     def settings_page(request: Request):
         f = web_dir / "settings.html"
         if not f.exists():
@@ -111,19 +115,19 @@ def register_web_routes(app, web_dir: Path) -> None:
             return JSONResponse(status_code=404, content={"detail": "Page not found"})
         return FileResponse(str(f))
 
-    @app.get("/family")
+    @app.get("/family", dependencies=[Depends(get_current_user_for_pages)])
     def family_page():
         f = web_dir / "family.html"
         if not f.exists():
             return JSONResponse(status_code=404, content={"detail": "Page not found"})
         return FileResponse(str(f))
 
-    @app.get("/audit-logs")
+    @app.get("/audit-logs", dependencies=[Depends(get_current_user_for_pages)])
     def audit_logs_page():
         f = web_dir / "audit-logs.html"
         return FileResponse(str(f))
 
-    @app.get("/incidents")
+    @app.get("/incidents", dependencies=[Depends(get_current_user_for_pages)])
     def incidents_page():
         f = web_dir / "incidents.html"
         return FileResponse(str(f))

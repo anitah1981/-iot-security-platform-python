@@ -1,6 +1,7 @@
 # routes/auth.py - Authentication Routes
 from fastapi import APIRouter, HTTPException, status, Depends, Request, BackgroundTasks, Query
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from fastapi.responses import RedirectResponse, JSONResponse
 from jose import jwt, JWTError
 from datetime import datetime, timedelta
 from typing import Optional
@@ -198,8 +199,45 @@ async def _send_verification_email(email: str, token: str, user_name: str):
         body_is_html=True,
     )
 
+def get_token_from_request(request: Request) -> Optional[str]:
+    """Get JWT from Authorization header or from iot_token cookie (for browser page requests)."""
+    auth = request.headers.get("Authorization")
+    if auth and auth.startswith("Bearer "):
+        return auth[7:].strip()
+    return request.cookies.get("iot_token")
+
+
+async def get_current_user_for_pages(request: Request):
+    """
+    Dependency for protected HTML page routes (dashboard, settings, family, audit-logs, incidents).
+    If not authenticated, returns RedirectResponse to /login so unauthenticated users cannot load those pages.
+    """
+    token = get_token_from_request(request)
+    if not token:
+        return RedirectResponse(url="/login", status_code=302)
+    try:
+        payload = jwt.decode(
+            token,
+            JWT_SECRET,
+            algorithms=[JWT_ALGORITHM],
+            issuer=JWT_ISSUER
+        )
+        user_id = payload.get("sub")
+        if not user_id:
+            return RedirectResponse(url="/login", status_code=302)
+        db = await get_database()
+        user = await db.users.find_one({"_id": ObjectId(user_id)})
+        if not user:
+            return RedirectResponse(url="/login", status_code=302)
+        if REQUIRE_EMAIL_VERIFICATION and user.get("email_verified") is False:
+            return RedirectResponse(url="/login", status_code=302)
+        return None  # authenticated; route will run
+    except JWTError:
+        return RedirectResponse(url="/login", status_code=302)
+
+
 async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)):
-    """Dependency to get current authenticated user"""
+    """Dependency to get current authenticated user (API: requires Authorization header)"""
     token = credentials.credentials
     
     try:
@@ -394,7 +432,7 @@ async def signup(user_data: UserCreate, request: Request, background_tasks: Back
     
     signup_message = "Signup successful. Please verify your email." if verification_enabled else "Signup successful"
 
-    return TokenResponse(
+    token_response = TokenResponse(
         token=token,
         refresh_token=refresh_token,
         email_verified=False,
@@ -402,6 +440,18 @@ async def signup(user_data: UserCreate, request: Request, background_tasks: Back
         user=safe_user,
         message=signup_message
     )
+    content = token_response.model_dump() if hasattr(token_response, "model_dump") else token_response.dict()
+    response = JSONResponse(content=content, status_code=201)
+    response.set_cookie(
+        key="iot_token",
+        value=token,
+        max_age=JWT_EXPIRES_MINUTES * 60,
+        httponly=True,
+        samesite="lax",
+        secure=os.getenv("APP_ENV", "").lower() == "production",
+        path="/",
+    )
+    return response
 
 @router.post("/login", response_model=TokenResponse)
 @limiter.limit("5/minute")
@@ -510,7 +560,7 @@ async def login(credentials: UserLogin, request: Request):
     token = create_access_token(user_id, user["role"])
     refresh_token = await _issue_refresh_token(db, user_id)
     
-    return TokenResponse(
+    token_response = TokenResponse(
         token=token,
         refresh_token=refresh_token,
         email_verified=user.get("email_verified", True),
@@ -518,6 +568,19 @@ async def login(credentials: UserLogin, request: Request):
         user=safe_user,
         message="Login successful"
     )
+    content = token_response.model_dump() if hasattr(token_response, "model_dump") else token_response.dict()
+    response = JSONResponse(content=content)
+    cookie_max_age = JWT_EXPIRES_MINUTES * 60
+    response.set_cookie(
+        key="iot_token",
+        value=token,
+        max_age=cookie_max_age,
+        httponly=True,
+        samesite="lax",
+        secure=os.getenv("APP_ENV", "").lower() == "production",
+        path="/",
+    )
+    return response
 
 @router.get("/me", response_model=UserResponse)
 async def get_current_user_info(current_user = Depends(get_current_user)):
@@ -784,7 +847,9 @@ async def logout(body: LogoutRequest, request: Request, current_user = Depends(g
         token_hash = _hash_refresh_token(body.refresh_token)
         await _revoke_refresh_token(db, token_hash)
 
-    return {"message": "Logged out"}
+    response = JSONResponse(content={"message": "Logged out"})
+    response.delete_cookie(key="iot_token", path="/")
+    return response
 
 @router.post("/unlock/{user_id}")
 @limiter.limit("5/minute")
