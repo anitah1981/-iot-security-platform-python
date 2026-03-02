@@ -322,6 +322,7 @@ This project follows standard contribution guidelines. Feel free to submit issue
 ## 🔗 Links
 
 - **Documentation**: See `docs/` folder
+- **API Conventions**: `docs/API_CONVENTIONS.md` (URL rules, no trailing slash)
 - **API Docs**: `https://your-domain.com/docs` (**requires authentication**, same as local `/docs` / `/redoc`)
 - **Branding Guide**: `docs/branding.md`
 

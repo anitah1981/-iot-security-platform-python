@@ -28,7 +28,7 @@ def main():
     ok = run("Lint (ruff)", [sys.executable, "-m", "pip", "install", "-q", "ruff"]) and ok
     if ok:
         ok = run("Ruff check", [sys.executable, "-m", "ruff", "check", "."]) and ok
-    ok = run("Tests", [sys.executable, "-m", "pytest", "tests/", "-v", "--tb=short", "-W", "default"]) and ok
+    ok = run("Tests", [sys.executable, "-m", "pytest", "tests/", "-v", "--tb=short", "-W", "default"]) and ok  # includes test_api_routes (no 307)
     if not ok:
         print("\n[RELEASE GATE FAILED] Fix the above before deploying.")
         return 1

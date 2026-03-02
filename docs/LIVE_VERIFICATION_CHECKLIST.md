@@ -30,6 +30,7 @@ Use this checklist to explicitly verify and sign off security and behaviour **ag
 - [ ] **Admin: network monitoring** – Only admin can access network monitoring enable/disable/status.
 - [ ] **Audit (Business plan)** – Non-Business user gets 403 on audit logs; Business user can access.
 - [ ] **Health/ready/startup** – `GET /api/health`, `/api/ready`, `/api/startup` return 200; `email_configured: true` when SMTP is set.
+- [ ] **API routes (no redirect)** – `curl -I https://<env-url>/api/devices` returns 401 or 403, **not 307**. Same for `/api/alerts`. (See `docs/API_CONVENTIONS.md`.)
 
 ---
 
