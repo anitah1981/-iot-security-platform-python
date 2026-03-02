@@ -104,6 +104,31 @@ See `docs/CUSTOM_DOMAIN_RAILWAY.md` for a full checklist and root vs www notes.
 
 ---
 
+## Keeping local and live in sync (same version on your domain)
+
+**Single source of truth:** The code in your **GitHub repo**, **`main` branch**, is what Railway deploys. Whatever is pushed to `main` is what gets built and runs on your custom domain. There is only one codebase; local and live stay consistent when you follow this flow.
+
+**Workflow:**
+
+1. **Work locally** on the same repo (your current folder). Use branch **`main`** for everything that should go live.
+2. **Commit** your changes: `git add -A` then `git commit -m "Your message"`.
+3. **Push** to GitHub: `git push`. That updates `origin/main`.
+4. **Railway** deploys from this repo. If auto-deploy is on, it builds from the latest push to `main`; that build is what runs at **your domain** (e.g. https://yourdomain.com).
+5. **Config is per environment:**  
+   - **Local:** Use `.env` with `APP_BASE_URL=http://localhost:8000`, `CORS_ORIGINS=http://localhost:8000` so the app works on your machine.  
+   - **Live (Railway):** Use Railway **Variables** with `APP_BASE_URL=https://yourdomain.com`, `CORS_ORIGINS=https://yourdomain.com` (your real domain).  
+   The **code** is the same; only these variables change by environment.
+
+**Quick check that you’re in sync:**
+
+- Run `git status` → should be clean (no uncommitted changes) when you want “live” to match your current code.
+- Run `git log -1 --oneline` → note the commit hash (e.g. `32690d5`).
+- In **Railway** → your service → **Deployments**: the latest successful deployment should show the **same commit** and message. That is the version running on your domain.
+
+**Summary:** Develop on `main`, push to GitHub; Railway runs that same code on your domain. Keep `.env` for local and Railway Variables for production so changes stay consistent and only config differs by environment.
+
+---
+
 ## More Detail
 
 - **Full deployment options:** `docs/DEPLOYMENT.md`
