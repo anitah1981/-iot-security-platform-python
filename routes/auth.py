@@ -529,36 +529,48 @@ async def login(credentials: UserLogin, request: Request):
     # Get organization details if user belongs to one
     org = None
     if user.get("organization"):
-        from bson import ObjectId
-        org_doc = await db.organizations.find_one({"_id": ObjectId(user["organization"])})
-        if org_doc:
-            org = {
-                "id": str(org_doc["_id"]),
-                "name": org_doc["name"],
-                "subdomain": org_doc["subdomain"],
-                "plan": org_doc["plan"]
-            }
+        try:
+            from bson import ObjectId
+            oid = user["organization"]
+            org_doc = await db.organizations.find_one({"_id": ObjectId(oid) if isinstance(oid, str) else oid})
+            if org_doc:
+                org = {
+                    "id": str(org_doc["_id"]),
+                    "name": org_doc.get("name", ""),
+                    "subdomain": org_doc.get("subdomain", ""),
+                    "plan": org_doc.get("plan", "free")
+                }
+        except Exception as e:
+            print(f"[AUTH] Org lookup failed for user {user.get('email')}: {e}")
     
     # Create safe user response
     user_id = str(user["_id"])
+    created = user.get("createdAt") or datetime.utcnow()
+    if hasattr(created, "tzinfo") and created.tzinfo is None:
+        # Ensure timezone-aware for JSON
+        pass  # datetime.utcnow() is naive; Pydantic accepts it
     safe_user = UserResponse(
         id=user_id,
-        name=user["name"],
+        name=user.get("name", ""),
         email=user["email"],
-        role=user["role"],
+        role=user.get("role", "consumer"),
         organization=org,
         organization_role=user.get("organizationRole"),
         plan=get_effective_plan(user),
         subscription_id=user.get("subscription_id"),
         subscription_status=user.get("subscription_status"),
         stripe_customer_id=user.get("stripe_customer_id"),
-        mfa_enabled=user.get("mfa_enabled", False),
-        created_at=user.get("createdAt", datetime.utcnow())
+        mfa_enabled=bool(user.get("mfa_enabled", False)),
+        created_at=created
     )
     
     # Generate JWT and refresh token
-    token = create_access_token(user_id, user["role"])
-    refresh_token = await _issue_refresh_token(db, user_id)
+    try:
+        token = create_access_token(user_id, user.get("role", "consumer"))
+        refresh_token = await _issue_refresh_token(db, user_id)
+    except Exception as e:
+        print(f"[AUTH] Token generation failed for {user.get('email')}: {e}")
+        raise HTTPException(status_code=500, detail="Authentication failed. Please try again.")
     
     token_response = TokenResponse(
         token=token,
