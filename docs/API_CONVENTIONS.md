@@ -1,5 +1,50 @@
 # API Conventions
 
+## URL Shape
+
+- All JSON API endpoints use **no trailing slash**.
+  - **Good**: `/api/devices`, `/api/alerts`, `/api/auth/login`
+  - **Avoid**: `/api/devices/`, `/api/alerts/`
+
+### Routers
+
+- When mounting routers with a prefix (for example `app.include_router(devices_router, prefix="/api/devices")`):
+  - Use `@router.get("")` / `@router.post("")` for the root resource.
+  - Do **not** use `@router.get("/")` / `@router.post("/")`, as that introduces an automatic redirect.
+
+Example:
+
+```python
+router = APIRouter()
+
+@router.get("", ...)
+async def list_devices(...):
+    ...
+
+@router.post("", ...)
+async def create_device(...):
+    ...
+
+@router.get("/{device_id}", ...)
+async def get_device(...):
+    ...
+```
+
+## Auth and Redirects
+
+- JSON API endpoints should return:
+  - **401** when authentication is missing or invalid.
+  - **403** when authentication is valid but access is forbidden.
+- Avoid 3xx redirects on authenticated JSON APIs; redirects can drop headers or cookies and cause confusing 403s.
+
+## Clients
+
+- Web, mobile, and tests must all call the same URLs:
+  - Always call `/api/devices`, **not** `/api/devices/`.
+  - Always call `/api/alerts`, **not** `/api/alerts/`.
+
+# API Conventions
+
 Follow these conventions so the frontend, mobile app, and tests all behave consistently.
 
 ## URL path rule: no trailing slash
