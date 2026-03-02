@@ -117,14 +117,32 @@ class NetworkMonitor:
                     }
                     
                     result = await db.alerts.insert_one(alert_doc)
-                    
-                    # Send notifications
-                    await send_alert_notification(
-                        str(result.inserted_id),
-                        str(device_id),
-                        alert_doc["message"],
-                        alert_doc["severity"]
-                    )
+                    await self._notify_alert(db, device, alert_doc, str(result.inserted_id))
+    
+    async def _notify_alert(self, db, device: Dict, alert_doc: dict, alert_id: str):
+        """Send notification for an alert. Fetches user and prefs, then calls send_alert_notification."""
+        user_id = device.get("userId") or device.get("user_id")
+        if not user_id:
+            return
+        user = await db.users.find_one({"_id": ObjectId(user_id) if isinstance(user_id, str) else user_id})
+        if not user:
+            return
+        uid = ObjectId(user_id) if isinstance(user_id, str) else user_id
+        prefs = await db.notification_preferences.find_one({"userId": uid})
+        if not prefs:
+            prefs = {"emailEnabled": True, "smsEnabled": False, "whatsappEnabled": False, "voiceEnabled": False}
+        try:
+            await send_alert_notification(
+                user_email=user.get("email", ""),
+                user_name=user.get("name", "User"),
+                device_name=device.get("name", "Unknown Device"),
+                alert_message=alert_doc["message"],
+                alert_severity=alert_doc.get("severity", "medium"),
+                notification_prefs=prefs,
+                alert_id=alert_id
+            )
+        except Exception as e:
+            print(f"[ERROR] Network monitor notification failed: {e}")
     
     async def _check_dns_change(self, device: Dict, ip_address: str, db):
         """Check if DNS resolution for device has changed"""
@@ -166,13 +184,7 @@ class NetworkMonitor:
                     }
                     
                     result = await db.alerts.insert_one(alert_doc)
-                    
-                    await send_alert_notification(
-                        str(result.inserted_id),
-                        str(device_id),
-                        alert_doc["message"],
-                        alert_doc["severity"]
-                    )
+                    await self._notify_alert(db, device, alert_doc, str(result.inserted_id))
             
             # Update device with current DNS info
             await db.devices.update_one(
@@ -274,13 +286,7 @@ class NetworkMonitor:
                     }
                     
                     result = await db.alerts.insert_one(alert_doc)
-                    
-                    await send_alert_notification(
-                        str(result.inserted_id),
-                        str(device.get("_id")),
-                        alert_doc["message"],
-                        alert_doc["severity"]
-                    )
+                    await self._notify_alert(db, device, alert_doc, str(result.inserted_id))
         
         except Exception as e:
             print(f"[ERROR] Unknown IP check failed: {e}")
