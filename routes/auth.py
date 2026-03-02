@@ -138,24 +138,28 @@ def _generate_backup_codes() -> list[str]:
     ]
 
 async def _verify_mfa_code(db, user: dict, code: str) -> bool:
-    code = _normalize_mfa_code(code)
-    if not code:
-        return False
-    secret = user.get("mfa_secret")
-    if secret:
-        totp = pyotp.TOTP(secret)
-        if totp.verify(code, valid_window=1):
+    try:
+        code = _normalize_mfa_code(code)
+        if not code:
+            return False
+        secret = user.get("mfa_secret")
+        if secret:
+            totp = pyotp.TOTP(secret)
+            if totp.verify(code, valid_window=1):
+                return True
+        backup_codes = user.get("mfa_backup_codes", []) or []
+        code_hash = _hash_backup_code(code)
+        if code_hash in backup_codes:
+            updated = [c for c in backup_codes if c != code_hash]
+            await db.users.update_one(
+                {"_id": user["_id"]},
+                {"$set": {"mfa_backup_codes": updated, "updatedAt": datetime.utcnow()}}
+            )
             return True
-    backup_codes = user.get("mfa_backup_codes", []) or []
-    code_hash = _hash_backup_code(code)
-    if code_hash in backup_codes:
-        updated = [c for c in backup_codes if c != code_hash]
-        await db.users.update_one(
-            {"_id": user["_id"]},
-            {"$set": {"mfa_backup_codes": updated, "updatedAt": datetime.utcnow()}}
-        )
-        return True
-    return False
+        return False
+    except Exception as e:
+        print(f"[AUTH] MFA verify error for {user.get('email')}: {e}")
+        return False
 
 async def _send_verification_email(email: str, token: str, user_name: str):
     verify_link = f"{APP_BASE_URL}/verify-email?token={token}"
@@ -526,73 +530,84 @@ async def login(credentials: UserLogin, request: Request):
                 detail={"message": "Invalid MFA code. Please try again.", "mfa_required": True}
             )
     
-    # Get organization details if user belongs to one
-    org = None
-    if user.get("organization"):
-        try:
-            from bson import ObjectId
-            oid = user["organization"]
-            org_doc = await db.organizations.find_one({"_id": ObjectId(oid) if isinstance(oid, str) else oid})
-            if org_doc:
-                org = {
-                    "id": str(org_doc["_id"]),
-                    "name": org_doc.get("name", ""),
-                    "subdomain": org_doc.get("subdomain", ""),
-                    "plan": org_doc.get("plan", "free")
-                }
-        except Exception as e:
-            print(f"[AUTH] Org lookup failed for user {user.get('email')}: {e}")
-    
-    # Create safe user response
-    user_id = str(user["_id"])
-    created = user.get("createdAt") or datetime.utcnow()
-    if hasattr(created, "tzinfo") and created.tzinfo is None:
-        # Ensure timezone-aware for JSON
-        pass  # datetime.utcnow() is naive; Pydantic accepts it
-    safe_user = UserResponse(
-        id=user_id,
-        name=user.get("name", ""),
-        email=user["email"],
-        role=user.get("role", "consumer"),
-        organization=org,
-        organization_role=user.get("organizationRole"),
-        plan=get_effective_plan(user),
-        subscription_id=user.get("subscription_id"),
-        subscription_status=user.get("subscription_status"),
-        stripe_customer_id=user.get("stripe_customer_id"),
-        mfa_enabled=bool(user.get("mfa_enabled", False)),
-        created_at=created
-    )
-    
-    # Generate JWT and refresh token
     try:
+        # Get organization details if user belongs to one
+        org = None
+        if user.get("organization"):
+            try:
+                from bson import ObjectId
+                oid = user["organization"]
+                org_doc = await db.organizations.find_one({"_id": ObjectId(oid) if isinstance(oid, str) else oid})
+                if org_doc:
+                    org = {
+                        "id": str(org_doc["_id"]),
+                        "name": org_doc.get("name", ""),
+                        "subdomain": org_doc.get("subdomain", ""),
+                        "plan": org_doc.get("plan", "free")
+                    }
+            except Exception as e:
+                print(f"[AUTH] Org lookup failed for user {user.get('email')}: {e}")
+        
+        user_id = str(user["_id"])
+        created = user.get("createdAt") or datetime.utcnow()
+        if not isinstance(created, datetime):
+            created = datetime.utcnow()
+        
+        def _str_or_none(v):
+            if v is None: return None
+            return str(v) if v else None
+        
+        safe_user = UserResponse(
+            id=user_id,
+            name=str(user.get("name") or ""),
+            email=str(user["email"]),
+            role=str(user.get("role") or "consumer"),
+            organization=org,
+            organization_role=_str_or_none(user.get("organizationRole")),
+            plan=str(get_effective_plan(user)),
+            subscription_id=_str_or_none(user.get("subscription_id")),
+            subscription_status=_str_or_none(user.get("subscription_status")),
+            stripe_customer_id=_str_or_none(user.get("stripe_customer_id")),
+            mfa_enabled=bool(user.get("mfa_enabled", False)),
+            created_at=created
+        )
+        
         token = create_access_token(user_id, user.get("role", "consumer"))
+        if isinstance(token, bytes):
+            token = token.decode("utf-8")
         refresh_token = await _issue_refresh_token(db, user_id)
+        
+        token_response = TokenResponse(
+            token=token,
+            refresh_token=refresh_token,
+            email_verified=user.get("email_verified", True),
+            verification_required=REQUIRE_EMAIL_VERIFICATION,
+            user=safe_user,
+            message="Login successful"
+        )
+        try:
+            content = token_response.model_dump(mode="json")
+        except (TypeError, AttributeError):
+            content = token_response.model_dump() if hasattr(token_response, "model_dump") else token_response.dict()
+        response = JSONResponse(content=content)
+        cookie_max_age = JWT_EXPIRES_MINUTES * 60
+        response.set_cookie(
+            key="iot_token",
+            value=token,
+            max_age=cookie_max_age,
+            httponly=True,
+            samesite="lax",
+            secure=os.getenv("APP_ENV", "").lower() == "production",
+            path="/",
+        )
+        return response
+    except HTTPException:
+        raise
     except Exception as e:
-        print(f"[AUTH] Token generation failed for {user.get('email')}: {e}")
+        import traceback
+        print(f"[AUTH] Login response build failed for {user.get('email')}: {e}")
+        traceback.print_exc()
         raise HTTPException(status_code=500, detail="Authentication failed. Please try again.")
-    
-    token_response = TokenResponse(
-        token=token,
-        refresh_token=refresh_token,
-        email_verified=user.get("email_verified", True),
-        verification_required=REQUIRE_EMAIL_VERIFICATION,
-        user=safe_user,
-        message="Login successful"
-    )
-    content = token_response.model_dump() if hasattr(token_response, "model_dump") else token_response.dict()
-    response = JSONResponse(content=content)
-    cookie_max_age = JWT_EXPIRES_MINUTES * 60
-    response.set_cookie(
-        key="iot_token",
-        value=token,
-        max_age=cookie_max_age,
-        httponly=True,
-        samesite="lax",
-        secure=os.getenv("APP_ENV", "").lower() == "production",
-        path="/",
-    )
-    return response
 
 @router.get("/me", response_model=UserResponse)
 async def get_current_user_info(current_user = Depends(get_current_user)):
