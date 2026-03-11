@@ -17,7 +17,7 @@
     <link rel="stylesheet" href="/assets/app.css?v=10"/>
     <link rel="stylesheet" href="/assets/landing.css?v=3"/>
     <script defer src="/assets/app.js?v=12"></script>
-    <script defer src="/assets/signup.js?v=7"></script>
+    <script defer src="/assets/signup.js?v=8"></script>
   </head>
   <body>
     <div class="wrap">
@@ -98,10 +98,10 @@
                 <input type="email" id="email" name="email" required placeholder="john@example.com"/>
               </div>
 
+              <!-- PASSWORD_POLICY_V12: API requires 12+ chars, upper, lower, number, symbol — do not use 8 -->
               <div class="field">
                 <label for="password">Password</label>
-                <!-- 12 chars required; inline script below overrides any cached HTML still showing 8 -->
-                <input type="password" id="password" name="password" required autocomplete="new-password" placeholder="Min. 12 characters"/>
+                <input type="password" id="password" name="password" required placeholder="Min. 12 characters"/>
                 <div class="hint" id="passwordHintSignup">Use at least 12 characters with uppercase, lowercase, a number, and a special character</div>
               </div>
               <script>

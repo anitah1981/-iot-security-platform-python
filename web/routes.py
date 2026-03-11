@@ -3,6 +3,7 @@ Register HTML page routes (/, /login, /dashboard, etc.) on the FastAPI app.
 Protected pages (dashboard, settings, family, audit-logs, incidents) require authentication;
 unauthenticated requests are redirected to /login.
 """
+import re
 from pathlib import Path
 from fastapi import Request, Depends
 from fastapi.responses import FileResponse, JSONResponse, HTMLResponse
@@ -72,8 +73,21 @@ def register_web_routes(app, web_dir: Path) -> None:
             content = f.read_text(encoding="utf-8")
         except OSError:
             return FileResponse(str(f), media_type="text/html", headers=dict(_no_cache_html))
-        # Legacy placeholders/hints that must never appear (API requires 12+)
+        # API requires 12+ with complexity — strip ANY legacy 8-char copy (whitespace/quote variants)
+        content = re.sub(
+            r'placeholder\s*=\s*["\']Min\.\s*8\s*characters["\']',
+            'placeholder="Min. 12 characters"',
+            content,
+            flags=re.IGNORECASE,
+        )
+        content = re.sub(
+            r"<div class=\"hint\"[^>]*>\s*Use at least 8 characters[^<]*</div>",
+            '<div class="hint" id="passwordHintSignup">Use at least 12 characters with uppercase, lowercase, a number, and a special character</div>',
+            content,
+            flags=re.IGNORECASE,
+        )
         content = content.replace("Min. 8 characters", "Min. 12 characters")
+        content = content.replace("min. 8 characters", "Min. 12 characters")
         content = content.replace(
             "Use at least 8 characters with a mix of letters and numbers",
             "Use at least 12 characters with uppercase, lowercase, a number, and a special character",
