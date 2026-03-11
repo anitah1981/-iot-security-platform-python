@@ -20,6 +20,14 @@ def mock_db():
     """Fake database that responds to ping."""
     db = MagicMock()
     db.command = AsyncMock(return_value={"ok": 1})
+    # Auth routes await db.users.find_one — must be AsyncMock or login tests fail
+    users = MagicMock()
+    users.find_one = AsyncMock(return_value=None)
+    users.update_one = AsyncMock(return_value=MagicMock(modified_count=1))
+    db.users = users
+    audit = MagicMock()
+    audit.insert_one = AsyncMock(return_value=None)
+    db.audit_logs = audit
     return db
 
 

@@ -130,13 +130,13 @@ def main():
         for c, h in enumerate(hdrs):
             cell_set(tbl.cell(0, c), h, Pt(8), True, WHITE, HEADER_BG)
         for r, row in enumerate(rows_slice, 1):
-            no, cat, title_r, L, I, score, desc, ctrl, owner = row
+            no, cat, title_r, L, impact, score, desc, ctrl, owner = row
             rag, rag_bg = rag_from_score(score)
             cell_set(tbl.cell(r, 0), str(no), bg=ROW_ALT if r % 2 else None)
             cell_set(tbl.cell(r, 1), cat, bg=ROW_ALT if r % 2 else None)
             cell_set(tbl.cell(r, 2), (title_r + " " + desc)[:95], bg=ROW_ALT if r % 2 else None)
             cell_set(tbl.cell(r, 3), L, bg=ROW_ALT if r % 2 else None)
-            cell_set(tbl.cell(r, 4), I, bg=ROW_ALT if r % 2 else None)
+            cell_set(tbl.cell(r, 4), impact, bg=ROW_ALT if r % 2 else None)
             cell_set(tbl.cell(r, 5), str(score), fg=DARK, bg=rag_bg)
             cell_set(tbl.cell(r, 6), rag, fg=DARK, bg=rag_bg)
             cell_set(tbl.cell(r, 7), ctrl[:100], bg=ROW_ALT if r % 2 else None)
