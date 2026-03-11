@@ -3,6 +3,10 @@
   <head>
     <meta charset="utf-8"/>
     <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <!-- Force browsers/proxies to revalidate this page so script/link ?v= updates apply -->
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"/>
+    <meta http-equiv="Pragma" content="no-cache"/>
+    <meta http-equiv="Expires" content="0"/>
     <title>Sign Up | Pro-Alert - Start Free Trial</title>
     <meta name="description" content="Create your free Pro-Alert account. Start monitoring your smart home devices with 14-day free trial. No credit card required. Choose from Free, Pro, or Business plans."/>
     <meta name="keywords" content="IoT security signup, smart home monitoring signup, device security free trial, IoT platform registration"/>
@@ -10,10 +14,10 @@
     <link rel="preconnect" href="https://fonts.googleapis.com"/>
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"/>
-    <link rel="stylesheet" href="/assets/app.css?v=9"/>
-    <link rel="stylesheet" href="/assets/landing.css?v=2"/>
-    <script defer src="/assets/app.js?v=11"></script>
-    <script defer src="/assets/signup.js?v=4"></script>
+    <link rel="stylesheet" href="/assets/app.css?v=10"/>
+    <link rel="stylesheet" href="/assets/landing.css?v=3"/>
+    <script defer src="/assets/app.js?v=12"></script>
+    <script defer src="/assets/signup.js?v=7"></script>
   </head>
   <body>
     <div class="wrap">
@@ -96,9 +100,23 @@
 
               <div class="field">
                 <label for="password">Password</label>
-                <input type="password" id="password" name="password" required placeholder="Min. 8 characters"/>
-                <div class="hint">Use at least 8 characters with a mix of letters and numbers</div>
+                <!-- 12 chars required; inline script below overrides any cached HTML still showing 8 -->
+                <input type="password" id="password" name="password" required autocomplete="new-password" placeholder="Min. 12 characters"/>
+                <div class="hint" id="passwordHintSignup">Use at least 12 characters with uppercase, lowercase, a number, and a special character</div>
               </div>
+              <script>
+                (function () {
+                  var p = document.getElementById("password");
+                  var h = document.getElementById("passwordHintSignup");
+                  if (p) {
+                    p.placeholder = "Min. 12 characters";
+                    p.setAttribute("placeholder", "Min. 12 characters");
+                  }
+                  if (h) {
+                    h.textContent = "Use at least 12 characters with uppercase, lowercase, a number, and a special character";
+                  }
+                })();
+              </script>
 
               <div class="field">
                 <label for="confirm-password">Confirm Password</label>

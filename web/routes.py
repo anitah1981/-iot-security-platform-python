@@ -45,19 +45,26 @@ def register_web_routes(app, web_dir: Path) -> None:
             return FileResponse(str(index))
         return {"message": "Pro-Alert API", "version": "2.0.0", "status": "running"}
 
+    # HTML pages that must always revalidate (auth forms change often; avoid stale JS/CSS)
+    _no_cache_html = {
+        "Cache-Control": "no-cache, no-store, must-revalidate",
+        "Pragma": "no-cache",
+        "Expires": "0",
+    }
+
     @app.get("/login")
     def login_page():
         f = web_dir / "login.html"
         if not f.exists():
             return JSONResponse(status_code=404, content={"detail": "Page not found"})
-        return FileResponse(str(f))
+        return FileResponse(str(f), media_type="text/html", headers=dict(_no_cache_html))
 
     @app.get("/signup")
     def signup_page():
         f = web_dir / "signup.html"
         if not f.exists():
             return JSONResponse(status_code=404, content={"detail": "Page not found"})
-        return FileResponse(str(f))
+        return FileResponse(str(f), media_type="text/html", headers=dict(_no_cache_html))
 
     @app.get("/dashboard", dependencies=[Depends(get_current_user_for_pages)])
     def dashboard_page(request: Request):

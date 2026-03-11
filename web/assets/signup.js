@@ -1,4 +1,16 @@
 /* Signup Page Logic – after signup, user must verify email then log in (no dashboard until login) */
+/* v7: force 12-char messaging even if cached HTML still shows 8 */
+(function () {
+  var p = document.getElementById("password");
+  var h = document.getElementById("passwordHintSignup");
+  if (p) {
+    p.placeholder = "Min. 12 characters";
+    p.setAttribute("placeholder", "Min. 12 characters");
+  }
+  if (h) {
+    h.textContent = "Use at least 12 characters with uppercase, lowercase, a number, and a special character";
+  }
+})();
 
 // Get plan from URL parameter
 const urlParams = new URLSearchParams(window.location.search);
@@ -61,9 +73,9 @@ document.getElementById('signupForm')?.addEventListener('submit', async (e) => {
     return;
   }
 
-  if(password.length < 8) {
+  if(password.length < 12) {
     msg.className = 'msg bad';
-    msg.textContent = 'Password must be at least 8 characters (API requires 12+ with mixed case, number, symbol)';
+    msg.textContent = 'Password must be at least 12 characters, with uppercase, lowercase, a number, and a special character';
     return;
   }
 
