@@ -63,26 +63,37 @@ def register_web_routes(app, web_dir: Path) -> None:
     @app.get("/signup")
     def signup_page():
         """
-        Serve signup HTML from disk on every request (no FileResponse cache issues).
-        Replace any legacy 8-char copy so deployed/old files still show 12-char policy.
+        Serve signup HTML; always force 12-char password copy (API requires 12+).
+        Read signup.html from the same folder as this module first — avoids wrong web_dir.
         """
-        f = web_dir / "signup.html"
+        f = Path(__file__).resolve().parent / "signup.html"
+        if not f.exists():
+            f = web_dir / "signup.html"
         if not f.exists():
             return JSONResponse(status_code=404, content={"detail": "Page not found"})
         try:
             content = f.read_text(encoding="utf-8")
         except OSError:
             return FileResponse(str(f), media_type="text/html", headers=dict(_no_cache_html))
-        # API requires 12+ with complexity — strip ANY legacy 8-char copy (whitespace/quote variants)
+
+        # Whole-tag replace: old signup had no other attrs on this input
         content = re.sub(
-            r'placeholder\s*=\s*["\']Min\.\s*8\s*characters["\']',
-            'placeholder="Min. 12 characters"',
+            r'<input\s+type="password"\s+id="password"\s+name="password"\s+required\s+placeholder="[^"]*"\s*/>',
+            '<input type="password" id="password" name="password" required placeholder="Min. 12 characters"/>',
             content,
             flags=re.IGNORECASE,
         )
+        # Hint div with no id (legacy)
         content = re.sub(
-            r"<div class=\"hint\"[^>]*>\s*Use at least 8 characters[^<]*</div>",
+            r'<div class="hint">\s*Use at least 8 characters with a mix of letters and numbers\s*</div>',
             '<div class="hint" id="passwordHintSignup">Use at least 12 characters with uppercase, lowercase, a number, and a special character</div>',
+            content,
+            flags=re.IGNORECASE,
+        )
+        # Any other placeholder variant on password input
+        content = re.sub(
+            r'placeholder\s*=\s*["\']Min\.\s*8\s*characters["\']',
+            'placeholder="Min. 12 characters"',
             content,
             flags=re.IGNORECASE,
         )
@@ -93,13 +104,8 @@ def register_web_routes(app, web_dir: Path) -> None:
             "Use at least 12 characters with uppercase, lowercase, a number, and a special character",
         )
         content = content.replace("password.length < 8", "password.length < 12")
-        # Marker so View Source confirms this path is live (remove later if desired)
-        if "signup-served-dynamic" not in content:
-            content = content.replace(
-                "<body>",
-                "<body><!-- signup-served-dynamic v12 -->",
-                1,
-            )
+        if "signup-served-v12" not in content:
+            content = content.replace("<body>", "<body><!-- signup-served-v12 -->", 1)
         return HTMLResponse(
             content=content,
             media_type="text/html",
