@@ -1,8 +1,12 @@
 """
 Pro-Alert FastAPI application. Config, startup, middleware, and routes are in core/, web/, api/.
 """
+import re
+from pathlib import Path
+
 from fastapi import FastAPI, Depends
 from fastapi.staticfiles import StaticFiles
+from fastapi.responses import HTMLResponse, JSONResponse
 
 from core.config import WEB_DIR, PORT, MONGO_URI
 from core.startup import lifespan
@@ -28,6 +32,54 @@ setup_middleware(fastapi_app)
 
 # HTML page routes (/, /login, /dashboard, ...)
 register_web_routes(fastapi_app, WEB_DIR)
+
+# /signup MUST be served from repo root web/signup.html only — never a stale copy elsewhere
+_no_cache = {
+    "Cache-Control": "no-cache, no-store, must-revalidate",
+    "Pragma": "no-cache",
+    "Expires": "0",
+}
+
+
+@fastapi_app.get("/signup")
+def signup_page():
+    """Single handler for /signup; scrubs any legacy 8-char copy before respond."""
+    root = Path(__file__).resolve().parent
+    f = root / "web" / "signup.html"
+    if not f.exists():
+        return JSONResponse(status_code=404, content={"detail": "signup.html not found"})
+    content = f.read_text(encoding="utf-8")
+    # Aggressive scrub — old placeholder had no space variants sometimes
+    content = re.sub(
+        r'placeholder\s*=\s*["\'][^"\']*8[^"\']*character[^"\']*["\']',
+        'placeholder="Min. 12 characters"',
+        content,
+        flags=re.IGNORECASE,
+    )
+    content = content.replace("Min. 8 characters", "Min. 12 characters")
+    content = content.replace("min. 8 characters", "Min. 12 characters")
+    content = re.sub(
+        r"<div[^>]*class=\"hint\"[^>]*>[^<]*8[^<]*character[^<]*</div>",
+        '<div class="hint" id="passwordHintSignup">Use at least 12 characters with uppercase, lowercase, a number, and a special character</div>',
+        content,
+        count=1,
+        flags=re.IGNORECASE,
+    )
+    content = content.replace(
+        "Use at least 8 characters with a mix of letters and numbers",
+        "Use at least 12 characters with uppercase, lowercase, a number, and a special character",
+    )
+    if "Min. 8" in content or "at least 8 characters" in content.lower():
+        # Last resort: inject password field HTML so response can never show 8
+        content = re.sub(
+            r'<input[^>]*id="password"[^>]*/?>',
+            '<input type="password" id="password" name="password" required placeholder="Min. 12 characters"/>',
+            content,
+            count=1,
+        )
+    if "<!-- signup-main-py -->" not in content:
+        content = content.replace("<body>", "<body><!-- signup-main-py -->", 1)
+    return HTMLResponse(content=content, media_type="text/html", headers=dict(_no_cache))
 
 # API routes (/api/health, /api/ready, /api/startup, /api/auth, ...)
 api_router = get_api_router()
