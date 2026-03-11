@@ -185,6 +185,57 @@ class AuditLogger:
         )
     
     @staticmethod
+    async def log_failed_login(
+        db,
+        email: str,
+        reason: str,
+        ip_address: Optional[str] = None,
+        user_agent: Optional[str] = None,
+    ):
+        """Log failed login attempt (no user_id – account may not exist)."""
+        log_entry = {
+            "user_id": None,
+            "user_email": email,
+            "user_name": "",
+            "action": "login_failed",
+            "resource_type": "auth",
+            "resource_id": None,
+            "details": {"reason": reason},
+            "ip_address": ip_address,
+            "user_agent": user_agent,
+            "created_at": datetime.utcnow(),
+        }
+        try:
+            await db.audit_logs.insert_one(log_entry)
+        except Exception as e:
+            print(f"Failed to write audit log: {e}")
+
+    @staticmethod
+    async def log_security_event(
+        db,
+        user_id: ObjectId,
+        user_email: str,
+        user_name: str,
+        action: str,
+        details: Optional[Dict[str, Any]] = None,
+        ip_address: Optional[str] = None,
+        user_agent: Optional[str] = None,
+    ):
+        """Log security-sensitive actions (MFA, password change, session revoke, etc.)."""
+        await AuditLogger.log(
+            db=db,
+            user_id=user_id,
+            user_email=user_email,
+            user_name=user_name,
+            action=action,
+            resource_type="security",
+            resource_id=str(user_id),
+            details=details or {},
+            ip_address=ip_address,
+            user_agent=user_agent,
+        )
+
+    @staticmethod
     async def log_subscription_changed(db, user_id: ObjectId, user_email: str, user_name: str, old_plan: str, new_plan: str):
         """Log subscription change"""
         await AuditLogger.log(

@@ -38,7 +38,8 @@ class UserResponse(UserBase):
     created_at: datetime
 
 class TokenResponse(BaseModel):
-    token: str
+    # Empty when verification_required (signup) so client cannot use dashboard until verified
+    token: Optional[str] = None
     refresh_token: Optional[str] = None
     email_verified: Optional[bool] = None
     verification_required: Optional[bool] = None
@@ -46,7 +47,13 @@ class TokenResponse(BaseModel):
     message: str = "Authentication successful"
 
 class RefreshTokenRequest(BaseModel):
-    refresh_token: str = Field(..., min_length=20)
+    """Refresh token from body (legacy) or omit to use httpOnly cookie."""
+    refresh_token: Optional[str] = None
+
+
+class RevokeSessionRequest(BaseModel):
+    """Revoke a single session by public session id (from GET /sessions)."""
+    session_id: str = Field(..., min_length=8, description="session_public_id from sessions list")
 
 class LogoutRequest(BaseModel):
     refresh_token: Optional[str] = None

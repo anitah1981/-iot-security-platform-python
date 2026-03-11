@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Pro-Alert – Three slides</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: 'Segoe UI', system-ui, sans-serif; background: #0f172a; color: #e2e8f0; }
+    .deck { height: 100vh; overflow: hidden; }
+    .slide {
+      display: none;
+      min-height: 100vh;
+      padding: 48px 56px;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+    .slide.active { display: block; }
+    h1 { font-size: 1.75rem; margin: 0 0 24px; color: #93c5fd; border-bottom: 2px solid #334155; padding-bottom: 12px; }
+    h2 { font-size: 1.1rem; color: #94a3b8; margin: 20px 0 10px; }
+    ul { margin: 0; padding-left: 1.25rem; line-height: 1.6; }
+    li { margin-bottom: 8px; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.82rem; margin-top: 12px; }
+    th, td { border: 1px solid #334155; padding: 8px 10px; text-align: left; }
+    th { background: #1e293b; color: #93c5fd; }
+    tr:nth-child(even) { background: #1e293b55; }
+    .footer { margin-top: 24px; font-size: 0.9rem; color: #94a3b8; font-style: italic; }
+    .hint { position: fixed; bottom: 16px; right: 24px; font-size: 0.75rem; color: #64748b; }
+    .takeaway { margin-top: 20px; padding: 12px 16px; background: #1e293b; border-radius: 8px; border-left: 4px solid #3b82f6; }
+  </style>
+</head>
+<body>
+  <div class="deck">
+    <!-- Slide 1 -->
+    <section class="slide active" id="s1">
+      <h1>Slide 1 – Final risk register (Pro-Alert)</h1>
+      <table>
+        <tr><th>ID</th><th>Risk</th><th>L</th><th>I</th><th>Mitigation</th></tr>
+        <tr><td>R1</td><td>Weak/leaked JWT or secrets</td><td>M</td><td>C</td><td>Generated JWT_SECRET; no .env in git; security gate</td></tr>
+        <tr><td>R2</td><td>Access without verification</td><td>M</td><td>H</td><td>Verify before login; no session on signup until verified</td></tr>
+        <tr><td>R3</td><td>MongoDB exposed / no TLS</td><td>L–M</td><td>C</td><td>mongodb+srv + auth; backups</td></tr>
+        <tr><td>R4</td><td>SMTP / notification abuse</td><td>M</td><td>M</td><td>Rate limits; server-side secrets</td></tr>
+        <tr><td>R5</td><td>Bad prod config (CORS, HTTP)</td><td>M</td><td>H</td><td>CORS_ORIGINS; FORCE_HTTPS; checklist</td></tr>
+        <tr><td>R6</td><td>Dependency vulnerabilities</td><td>M</td><td>M</td><td>Pinned requirements; rebuild images</td></tr>
+        <tr><td>R7</td><td>Stripe webhook forgery</td><td>L</td><td>H</td><td>Webhook secret; signature validation</td></tr>
+        <tr><td>R8</td><td>No backup / failed restore</td><td>M</td><td>H</td><td>Atlas backups; restore drill</td></tr>
+      </table>
+      <p class="footer">Residual risk accepted only where controls reduce impact; critical items gated before go-live.</p>
+    </section>
+
+    <!-- Slide 2 -->
+    <section class="slide" id="s2">
+      <h1>Slide 2 – Artefact performance & security</h1>
+      <h2>Security</h2>
+      <ul>
+        <li>JWT + refresh rotation; logout revokes refresh; optional MFA</li>
+        <li>Zero-tolerance email verification before API/dashboard</li>
+        <li>bcrypt; strong password policy; lockout after failed attempts</li>
+        <li>Rate limits on signup, login, password reset</li>
+        <li>HTTPS; strict CORS; pre-deploy security checklist</li>
+      </ul>
+      <h2>Performance</h2>
+      <ul>
+        <li>FastAPI + Motor (async MongoDB)</li>
+        <li>Indexes on users.email, devices, alerts</li>
+        <li>Stateless API – scale behind reverse proxy</li>
+        <li>WebSockets for real-time dashboard</li>
+      </ul>
+      <div class="takeaway"><strong>Takeaway:</strong> Layered security (verify → login → JWT); performance via async I/O and indexing.</div>
+    </section>
+
+    <!-- Slide 3 -->
+    <section class="slide" id="s3">
+      <h1>Slide 3 – Artefact deployment & maintenance</h1>
+      <h2>Deployment</h2>
+      <ul>
+        <li>Docker Compose: API + MongoDB 7; env_file for secrets</li>
+        <li>Railway / Render: pip + uvicorn; /api/health</li>
+        <li>Single .env – APP_BASE_URL, CORS, SMTP, Twilio, Stripe</li>
+        <li>Pre-deploy: TLS DB, HTTPS, email links to live URL</li>
+      </ul>
+      <h2>Maintenance</h2>
+      <ul>
+        <li>Restart policies; log auth/email failures; audit where implemented</li>
+        <li>Backups; retention/cleanup jobs</li>
+        <li>Post-deploy: test auth + notifications; rollback via image tag</li>
+        <li>Monitor /api/health; product alerts for device offline</li>
+      </ul>
+      <div class="takeaway"><strong>Takeaway:</strong> Repeatable Docker + env deploy; checklist-driven maintenance with backups and health checks.</div>
+    </section>
+  </div>
+  <p class="hint">← → or Space to change slide · F11 fullscreen · Ctrl+P to print/PDF</p>
+  <script>
+    const slides = document.querySelectorAll('.slide');
+    let i = 0;
+    function show(n) {
+      i = (n + slides.length) % slides.length;
+      slides.forEach((s, j) => s.classList.toggle('active', j === i));
+    }
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'PageDown') { e.preventDefault(); show(i + 1); }
+      if (e.key === 'ArrowLeft' || e.key === 'PageUp') { e.preventDefault(); show(i - 1); }
+    });
+  </script>
+</body>
+</html>

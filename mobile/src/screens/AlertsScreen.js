@@ -11,6 +11,7 @@ import {
 import { useNetwork } from '../context/NetworkContext';
 import api from '../config/api';
 import AlertCard from '../components/AlertCard';
+import { colors } from '../theme';
 import { getAlertsOffline, saveAlertsOffline } from '../utils/storage';
 
 export default function AlertsScreen({ navigation }) {
@@ -78,7 +79,7 @@ export default function AlertsScreen({ navigation }) {
   if (loading && alerts.length === 0) {
     return (
       <View style={styles.centerContainer}>
-        <ActivityIndicator size="large" color="#3b82f6" />
+        <ActivityIndicator size="large" color={colors.primary} />
       </View>
     );
   }
@@ -143,17 +144,17 @@ export default function AlertsScreen({ navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#1a1a1a',
+    backgroundColor: colors.bg,
   },
   centerContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#1a1a1a',
+    backgroundColor: colors.bg,
   },
   offlineText: {
     fontSize: 16,
-    color: '#999',
+    color: colors.muted,
   },
   filters: {
     flexDirection: 'row',
@@ -165,21 +166,21 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 20,
-    backgroundColor: '#2a2a2a',
+    backgroundColor: colors.card,
     borderWidth: 1,
-    borderColor: '#333',
+    borderColor: colors.border,
   },
   filterActive: {
-    backgroundColor: '#3b82f6',
-    borderColor: '#3b82f6',
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
   },
   filterText: {
-    color: '#999',
+    color: colors.muted,
     fontSize: 14,
     fontWeight: '500',
   },
   filterTextActive: {
-    color: '#ffffff',
+    color: colors.text,
   },
   listContent: {
     paddingVertical: 16,
@@ -190,6 +191,6 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     fontSize: 16,
-    color: '#999',
+    color: colors.muted,
   },
 });

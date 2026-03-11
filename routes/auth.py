@@ -1,5 +1,5 @@
 # routes/auth.py - Authentication Routes
-from fastapi import APIRouter, HTTPException, status, Depends, Request, BackgroundTasks, Query
+from fastapi import APIRouter, HTTPException, status, Depends, Request, BackgroundTasks, Query, Body
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from fastapi.responses import RedirectResponse, JSONResponse
 from jose import jwt, JWTError
@@ -22,6 +22,7 @@ from models import (
     PasswordChange,
     RefreshTokenRequest,
     LogoutRequest,
+    RevokeSessionRequest,
     ResendVerificationRequest,
     MfaSetupResponse,
     MfaVerifyRequest,
@@ -75,6 +76,15 @@ MFA_BACKUP_CODE_LENGTH = int(os.getenv("MFA_BACKUP_CODE_LENGTH", "10"))
 if os.getenv("APP_ENV", "local").lower() == "production" and JWT_SECRET == "your-super-secret-key-change-in-production":
     raise RuntimeError("JWT_SECRET must be set in production")
 
+
+def _email_verified(user: dict) -> bool:
+    """
+    Zero-tolerance: only explicit True counts as verified.
+    Missing key, False, or any other value → treat as unverified (legacy accounts must verify).
+    """
+    return user.get("email_verified") is True
+
+
 def create_access_token(user_id: str, role: str) -> str:
     """Create JWT access token"""
     expire = datetime.utcnow() + timedelta(minutes=JWT_EXPIRES_MINUTES)
@@ -92,18 +102,56 @@ def _hash_refresh_token(token: str) -> str:
 def _generate_refresh_token() -> str:
     return secrets.token_urlsafe(48)
 
-async def _issue_refresh_token(db, user_id: str) -> str:
+REFRESH_COOKIE_NAME = "iot_refresh_token"
+
+
+def _client_ip(request: Request) -> str:
+    forwarded = request.headers.get("x-forwarded-for")
+    if forwarded:
+        return forwarded.split(",")[0].strip()
+    if request.client:
+        return request.client.host or ""
+    return ""
+
+
+def _cookie_secure() -> bool:
+    return os.getenv("APP_ENV", "").lower() == "production"
+
+
+def _attach_refresh_cookie(response: JSONResponse, refresh_token_value: str) -> None:
+    """Set httpOnly refresh cookie (JS cannot read it)."""
+    response.set_cookie(
+        key=REFRESH_COOKIE_NAME,
+        value=refresh_token_value,
+        max_age=REFRESH_EXPIRES_DAYS * 86400,
+        httponly=True,
+        samesite="lax",
+        secure=_cookie_secure(),
+        path="/",
+    )
+
+
+def _clear_refresh_cookie(response: JSONResponse) -> None:
+    response.delete_cookie(key=REFRESH_COOKIE_NAME, path="/")
+
+
+async def _issue_refresh_token(db, user_id: str, request: Optional[Request] = None) -> str:
     token = _generate_refresh_token()
     token_hash = _hash_refresh_token(token)
     now = datetime.utcnow()
     expires_at = now + timedelta(days=REFRESH_EXPIRES_DAYS)
-    await db.refresh_tokens.insert_one({
+    session_public_id = secrets.token_urlsafe(16)
+    doc = {
         "user_id": user_id,
         "token_hash": token_hash,
+        "session_public_id": session_public_id,
         "created_at": now,
         "expires_at": expires_at,
-        "revoked": False
-    })
+        "revoked": False,
+        "ip_address": _client_ip(request) if request else None,
+        "user_agent": (request.headers.get("user-agent") or "")[:500] if request else None,
+    }
+    await db.refresh_tokens.insert_one(doc)
     return token
 
 async def _revoke_refresh_token(db, token_hash: str):
@@ -233,8 +281,9 @@ async def get_current_user_for_pages(request: Request):
         user = await db.users.find_one({"_id": ObjectId(user_id)})
         if not user:
             return RedirectResponse(url="/login", status_code=302)
-        if REQUIRE_EMAIL_VERIFICATION and user.get("email_verified") is False:
-            return RedirectResponse(url="/login", status_code=302)
+        # Unverified (including legacy without email_verified) may not access protected pages
+        if not _email_verified(user):
+            return RedirectResponse(url="/login?need_verify=1", status_code=302)
         return None  # authenticated; route will run
     except JWTError:
         return RedirectResponse(url="/login", status_code=302)
@@ -269,10 +318,10 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(s
                 detail="User not found"
             )
         
-        if REQUIRE_EMAIL_VERIFICATION and user.get("email_verified") is False:
+        if not _email_verified(user):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail="Email not verified"
+                detail="Email not verified. Please verify your email then sign in again."
             )
 
         return user
@@ -306,9 +355,8 @@ async def require_business_plan(current_user: dict = Depends(get_current_user)) 
 async def signup(user_data: UserCreate, request: Request, background_tasks: BackgroundTasks):
     """
     Register a new user
-    - Creates new user account
-    - Hashes password securely with strong requirements
-    - Returns JWT token for immediate login
+    - Creates new user account; queues verification email
+    - Does NOT return a JWT – user must verify email then log in (no dashboard until login after verify)
     
     Password Requirements:
     - Minimum 12 characters
@@ -419,42 +467,38 @@ async def signup(user_data: UserCreate, request: Request, background_tasks: Back
         created_at=user_doc["createdAt"]
     )
     
-    # Send verification email if enabled
-    env = os.getenv("APP_ENV", "local").lower()
-    verification_enabled = EMAIL_VERIFICATION_ENABLED == "true" or REQUIRE_EMAIL_VERIFICATION or env == "production"
-    if verification_enabled:
-        background_tasks.add_task(
-            _send_verification_email,
-            email,
-            verification_token,
-            user_doc["name"]
+    # Verification email: always queued on signup (sends when SMTP is configured)
+    smtp_ready = NotificationService()._smtp_ready()
+    background_tasks.add_task(
+        _send_verification_email,
+        email,
+        verification_token,
+        user_doc["name"]
+    )
+    if not smtp_ready:
+        print(
+            "[AUTH] Verification email queued but SMTP not configured – "
+            "set SMTP_USER, SMTP_PASSWORD, and FROM_EMAIL to deliver."
         )
 
-    # Generate JWT and refresh token
-    token = create_access_token(user_id, user_doc["role"])
-    refresh_token = await _issue_refresh_token(db, user_id)
-    
-    signup_message = "Signup successful. Please verify your email." if verification_enabled else "Signup successful"
-
+    # Never issue JWT/cookie on signup – user must verify email then log in (multi-layer security)
+    signup_message = "Signup successful. Check your email and click the link to verify, then sign in."
     token_response = TokenResponse(
-        token=token,
-        refresh_token=refresh_token,
+        token=None,
+        refresh_token=None,
         email_verified=False,
-        verification_required=verification_enabled,
+        verification_required=True,
         user=safe_user,
         message=signup_message
     )
-    content = token_response.model_dump() if hasattr(token_response, "model_dump") else token_response.dict()
+    # Must use mode="json" so datetimes (e.g. user.created_at) serialize; plain model_dump() causes 500 on JSONResponse
+    try:
+        content = token_response.model_dump(mode="json")
+    except (TypeError, AttributeError):
+        content = token_response.model_dump() if hasattr(token_response, "model_dump") else token_response.dict()
     response = JSONResponse(content=content, status_code=201)
-    response.set_cookie(
-        key="iot_token",
-        value=token,
-        max_age=JWT_EXPIRES_MINUTES * 60,
-        httponly=True,
-        samesite="lax",
-        secure=os.getenv("APP_ENV", "").lower() == "production",
-        path="/",
-    )
+    # Explicitly clear any existing session cookie so stale tokens cannot reach dashboard
+    response.delete_cookie(key="iot_token", path="/")
     return response
 
 @router.post("/login", response_model=TokenResponse)
@@ -472,6 +516,10 @@ async def login(credentials: UserLogin, request: Request):
     user = await db.users.find_one({"email": email})
     
     if not user:
+        try:
+            await AuditLogger.log_failed_login(db, email, "user_not_found", _client_ip(request), request.headers.get("user-agent"))
+        except Exception:
+            pass
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid email or password"
@@ -492,6 +540,10 @@ async def login(credentials: UserLogin, request: Request):
             update["lock_until"] = datetime.utcnow() + timedelta(minutes=LOCKOUT_MINUTES)
             update["failed_login_count"] = 0
         await db.users.update_one({"_id": user["_id"]}, {"$set": update})
+        try:
+            await AuditLogger.log_failed_login(db, email, "bad_password", _client_ip(request), request.headers.get("user-agent"))
+        except Exception:
+            pass
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid email or password"
@@ -503,10 +555,10 @@ async def login(credentials: UserLogin, request: Request):
         {"$set": {"failed_login_count": 0, "lock_until": None, "updatedAt": datetime.utcnow()}}
     )
 
-    if REQUIRE_EMAIL_VERIFICATION and user.get("email_verified") is False:
+    if not _email_verified(user):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Email not verified. Please check your inbox."
+            detail="Email not verified. Please check your inbox and verify before signing in."
         )
 
     # MFA check - REQUIRED if user has MFA enabled
@@ -525,6 +577,10 @@ async def login(credentials: UserLogin, request: Request):
                 update["lock_until"] = datetime.utcnow() + timedelta(minutes=LOCKOUT_MINUTES)
                 update["failed_login_count"] = 0
             await db.users.update_one({"_id": user["_id"]}, {"$set": update})
+            try:
+                await AuditLogger.log_failed_login(db, email, "mfa_invalid", _client_ip(request), request.headers.get("user-agent"))
+            except Exception:
+                pass
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail={"message": "Invalid MFA code. Please try again.", "mfa_required": True}
@@ -575,13 +631,23 @@ async def login(credentials: UserLogin, request: Request):
         token = create_access_token(user_id, user.get("role", "consumer"))
         if isinstance(token, bytes):
             token = token.decode("utf-8")
-        refresh_token = await _issue_refresh_token(db, user_id)
+        refresh_token = await _issue_refresh_token(db, user_id, request)
+        # Audit: successful login (IP + user agent on log() path; log_login adds IP)
+        try:
+            await AuditLogger.log(
+                db, user["_id"], user["email"], user.get("name") or "",
+                "login", "user", str(user["_id"]),
+                ip_address=_client_ip(request) or None,
+                user_agent=(request.headers.get("user-agent") or "")[:500] or None,
+            )
+        except Exception:
+            pass
         
         token_response = TokenResponse(
             token=token,
             refresh_token=refresh_token,
-            email_verified=user.get("email_verified", True),
-            verification_required=REQUIRE_EMAIL_VERIFICATION,
+            email_verified=_email_verified(user),
+            verification_required=False,
             user=safe_user,
             message="Login successful"
         )
@@ -597,9 +663,10 @@ async def login(credentials: UserLogin, request: Request):
             max_age=cookie_max_age,
             httponly=True,
             samesite="lax",
-            secure=os.getenv("APP_ENV", "").lower() == "production",
+            secure=_cookie_secure(),
             path="/",
         )
+        _attach_refresh_cookie(response, refresh_token)
         return response
     except HTTPException:
         raise
@@ -727,6 +794,13 @@ async def verify_mfa(body: MfaVerifyRequest, request: Request, current_user = De
     )
     # Revoke all refresh tokens when MFA is enabled (force re-authentication)
     await _revoke_all_refresh_tokens(db, str(current_user["_id"]))
+    try:
+        await AuditLogger.log_security_event(
+            db, current_user["_id"], current_user["email"], current_user.get("name") or "",
+            "mfa_enabled", {}, _client_ip(request), request.headers.get("user-agent"),
+        )
+    except Exception:
+        pass
     return {"ok": True}
 
 @router.post("/mfa/disable")
@@ -753,6 +827,13 @@ async def disable_mfa(body: MfaDisableRequest, request: Request, current_user = 
     )
     # Revoke all refresh tokens when MFA is disabled (security best practice)
     await _revoke_all_refresh_tokens(db, str(current_user["_id"]))
+    try:
+        await AuditLogger.log_security_event(
+            db, current_user["_id"], current_user["email"], current_user.get("name") or "",
+            "mfa_disabled", {}, _client_ip(request), request.headers.get("user-agent"),
+        )
+    except Exception:
+        pass
     return {"ok": True}
 
 @router.post("/mfa/backup-codes", response_model=MfaBackupCodesResponse)
@@ -774,9 +855,12 @@ async def regenerate_backup_codes(body: MfaVerifyRequest, request: Request, curr
 
 @router.post("/refresh", response_model=TokenResponse)
 @limiter.limit("10/minute")
-async def refresh_token(body: RefreshTokenRequest, request: Request):
+async def refresh_token(request: Request, body: RefreshTokenRequest = Body(default_factory=RefreshTokenRequest)):
     db = await get_database()
-    token_hash = _hash_refresh_token(body.refresh_token)
+    raw_refresh = (body.refresh_token or "").strip() or request.cookies.get(REFRESH_COOKIE_NAME)
+    if not raw_refresh:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Missing refresh token")
+    token_hash = _hash_refresh_token(raw_refresh)
     stored = await db.refresh_tokens.find_one({"token_hash": token_hash})
     if not stored or stored.get("revoked"):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid refresh token")
@@ -795,10 +879,16 @@ async def refresh_token(body: RefreshTokenRequest, request: Request):
     user = await db.users.find_one({"_id": user_id})
     if not user:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found")
+    if not _email_verified(user):
+        await _revoke_refresh_token(db, token_hash)
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Email not verified. Please verify your email then sign in again."
+        )
 
     # Rotate refresh token
     await _revoke_refresh_token(db, token_hash)
-    new_refresh = await _issue_refresh_token(db, str(user["_id"]))
+    new_refresh = await _issue_refresh_token(db, str(user["_id"]), request)
     new_access = create_access_token(str(user["_id"]), user.get("role", "consumer"))
 
     safe_user = UserResponse(
@@ -816,12 +906,28 @@ async def refresh_token(body: RefreshTokenRequest, request: Request):
         created_at=user.get("createdAt", datetime.utcnow())
     )
 
-    return TokenResponse(
+    token_response = TokenResponse(
         token=new_access,
         refresh_token=new_refresh,
         user=safe_user,
-        message="Token refreshed"
+        message="Token refreshed",
     )
+    try:
+        content = token_response.model_dump(mode="json")
+    except (TypeError, AttributeError):
+        content = token_response.model_dump() if hasattr(token_response, "model_dump") else token_response.dict()
+    response = JSONResponse(content=content)
+    response.set_cookie(
+        key="iot_token",
+        value=new_access,
+        max_age=JWT_EXPIRES_MINUTES * 60,
+        httponly=True,
+        samesite="lax",
+        secure=_cookie_secure(),
+        path="/",
+    )
+    _attach_refresh_cookie(response, new_refresh)
+    return response
 
 @router.get("/verify-email")
 async def verify_email(request: Request, token: str = Query(..., description="Verification token")):
@@ -839,6 +945,8 @@ async def verify_email(request: Request, token: str = Query(..., description="Ve
         {"$set": {"email_verified": True, "updatedAt": datetime.utcnow()},
          "$unset": {"email_verification_token": "", "email_verification_expires": ""}}
     )
+    # Invalidate any sessions issued before verification
+    await _revoke_all_refresh_tokens(db, str(user["_id"]))
 
     return {"message": "Email verified successfully"}
 
@@ -847,7 +955,7 @@ async def resend_verification(request: Request, body: ResendVerificationRequest,
     db = await get_database()
     email = body.email.lower()
     user = await db.users.find_one({"email": email})
-    if user and not user.get("email_verified", False):
+    if user and not _email_verified(user):
         token = _generate_verification_token()
         token_hash = _hash_verification_token(token)
         expires_at = datetime.utcnow() + timedelta(hours=VERIFICATION_EXPIRES_HOURS)
@@ -863,6 +971,65 @@ async def resend_verification(request: Request, body: ResendVerificationRequest,
         )
     return {"message": "If an account exists, a verification email has been sent."}
 
+@router.get("/sessions")
+@limiter.limit("30/minute")
+async def list_sessions(request: Request, current_user=Depends(get_current_user)):
+    """List active sessions (refresh token sessions) for session management UI."""
+    db = await get_database()
+    user_id = str(current_user["_id"])
+    cursor = db.refresh_tokens.find(
+        {"user_id": user_id, "revoked": False, "expires_at": {"$gt": datetime.utcnow()}}
+    ).sort("created_at", -1).limit(50)
+    sessions = []
+    async for doc in cursor:
+        ua = doc.get("user_agent") or ""
+        label = "Browser"
+        if "Mobile" in ua or "Android" in ua or "iPhone" in ua:
+            label = "Mobile"
+        if "Edg" in ua:
+            label = "Edge"
+        elif "Chrome" in ua:
+            label = "Chrome"
+        elif "Firefox" in ua:
+            label = "Firefox"
+        elif "Safari" in ua and "Chrome" not in ua:
+            label = "Safari"
+        sessions.append({
+            "session_id": doc.get("session_public_id"),
+            "created_at": doc.get("created_at"),
+            "expires_at": doc.get("expires_at"),
+            "ip_address": doc.get("ip_address"),
+            "user_agent_preview": ua[:80] if ua else None,
+            "label": label,
+        })
+    return {"sessions": sessions}
+
+
+@router.post("/sessions/revoke")
+@limiter.limit("20/minute")
+async def revoke_session(body: RevokeSessionRequest, request: Request, current_user=Depends(get_current_user)):
+    """Revoke a single session by session_public_id."""
+    db = await get_database()
+    user_id = str(current_user["_id"])
+    doc = await db.refresh_tokens.find_one({
+        "user_id": user_id,
+        "session_public_id": body.session_id,
+        "revoked": False,
+    })
+    if not doc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Session not found")
+    await _revoke_refresh_token(db, doc["token_hash"])
+    try:
+        await AuditLogger.log_security_event(
+            db, current_user["_id"], current_user["email"], current_user.get("name") or "",
+            "session_revoked", {"session_id": body.session_id},
+            _client_ip(request), request.headers.get("user-agent"),
+        )
+    except Exception:
+        pass
+    return {"message": "Session revoked"}
+
+
 @router.post("/logout")
 @limiter.limit("10/minute")
 async def logout(body: LogoutRequest, request: Request, current_user = Depends(get_current_user)):
@@ -876,6 +1043,7 @@ async def logout(body: LogoutRequest, request: Request, current_user = Depends(g
 
     response = JSONResponse(content={"message": "Logged out"})
     response.delete_cookie(key="iot_token", path="/")
+    _clear_refresh_cookie(response)
     return response
 
 @router.post("/unlock/{user_id}")

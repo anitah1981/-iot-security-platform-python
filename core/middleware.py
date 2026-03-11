@@ -14,6 +14,7 @@ from middleware.security import (
     HttpsRedirectMiddleware,
     setup_rate_limiting,
 )
+from middleware.csrf import CSRFProtectionMiddleware
 
 
 def setup_middleware(app: FastAPI) -> None:
@@ -29,6 +30,7 @@ def setup_middleware(app: FastAPI) -> None:
     app.add_middleware(SecurityHeadersMiddleware)
     app.add_middleware(RequestLoggingMiddleware)
     app.add_middleware(InputSanitizationMiddleware)
+    app.add_middleware(CSRFProtectionMiddleware)
 
     setup_rate_limiting(app)
 

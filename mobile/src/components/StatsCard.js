@@ -1,11 +1,13 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
+import { colors } from '../theme';
 
-export default function StatsCard({ title, value, subtitle, color = '#3b82f6' }) {
+export default function StatsCard({ title, value, subtitle, color }) {
+  const accentColor = color ?? colors.primary;
   return (
-    <View style={[styles.card, { borderLeftColor: color }]}>
+    <View style={[styles.card, { borderLeftColor: accentColor }]}>
       <Text style={styles.title}>{title}</Text>
-      <Text style={[styles.value, { color }]}>{value}</Text>
+      <Text style={[styles.value, { color: accentColor }]}>{value}</Text>
       {subtitle && <Text style={styles.subtitle}>{subtitle}</Text>}
     </View>
   );
@@ -14,14 +16,14 @@ export default function StatsCard({ title, value, subtitle, color = '#3b82f6' })
 const styles = StyleSheet.create({
   card: {
     flex: 1,
-    backgroundColor: '#2a2a2a',
+    backgroundColor: colors.card,
     borderRadius: 12,
     padding: 16,
     borderLeftWidth: 4,
   },
   title: {
     fontSize: 14,
-    color: '#999',
+    color: colors.muted,
     marginBottom: 8,
   },
   value: {
@@ -31,6 +33,6 @@ const styles = StyleSheet.create({
   },
   subtitle: {
     fontSize: 12,
-    color: '#666',
+    color: colors.muted,
   },
 });

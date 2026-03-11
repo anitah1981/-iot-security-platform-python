@@ -9,6 +9,7 @@ import {
 } from 'react-native';
 import { useAuth } from '../context/AuthContext';
 import { Ionicons } from '@expo/vector-icons';
+import { colors } from '../theme';
 
 export default function SettingsScreen() {
   const { user, logout } = useAuth();
@@ -54,31 +55,31 @@ export default function SettingsScreen() {
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Preferences</Text>
         <TouchableOpacity style={styles.menuItem}>
-          <Ionicons name="notifications-outline" size={24} color="#ffffff" />
+          <Ionicons name="notifications-outline" size={24} color={colors.text} />
           <Text style={styles.menuText}>Notification Settings</Text>
-          <Ionicons name="chevron-forward" size={24} color="#666" />
+          <Ionicons name="chevron-forward" size={24} color={colors.muted} />
         </TouchableOpacity>
         <TouchableOpacity style={styles.menuItem}>
-          <Ionicons name="shield-outline" size={24} color="#ffffff" />
+          <Ionicons name="shield-outline" size={24} color={colors.text} />
           <Text style={styles.menuText}>Security</Text>
-          <Ionicons name="chevron-forward" size={24} color="#666" />
+          <Ionicons name="chevron-forward" size={24} color={colors.muted} />
         </TouchableOpacity>
       </View>
 
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>About</Text>
         <TouchableOpacity style={styles.menuItem}>
-          <Ionicons name="document-text-outline" size={24} color="#ffffff" />
+          <Ionicons name="document-text-outline" size={24} color={colors.text} />
           <Text style={styles.menuText}>Terms of Service</Text>
-          <Ionicons name="chevron-forward" size={24} color="#666" />
+          <Ionicons name="chevron-forward" size={24} color={colors.muted} />
         </TouchableOpacity>
         <TouchableOpacity style={styles.menuItem}>
-          <Ionicons name="lock-closed-outline" size={24} color="#ffffff" />
+          <Ionicons name="lock-closed-outline" size={24} color={colors.text} />
           <Text style={styles.menuText}>Privacy Policy</Text>
-          <Ionicons name="chevron-forward" size={24} color="#666" />
+          <Ionicons name="chevron-forward" size={24} color={colors.muted} />
         </TouchableOpacity>
         <View style={styles.menuItem}>
-          <Ionicons name="information-circle-outline" size={24} color="#ffffff" />
+          <Ionicons name="information-circle-outline" size={24} color={colors.text} />
           <Text style={styles.menuText}>Version</Text>
           <Text style={styles.versionText}>1.0.0</Text>
         </View>
@@ -86,7 +87,7 @@ export default function SettingsScreen() {
 
       <View style={styles.section}>
         <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-          <Ionicons name="log-out-outline" size={24} color="#ef4444" />
+          <Ionicons name="log-out-outline" size={24} color={colors.danger} />
           <Text style={styles.logoutText}>Logout</Text>
         </TouchableOpacity>
       </View>
@@ -97,7 +98,7 @@ export default function SettingsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#1a1a1a',
+    backgroundColor: colors.bg,
   },
   section: {
     marginTop: 24,
@@ -106,16 +107,16 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#999',
+    color: colors.muted,
     marginBottom: 12,
     textTransform: 'uppercase',
   },
   card: {
-    backgroundColor: '#2a2a2a',
+    backgroundColor: colors.card,
     borderRadius: 12,
     padding: 16,
     borderWidth: 1,
-    borderColor: '#333',
+    borderColor: colors.border,
   },
   infoRow: {
     flexDirection: 'row',
@@ -123,19 +124,19 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#333',
+    borderBottomColor: colors.border,
   },
   label: {
     fontSize: 16,
-    color: '#999',
+    color: colors.muted,
   },
   value: {
     fontSize: 16,
-    color: '#ffffff',
+    color: colors.text,
     fontWeight: '500',
   },
   planBadge: {
-    backgroundColor: '#3b82f6',
+    backgroundColor: colors.primary,
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 4,
@@ -144,37 +145,37 @@ const styles = StyleSheet.create({
   menuItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#2a2a2a',
+    backgroundColor: colors.card,
     padding: 16,
     borderRadius: 12,
     marginBottom: 8,
     borderWidth: 1,
-    borderColor: '#333',
+    borderColor: colors.border,
   },
   menuText: {
     flex: 1,
     fontSize: 16,
-    color: '#ffffff',
+    color: colors.text,
     marginLeft: 16,
   },
   versionText: {
     fontSize: 16,
-    color: '#666',
+    color: colors.muted,
   },
   logoutButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#2a2a2a',
+    backgroundColor: colors.card,
     padding: 16,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#333',
+    borderColor: colors.border,
     marginBottom: 32,
   },
   logoutText: {
     fontSize: 16,
-    color: '#ef4444',
+    color: colors.danger,
     fontWeight: '600',
     marginLeft: 8,
   },

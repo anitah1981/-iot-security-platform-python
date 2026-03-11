@@ -16,7 +16,7 @@
         }
       })();
     </script>
-    <script defer src="/assets/app.js?v=11"></script>
+    <script defer src="/assets/app.js?v=12"></script>
   </head>
   <body>
     <div class="app-layout">
@@ -238,6 +238,14 @@
             <div id="mfaBackupResult" class="hint" style="margin-top: 10px;"></div>
           </div>
           <button type="button" class="btn" id="mfaSetupBtn" style="background: var(--primary); color: white; margin-top: 12px;">Enable MFA</button>
+        </div>
+        <!-- Active sessions (refresh token sessions) -->
+        <div class="card">
+          <h2>📱 Active sessions</h2>
+          <p class="sub">Devices and browsers where you’re signed in. Revoke any you don’t recognise.</p>
+          <div class="hint" id="sessionsMsg" style="margin: 12px 0;"></div>
+          <button type="button" class="btn" id="sessionsRefreshBtn" style="background: var(--surface); border: 1px solid var(--border); margin-bottom: 12px;">Refresh list</button>
+          <div id="sessionsList" style="display: flex; flex-direction: column; gap: 8px;"></div>
         </div>
         <div class="card" id="adminUnlockCard" style="display: none;">
           <h2>🧰 Admin: Unlock Account</h2>
@@ -1344,6 +1352,51 @@
         if(document.querySelector("#mfaBackupBtn")){
           document.querySelector("#mfaBackupBtn").addEventListener("click", regenerateBackupCodes);
         }
+
+        // Active sessions list + revoke
+        async function loadSessions(){
+          const listEl = document.getElementById("sessionsList");
+          const msgEl = document.getElementById("sessionsMsg");
+          if(!listEl) return;
+          listEl.innerHTML = "";
+          if(msgEl){ msgEl.className = "msg"; msgEl.textContent = "Loading…"; }
+          try{
+            const data = await api("/api/auth/sessions");
+            const sessions = data.sessions || [];
+            if(msgEl){ msgEl.textContent = sessions.length ? "" : "No other sessions (or only this browser)."; }
+            sessions.forEach(function(s){
+              const row = document.createElement("div");
+              row.style.cssText = "display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px;background:var(--surface);border:1px solid var(--border);border-radius:8px;flex-wrap:wrap;";
+              const left = document.createElement("div");
+              const created = s.created_at ? new Date(s.created_at).toLocaleString() : "—";
+              left.innerHTML = "<strong>" + esc(s.label || "Session") + "</strong><br/><span style='font-size:12px;color:var(--muted)'>" + esc(created) + (s.ip_address ? " · " + esc(s.ip_address) : "") + "</span>";
+              const btn = document.createElement("button");
+              btn.type = "button";
+              btn.className = "btn-sm";
+              btn.textContent = "Revoke";
+              btn.onclick = async function(){
+                if(!s.session_id){ return; }
+                if(!confirm("Sign out this session?")) return;
+                try{
+                  await api("/api/auth/sessions/revoke", { method: "POST", body: { session_id: s.session_id } });
+                  showToast("Session revoked", "success");
+                  loadSessions();
+                }catch(e){
+                  showToast(e.message || "Failed", "warning");
+                }
+              };
+              row.appendChild(left);
+              row.appendChild(btn);
+              listEl.appendChild(row);
+            });
+          }catch(e){
+            if(msgEl){ msgEl.className = "msg bad"; msgEl.textContent = e.message || "Could not load sessions"; }
+          }
+        }
+        if(document.getElementById("sessionsRefreshBtn")){
+          document.getElementById("sessionsRefreshBtn").addEventListener("click", loadSessions);
+        }
+        loadSessions();
 
         if (document.getElementById("saveRouterIpBtn")) {
           document.getElementById("saveRouterIpBtn").addEventListener("click", saveRouterIpFromSettings);

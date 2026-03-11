@@ -13,6 +13,8 @@ import api from '../config/api';
 import DeviceCard from '../components/DeviceCard';
 import AlertCard from '../components/AlertCard';
 import StatsCard from '../components/StatsCard';
+import { colors } from '../theme';
+import { initializeRealtime, disconnectRealtime } from '../services/realtime';
 import { getDevicesOffline, getAlertsOffline, saveDevicesOffline, saveAlertsOffline } from '../utils/storage';
 
 export default function DashboardScreen({ navigation }) {
@@ -35,6 +37,30 @@ export default function DashboardScreen({ navigation }) {
     const interval = setInterval(loadData, 30000);
     return () => clearInterval(interval);
   }, []);
+
+  // Initialize real-time updates when user is available
+  useEffect(() => {
+    if (!user) return;
+
+    initializeRealtime(user, {
+      onDeviceUpdate: () => {
+        // Refresh dashboard data when devices change
+        loadData();
+      },
+      onNewAlert: () => {
+        // Refresh dashboard data when new alerts arrive
+        loadData();
+      },
+      onAlertResolved: () => {
+        // Refresh dashboard data when alerts are resolved
+        loadData();
+      },
+    });
+
+    return () => {
+      disconnectRealtime();
+    };
+  }, [user]);
 
   const loadData = async () => {
     if (!isConnected) {
@@ -115,13 +141,13 @@ export default function DashboardScreen({ navigation }) {
           title="Devices"
           value={stats.onlineDevices}
           subtitle={`${stats.totalDevices} total`}
-          color="#3b82f6"
+          color={colors.primary}
         />
         <StatsCard
           title="Alerts"
           value={stats.totalAlerts}
           subtitle={`${stats.criticalAlerts} critical`}
-          color={stats.criticalAlerts > 0 ? '#ef4444' : '#10b981'}
+          color={stats.criticalAlerts > 0 ? colors.danger : colors.ok}
         />
       </View>
 
@@ -173,24 +199,24 @@ export default function DashboardScreen({ navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#1a1a1a',
+    backgroundColor: colors.bg,
   },
   offlineContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#1a1a1a',
+    backgroundColor: colors.bg,
     padding: 24,
   },
   offlineText: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#ffffff',
+    color: colors.text,
     marginBottom: 8,
   },
   offlineSubtext: {
     fontSize: 14,
-    color: '#999',
+    color: colors.muted,
     textAlign: 'center',
   },
   header: {
@@ -200,12 +226,12 @@ const styles = StyleSheet.create({
   greeting: {
     fontSize: 28,
     fontWeight: 'bold',
-    color: '#ffffff',
+    color: colors.text,
     marginBottom: 4,
   },
   subtitle: {
     fontSize: 16,
-    color: '#999',
+    color: colors.muted,
   },
   statsContainer: {
     flexDirection: 'row',
@@ -226,11 +252,11 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#ffffff',
+    color: colors.text,
   },
   seeAll: {
     fontSize: 14,
-    color: '#3b82f6',
+    color: colors.primary,
   },
   emptyState: {
     padding: 24,
@@ -238,11 +264,11 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     fontSize: 16,
-    color: '#999',
+    color: colors.muted,
     marginBottom: 16,
   },
   addButton: {
-    backgroundColor: '#3b82f6',
+    backgroundColor: colors.primary,
     paddingHorizontal: 24,
     paddingVertical: 12,
     borderRadius: 8,

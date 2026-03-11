@@ -10,8 +10,8 @@ from core.middleware import setup_middleware
 from web.routes import register_web_routes
 from api.router import get_api_router
 
-# Build app
-app = FastAPI(
+# Build FastAPI app
+fastapi_app = FastAPI(
     title="Pro-Alert",
     version="2.0.0",
     lifespan=lifespan,
@@ -21,46 +21,50 @@ app = FastAPI(
 
 # Static assets
 if WEB_DIR.exists():
-    app.mount("/assets", StaticFiles(directory=str(WEB_DIR / "assets")), name="assets")
+    fastapi_app.mount("/assets", StaticFiles(directory=str(WEB_DIR / "assets")), name="assets")
 
 # Security, rate limit, trusted host, CORS, production exception handler
-setup_middleware(app)
+setup_middleware(fastapi_app)
 
 # HTML page routes (/, /login, /dashboard, ...)
-register_web_routes(app, WEB_DIR)
+register_web_routes(fastapi_app, WEB_DIR)
 
 # API routes (/api/health, /api/ready, /api/startup, /api/auth, ...)
 api_router = get_api_router()
-app.include_router(api_router, prefix="/api")
+fastapi_app.include_router(api_router, prefix="/api")
 
 # Payments and password-reset use their own full prefix
 from routes.payments import router as payments_router
 from routes.password_reset import router as password_reset_router
-app.include_router(payments_router)
-app.include_router(password_reset_router)
+fastapi_app.include_router(payments_router)
+fastapi_app.include_router(password_reset_router)
 
 # Protected docs (require auth)
 from routes.auth import get_current_user
 
-@app.get("/docs")
+@fastapi_app.get("/docs")
 async def get_docs(user: dict = Depends(get_current_user)):
     from fastapi.openapi.docs import get_swagger_ui_html
     return get_swagger_ui_html(
-        openapi_url=app.openapi_url,
-        title=app.title + " - API Documentation",
+        openapi_url=fastapi_app.openapi_url,
+        title=fastapi_app.title + " - API Documentation",
         swagger_js_url="https://cdn.jsdelivr.net/npm/swagger-ui-dist@5/swagger-ui-bundle.js",
         swagger_css_url="https://cdn.jsdelivr.net/npm/swagger-ui-dist@5/swagger-ui.css"
     )
 
-@app.get("/redoc")
+@fastapi_app.get("/redoc")
 async def get_redoc(user: dict = Depends(get_current_user)):
     from fastapi.openapi.docs import get_redoc_html
     return get_redoc_html(
-        openapi_url=app.openapi_url,
-        title=app.title + " - API Documentation",
+        openapi_url=fastapi_app.openapi_url,
+        title=fastapi_app.title + " - API Documentation",
         redoc_js_url="https://cdn.jsdelivr.net/npm/redoc@next/bundles/redoc.standalone.js"
     )
 
+# Wrap FastAPI app with Socket.IO so /socket.io is handled for real-time updates (web + mobile)
+from services.websocket_service import sio
+import socketio
+app = socketio.ASGIApp(sio, other_asgi_app=fastapi_app, socketio_path="socket.io")
 
 if __name__ == "__main__":
     import os
@@ -69,7 +73,7 @@ if __name__ == "__main__":
     print(f"[INFO] Environment: {os.getenv('APP_ENV', 'local')}")
     print(f"[INFO] MongoDB: {MONGO_URI.split('@')[1] if '@' in MONGO_URI else 'localhost'}")
     uvicorn.run(
-        app,
+        "main:app",
         host="0.0.0.0",
         port=PORT,
         log_level="info"

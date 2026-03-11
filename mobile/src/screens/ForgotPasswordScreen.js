@@ -11,6 +11,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import api from '../config/api';
+import { colors } from '../theme';
 
 export default function ForgotPasswordScreen({ navigation }) {
   const [email, setEmail] = useState('');
@@ -61,7 +62,7 @@ export default function ForgotPasswordScreen({ navigation }) {
           <TextInput
             style={styles.input}
             placeholder="Email"
-            placeholderTextColor="#666"
+            placeholderTextColor={colors.muted}
             value={email}
             onChangeText={setEmail}
             keyboardType="email-address"
@@ -96,7 +97,7 @@ export default function ForgotPasswordScreen({ navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#1a1a1a',
+    backgroundColor: colors.bg,
   },
   content: {
     flex: 1,
@@ -106,13 +107,13 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 32,
     fontWeight: 'bold',
-    color: '#ffffff',
+    color: colors.text,
     textAlign: 'center',
     marginBottom: 8,
   },
   subtitle: {
     fontSize: 16,
-    color: '#999',
+    color: colors.muted,
     textAlign: 'center',
     marginBottom: 32,
   },
@@ -120,17 +121,17 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   input: {
-    backgroundColor: '#2a2a2a',
+    backgroundColor: colors.card,
     borderRadius: 8,
     padding: 16,
-    color: '#ffffff',
+    color: colors.text,
     fontSize: 16,
     marginBottom: 24,
     borderWidth: 1,
-    borderColor: '#333',
+    borderColor: colors.border,
   },
   button: {
-    backgroundColor: '#3b82f6',
+    backgroundColor: colors.primary,
     borderRadius: 8,
     padding: 16,
     alignItems: 'center',
@@ -149,7 +150,7 @@ const styles = StyleSheet.create({
     marginTop: 16,
   },
   backButtonText: {
-    color: '#3b82f6',
+    color: colors.primary,
     fontSize: 14,
   },
 });

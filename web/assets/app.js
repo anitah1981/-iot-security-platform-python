@@ -55,6 +55,27 @@ function isValidE164(value){
   return /^\+[1-9]\d{7,14}$/.test(cleaned);
 }
 
+function getOrCreateCsrfToken(){
+  // Look for existing csrftoken cookie
+  const existing = document.cookie.split('; ').find(c => c.startsWith('csrftoken='));
+  if (existing) {
+    return decodeURIComponent(existing.split('=')[1]);
+  }
+  // Create a new random token using Web Crypto
+  let token = '';
+  try {
+    const bytes = new Uint8Array(16);
+    window.crypto.getRandomValues(bytes);
+    token = Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('');
+  } catch (e) {
+    token = Math.random().toString(36).slice(2);
+  }
+  const encoded = encodeURIComponent(token);
+  // Session cookie; path=/ so it applies to all routes
+  document.cookie = `csrftoken=${encoded}; path=/; SameSite=Lax`;
+  return token;
+}
+
 function setButtonLoading(btn, loading, text){
   if(!btn) return;
   if(loading){
@@ -89,6 +110,12 @@ async function api(path, { method="GET", body, auth=true, retry=true, timeout=30
     const t = getToken();
     if(t) headers["Authorization"] = `Bearer ${t}`;
   }
+  // Attach CSRF token for state-changing methods when running in a browser session.
+  const upperMethod = (method || "GET").toUpperCase();
+  if (upperMethod !== "GET" && upperMethod !== "HEAD") {
+    const csrf = getOrCreateCsrfToken();
+    headers["X-CSRF-Token"] = csrf;
+  }
   
   // Add timeout using AbortController
   const controller = new AbortController();
@@ -100,26 +127,29 @@ async function api(path, { method="GET", body, auth=true, retry=true, timeout=30
       headers,
       body: body ? JSON.stringify(body) : undefined,
       signal: controller.signal,
+      credentials: "include", // send httpOnly cookies (refresh token) on same-origin
     });
     clearTimeout(timeoutId);
   let data = null;
   try{ data = await res.json(); } catch {}
   if(res.status === 401 && auth && retry){
     const refreshToken = getRefreshToken();
-    if(refreshToken){
-      try{
-        const refreshed = await api("/api/auth/refresh", {
-          method: "POST",
-          auth: false,
-          retry: false,
-          body: { refresh_token: refreshToken }
-        });
-        setToken(refreshed.token);
-        if(refreshed.refresh_token) setRefreshToken(refreshed.refresh_token);
-        return api(path, { method, body, auth, retry: false });
-      }catch(e){
-        clearAuth();
-      }
+    // Prefer httpOnly cookie: POST refresh with empty body sends cookie automatically
+    const refreshBody = refreshToken ? { refresh_token: refreshToken } : {};
+    try{
+      const refreshed = await api("/api/auth/refresh", {
+        method: "POST",
+        auth: false,
+        retry: false,
+        body: Object.keys(refreshBody).length ? refreshBody : {}
+      });
+      if(refreshed.token) setToken(refreshed.token);
+      // If server rotates refresh in body, keep for legacy; cookie is set by server anyway
+      if(refreshed.refresh_token) setRefreshToken(refreshed.refresh_token);
+      else setRefreshToken(null); // rely on httpOnly cookie only
+      return api(path, { method, body, auth, retry: false });
+    }catch(e){
+      clearAuth();
     }
   }
   if(!res.ok){
@@ -177,8 +207,9 @@ async function loginFlow(){
     const body = { email, password };
     if(mfaCode) body.mfa_code = mfaCode;
     const data = await api("/api/auth/login", { method:"POST", auth:false, body });
+    // Keep token in localStorage so dashboard redirect, api(), and WebSocket client work (backend also sets HttpOnly cookie).
     setToken(data.token);
-    if(data.refresh_token) setRefreshToken(data.refresh_token);
+    if (data.refresh_token) setRefreshToken(data.refresh_token);
     msg.className = "msg ok";
     msg.textContent = "Signed in. Redirecting…";
     // Check for redirect parameter, default to dashboard
@@ -1603,6 +1634,11 @@ window.addEventListener("DOMContentLoaded", () => {
     if(msg && params.get("reset") === "success"){
       msg.className = "msg ok";
       msg.textContent = "Password reset successful. Please sign in.";
+    }
+    if(msg && params.get("need_verify") === "1"){
+      msg.className = "msg";
+      msg.innerHTML = "Please verify your email first. Check your inbox, or <a href=\"/verify-email\" style=\"color: var(--primary); font-weight: 600;\">open the verify page</a> to resend.";
+      showToast("Verify your email, then sign in.", "info");
     }
   }
   if(qs("#logoutBtn")){

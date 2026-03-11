@@ -10,8 +10,10 @@ import {
   ScrollView,
   Alert,
   ActivityIndicator,
+  Image,
 } from 'react-native';
 import { useAuth } from '../context/AuthContext';
+import { colors, borderRadius } from '../theme';
 
 export default function SignupScreen({ navigation }) {
   const [name, setName] = useState('');
@@ -73,14 +75,17 @@ export default function SignupScreen({ navigation }) {
     >
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={styles.content}>
-          <Text style={styles.title}>Create Account</Text>
-          <Text style={styles.subtitle}>Sign up for IoT Security Platform</Text>
+          <View style={styles.logoContainer}>
+            <Image source={require('../../assets/logo.png')} style={styles.logo} resizeMode="contain" />
+          </View>
+          <Text style={styles.title}>Pro-Alert</Text>
+          <Text style={styles.subtitle}>Create account to protect your smart home devices</Text>
 
           <View style={styles.form}>
             <TextInput
               style={styles.input}
               placeholder="Full Name"
-              placeholderTextColor="#666"
+              placeholderTextColor={colors.muted}
               value={name}
               onChangeText={setName}
               autoCapitalize="words"
@@ -89,7 +94,7 @@ export default function SignupScreen({ navigation }) {
             <TextInput
               style={styles.input}
               placeholder="Email"
-              placeholderTextColor="#666"
+              placeholderTextColor={colors.muted}
               value={email}
               onChangeText={setEmail}
               keyboardType="email-address"
@@ -100,7 +105,7 @@ export default function SignupScreen({ navigation }) {
             <TextInput
               style={styles.input}
               placeholder="Password (min 12 characters)"
-              placeholderTextColor="#666"
+              placeholderTextColor={colors.muted}
               value={password}
               onChangeText={setPassword}
               secureTextEntry
@@ -110,7 +115,7 @@ export default function SignupScreen({ navigation }) {
             <TextInput
               style={styles.input}
               placeholder="Confirm Password"
-              placeholderTextColor="#666"
+              placeholderTextColor={colors.muted}
               value={confirmPassword}
               onChangeText={setConfirmPassword}
               secureTextEntry
@@ -149,7 +154,7 @@ export default function SignupScreen({ navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#1a1a1a',
+    backgroundColor: colors.bg,
   },
   scrollContent: {
     flexGrow: 1,
@@ -162,13 +167,13 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 32,
     fontWeight: 'bold',
-    color: '#ffffff',
+    color: colors.text,
     textAlign: 'center',
     marginBottom: 8,
   },
   subtitle: {
     fontSize: 16,
-    color: '#999',
+    color: colors.muted,
     textAlign: 'center',
     marginBottom: 32,
   },
@@ -176,23 +181,23 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   input: {
-    backgroundColor: '#2a2a2a',
+    backgroundColor: colors.card,
     borderRadius: 8,
     padding: 16,
-    color: '#ffffff',
+    color: colors.text,
     fontSize: 16,
     marginBottom: 16,
     borderWidth: 1,
-    borderColor: '#333',
+    borderColor: colors.border,
   },
   passwordHint: {
-    color: '#999',
+    color: colors.muted,
     fontSize: 12,
     marginBottom: 24,
     textAlign: 'center',
   },
   button: {
-    backgroundColor: '#3b82f6',
+    backgroundColor: colors.primary,
     borderRadius: 8,
     padding: 16,
     alignItems: 'center',
@@ -212,11 +217,11 @@ const styles = StyleSheet.create({
     marginTop: 16,
   },
   loginText: {
-    color: '#999',
+    color: colors.muted,
     fontSize: 14,
   },
   loginLink: {
-    color: '#3b82f6',
+    color: colors.primary,
     fontSize: 14,
     fontWeight: '600',
   },

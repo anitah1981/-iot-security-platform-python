@@ -71,5 +71,14 @@ async def create_indexes():
     # Alerts collection
     await database.alerts.create_index("deviceId")
     await database.alerts.create_index("createdAt")
+
+    # Refresh tokens / sessions
+    try:
+        await database.refresh_tokens.create_index("token_hash")
+        await database.refresh_tokens.create_index([("user_id", 1), ("revoked", 1)])
+        await database.refresh_tokens.create_index("session_public_id")
+        await database.refresh_tokens.create_index("expires_at")
+    except Exception as e:
+        print(f"[DB] refresh_tokens indexes: {e}")
     
     print("Database indexes created")

@@ -9,8 +9,10 @@ import {
   Platform,
   Alert,
   ActivityIndicator,
+  Image,
 } from 'react-native';
 import { useAuth } from '../context/AuthContext';
+import { colors, borderRadius } from '../theme';
 
 export default function LoginScreen({ navigation }) {
   const [email, setEmail] = useState('');
@@ -82,14 +84,17 @@ export default function LoginScreen({ navigation }) {
       style={styles.container}
     >
       <View style={styles.content}>
-        <Text style={styles.title}>IoT Security</Text>
-        <Text style={styles.subtitle}>Sign in to your account</Text>
+        <View style={styles.logoContainer}>
+          <Image source={require('../../assets/logo.png')} style={styles.logo} resizeMode="contain" />
+        </View>
+        <Text style={styles.title}>Pro-Alert</Text>
+        <Text style={styles.subtitle}>Sign in to access your devices and alerts</Text>
 
         <View style={styles.form}>
           <TextInput
             style={styles.input}
             placeholder="Email"
-            placeholderTextColor="#666"
+            placeholderTextColor={colors.muted}
             value={email}
             onChangeText={setEmail}
             keyboardType="email-address"
@@ -100,7 +105,7 @@ export default function LoginScreen({ navigation }) {
           <TextInput
             style={styles.input}
             placeholder="Password"
-            placeholderTextColor="#666"
+            placeholderTextColor={colors.muted}
             value={password}
             onChangeText={setPassword}
             secureTextEntry
@@ -114,7 +119,7 @@ export default function LoginScreen({ navigation }) {
               <TextInput
                 style={styles.input}
                 placeholder="000000"
-                placeholderTextColor="#666"
+                placeholderTextColor={colors.muted}
                 value={mfaCode}
                 onChangeText={setMfaCode}
                 keyboardType="number-pad"
@@ -166,7 +171,7 @@ export default function LoginScreen({ navigation }) {
           <TextInput
             style={[styles.input, styles.serverInput]}
             placeholder="https://xxx.up.railway.app"
-            placeholderTextColor="#666"
+            placeholderTextColor={colors.muted}
             value={serverUrlInput}
             onChangeText={setServerUrlInput}
             autoCapitalize="none"
@@ -189,23 +194,31 @@ export default function LoginScreen({ navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#1a1a1a',
+    backgroundColor: colors.bg,
   },
   content: {
     flex: 1,
     justifyContent: 'center',
     padding: 24,
   },
+  logoContainer: {
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  logo: {
+    height: 80,
+    width: 180,
+  },
   title: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    color: '#ffffff',
+    fontSize: 28,
+    fontWeight: '700',
+    color: colors.text,
     textAlign: 'center',
     marginBottom: 8,
   },
   subtitle: {
     fontSize: 16,
-    color: '#999',
+    color: colors.muted,
     textAlign: 'center',
     marginBottom: 32,
   },
@@ -213,23 +226,23 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   input: {
-    backgroundColor: '#2a2a2a',
-    borderRadius: 8,
+    backgroundColor: colors.card,
+    borderRadius: borderRadius.md,
     padding: 16,
-    color: '#ffffff',
+    color: colors.text,
     fontSize: 16,
     marginBottom: 16,
     borderWidth: 1,
-    borderColor: '#333',
+    borderColor: colors.border,
   },
   mfaLabel: {
-    color: '#999',
+    color: colors.muted,
     fontSize: 14,
     marginTop: 8,
     marginBottom: 4,
   },
   mfaHint: {
-    color: '#666',
+    color: colors.muted,
     fontSize: 12,
     marginBottom: 16,
   },
@@ -238,12 +251,12 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   forgotPasswordText: {
-    color: '#3b82f6',
+    color: colors.primary,
     fontSize: 14,
   },
   button: {
-    backgroundColor: '#3b82f6',
-    borderRadius: 8,
+    backgroundColor: colors.primary,
+    borderRadius: borderRadius.md,
     padding: 16,
     alignItems: 'center',
     marginBottom: 16,
@@ -262,16 +275,16 @@ const styles = StyleSheet.create({
     marginTop: 16,
   },
   signupText: {
-    color: '#999',
+    color: colors.muted,
     fontSize: 14,
   },
   signupLink: {
-    color: '#3b82f6',
+    color: colors.primary,
     fontSize: 14,
     fontWeight: '600',
   },
   serverUrl: {
-    color: '#666',
+    color: colors.muted,
     fontSize: 11,
     marginTop: 16,
     textAlign: 'center',
@@ -282,11 +295,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   linkButtonText: {
-    color: '#6b7280',
+    color: colors.muted,
     fontSize: 13,
   },
   overrideLabel: {
-    color: '#6b7280',
+    color: colors.muted,
     fontSize: 12,
     marginTop: 20,
     marginBottom: 6,

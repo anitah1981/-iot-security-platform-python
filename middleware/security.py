@@ -15,15 +15,48 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
+from jose import jwt as jose_jwt
+from jose import JWTError
 
 from utils.structured_log import get_logger
 
 log = get_logger("security")
 
+JWT_SECRET = os.getenv("JWT_SECRET", "")
+JWT_ALGORITHM = os.getenv("JWT_ALGORITHM", "HS256")
 
-# Rate limiter configuration
+
+def rate_limit_key_user_or_ip(request: Request) -> str:
+    """
+    Per-user rate limiting when Bearer token is present (authenticated API calls).
+    Falls back to client IP for login/signup and unauthenticated requests.
+    """
+    if not JWT_SECRET or JWT_SECRET == "your-super-secret-key-change-in-production":
+        return get_remote_address(request)
+    auth = request.headers.get("authorization") or ""
+    if auth.startswith("Bearer "):
+        try:
+            token = auth[7:].strip()
+            if len(token) > 20:
+                payload = jose_jwt.decode(
+                    token,
+                    JWT_SECRET,
+                    algorithms=[JWT_ALGORITHM],
+                    options={"verify_aud": False},
+                )
+                uid = payload.get("sub")
+                if uid:
+                    return f"user:{uid}"
+        except JWTError:
+            pass
+        except Exception:
+            pass
+    return get_remote_address(request)
+
+
+# Rate limiter configuration — key is user id when authenticated, else IP
 default_limit = os.getenv("RATE_LIMIT_DEFAULT", "120/minute")
-limiter = Limiter(key_func=get_remote_address, default_limits=[default_limit])
+limiter = Limiter(key_func=rate_limit_key_user_or_ip, default_limits=[default_limit])
 
 
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):

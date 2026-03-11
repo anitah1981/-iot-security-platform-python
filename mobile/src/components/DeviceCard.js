@@ -1,9 +1,10 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { colors } from '../theme';
 
 export default function DeviceCard({ device, navigation }) {
-  const statusColor = device.status === 'online' ? '#10b981' : '#ef4444';
+  const statusColor = device.status === 'online' ? colors.ok : colors.danger;
   const statusIcon = device.status === 'online' ? 'checkmark-circle' : 'close-circle';
 
   return (
@@ -34,13 +35,13 @@ export default function DeviceCard({ device, navigation }) {
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: '#2a2a2a',
+    backgroundColor: colors.card,
     borderRadius: 12,
     padding: 16,
     marginHorizontal: 24,
     marginBottom: 12,
     borderWidth: 1,
-    borderColor: '#333',
+    borderColor: colors.border,
   },
   header: {
     flexDirection: 'row',
@@ -54,12 +55,12 @@ const styles = StyleSheet.create({
   deviceName: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#ffffff',
+    color: colors.text,
     marginBottom: 4,
   },
   deviceType: {
     fontSize: 14,
-    color: '#999',
+    color: colors.muted,
   },
   statusBadge: {
     flexDirection: 'row',
@@ -76,7 +77,7 @@ const styles = StyleSheet.create({
   },
   lastSeen: {
     fontSize: 12,
-    color: '#666',
+    color: colors.muted,
     marginTop: 8,
   },
 });

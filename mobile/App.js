@@ -13,8 +13,9 @@ import ForgotPasswordScreen from './src/screens/ForgotPasswordScreen';
 import ResetPasswordScreen from './src/screens/ResetPasswordScreen';
 import DeviceDetailScreen from './src/screens/DeviceDetailScreen';
 import AlertDetailScreen from './src/screens/AlertDetailScreen';
-import MainTabs from './src/navigation/MainTabs';
+import MainDrawer from './src/navigation/MainDrawer';
 import LoadingScreen from './src/screens/LoadingScreen';
+import { colors } from './src/theme';
 
 const Stack = createNativeStackNavigator();
 
@@ -29,14 +30,14 @@ function AuthNavigator() {
     <NavigationContainer>
       <Stack.Navigator
         screenOptions={{
-          headerStyle: { backgroundColor: '#1a1a1a' },
-          headerTintColor: '#ffffff',
+          headerStyle: { backgroundColor: colors.surface },
+          headerTintColor: colors.text,
           headerTitleStyle: { fontWeight: 'bold' },
         }}
       >
         {user ? (
           <>
-            <Stack.Screen name="Main" component={MainTabs} options={{ headerShown: false }} />
+            <Stack.Screen name="Main" component={MainDrawer} options={{ headerShown: false }} />
             <Stack.Screen
               name="DeviceDetail"
               component={DeviceDetailScreen}

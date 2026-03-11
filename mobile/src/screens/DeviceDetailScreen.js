@@ -9,6 +9,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import api from '../config/api';
+import { colors } from '../theme';
 
 export default function DeviceDetailScreen({ route }) {
   const { deviceId } = route?.params || {};
@@ -35,7 +36,7 @@ export default function DeviceDetailScreen({ route }) {
   if (loading) {
     return (
       <View style={styles.centerContainer}>
-        <ActivityIndicator size="large" color="#3b82f6" />
+        <ActivityIndicator size="large" color={colors.primary} />
       </View>
     );
   }
@@ -48,7 +49,7 @@ export default function DeviceDetailScreen({ route }) {
     );
   }
 
-  const statusColor = device.status === 'online' ? '#10b981' : '#ef4444';
+  const statusColor = device.status === 'online' ? colors.ok : colors.danger;
 
   return (
     <ScrollView style={styles.container}>
@@ -107,17 +108,17 @@ function InfoRow({ label, value }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#1a1a1a',
+    backgroundColor: colors.bg,
   },
   centerContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#1a1a1a',
+    backgroundColor: colors.bg,
   },
   errorText: {
     fontSize: 16,
-    color: '#ef4444',
+    color: colors.danger,
   },
   header: {
     padding: 24,
@@ -141,12 +142,12 @@ const styles = StyleSheet.create({
   deviceName: {
     fontSize: 28,
     fontWeight: 'bold',
-    color: '#ffffff',
+    color: colors.text,
     marginBottom: 8,
   },
   deviceType: {
     fontSize: 16,
-    color: '#999',
+    color: colors.muted,
   },
   section: {
     marginBottom: 24,
@@ -155,30 +156,30 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#ffffff',
+    color: colors.text,
     marginBottom: 12,
   },
   infoCard: {
-    backgroundColor: '#2a2a2a',
+    backgroundColor: colors.card,
     borderRadius: 12,
     padding: 16,
     borderWidth: 1,
-    borderColor: '#333',
+    borderColor: colors.border,
   },
   infoRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#333',
+    borderBottomColor: colors.border,
   },
   infoLabel: {
     fontSize: 14,
-    color: '#999',
+    color: colors.muted,
   },
   infoValue: {
     fontSize: 14,
-    color: '#ffffff',
+    color: colors.text,
     fontWeight: '500',
   },
   groupsContainer: {
@@ -187,13 +188,13 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   groupBadge: {
-    backgroundColor: '#3b82f6',
+    backgroundColor: colors.primary,
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 16,
   },
   groupText: {
-    color: '#ffffff',
+    color: colors.text,
     fontSize: 12,
     fontWeight: '500',
   },

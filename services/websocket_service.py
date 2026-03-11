@@ -1,12 +1,18 @@
 """
 WebSocket Service for Real-Time Updates
-Broadcasts device status changes, new alerts, and system events to connected clients
+Broadcasts device status changes, new alerts, and system events to connected clients.
+
+Security:
+- Validates JWT on connection using the same settings as API auth.
+- Uses per-user rooms (user_<user_id>) so events can be targeted securely.
 """
 
 import socketio
-from typing import Dict, List, Any
-import asyncio
+from typing import Dict, List, Any, Optional
 from datetime import datetime
+
+from jose import jwt, JWTError
+from routes.auth import JWT_SECRET, JWT_ALGORITHM, JWT_ISSUER
 
 # Create Socket.IO server
 sio = socketio.AsyncServer(
@@ -20,30 +26,67 @@ sio = socketio.AsyncServer(
 connected_users: Dict[str, Dict[str, Any]] = {}
 
 
+def _decode_token(token: str) -> Optional[dict]:
+    """Decode JWT and return payload, or None if invalid."""
+    try:
+        return jwt.decode(
+            token,
+            JWT_SECRET,
+            algorithms=[JWT_ALGORITHM],
+            issuer=JWT_ISSUER,
+        )
+    except JWTError as exc:
+        print(f"[WS AUTH] Invalid token: {exc}")
+        return None
+
+
 @sio.event
 async def connect(sid, environ, auth):
-    """Handle client connection"""
-    print(f"[OK] WebSocket client connected: {sid}")
-    
-    # Get user info from auth
-    user_id = auth.get('user_id') if auth else None
-    
+    """Handle client connection with JWT validation."""
+    token = (auth or {}).get("token") if auth else None
+    if not token:
+        print(f"[WS AUTH] Missing token for sid={sid}; disconnecting")
+        await sio.disconnect(sid)
+        return
+
+    payload = _decode_token(token)
+    if not payload:
+        print(f"[WS AUTH] Token validation failed for sid={sid}; disconnecting")
+        await sio.disconnect(sid)
+        return
+
+    user_id = payload.get("sub")
+    if not user_id:
+        print(f"[WS AUTH] Token missing sub for sid={sid}; disconnecting")
+        await sio.disconnect(sid)
+        return
+
+    print(f"[OK] WebSocket client connected: {sid} (user_id={user_id})")
+
+    # Join per-user room for targeted updates
+    user_room = f"user_{user_id}"
+    sio.enter_room(sid, user_room)
+
     connected_users[sid] = {
-        'user_id': user_id,
-        'connected_at': datetime.utcnow().isoformat(),
-        'rooms': []
+        "user_id": user_id,
+        "connected_at": datetime.utcnow().isoformat(),
+        "rooms": [user_room],
     }
-    
-    await sio.emit('connection_established', {
-        'status': 'connected',
-        'timestamp': datetime.utcnow().isoformat(),
-        'message': 'Real-time updates active'
-    }, to=sid)
+
+    await sio.emit(
+        "connection_established",
+        {
+            "status": "connected",
+            "timestamp": datetime.utcnow().isoformat(),
+            "message": "Real-time updates active",
+        },
+        to=sid,
+    )
 
 
 @sio.event
 async def disconnect(sid):
-    """Handle client disconnection"""
+    """Handle client disconnection."""
     if sid in connected_users:
         user_info = connected_users.pop(sid)
         print(f"[DISCONNECT] WebSocket client disconnected: {sid} (user: {user_info.get('user_id')})")

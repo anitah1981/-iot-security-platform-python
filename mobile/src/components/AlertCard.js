@@ -1,16 +1,17 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { colors } from '../theme';
 
 const severityColors = {
-  critical: '#ef4444',
-  high: '#f59e0b',
-  medium: '#3b82f6',
-  low: '#10b981',
+  critical: colors.danger,
+  high: colors.warning,
+  medium: colors.primary,
+  low: colors.ok,
 };
 
 export default function AlertCard({ alert, navigation }) {
-  const severityColor = severityColors[alert.severity] || '#666';
+  const severityColor = severityColors[alert.severity] || colors.muted;
   const severityIcon =
     alert.severity === 'critical'
       ? 'warning'
@@ -20,7 +21,7 @@ export default function AlertCard({ alert, navigation }) {
 
   return (
     <TouchableOpacity
-      style={styles.card}
+      style={[styles.card, { borderLeftColor: severityColor }]}
       onPress={() => navigation.navigate('AlertDetail', { alertId: alert.id })}
     >
       <View style={styles.header}>
@@ -44,13 +45,12 @@ export default function AlertCard({ alert, navigation }) {
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: '#2a2a2a',
+    backgroundColor: colors.card,
     borderRadius: 12,
     padding: 16,
     marginHorizontal: 24,
     marginBottom: 12,
     borderLeftWidth: 4,
-    borderLeftColor: severityColors.medium,
   },
   header: {
     flexDirection: 'row',
@@ -72,15 +72,15 @@ const styles = StyleSheet.create({
   },
   deviceName: {
     fontSize: 12,
-    color: '#999',
+    color: colors.muted,
   },
   message: {
     fontSize: 16,
-    color: '#ffffff',
+    color: colors.text,
     marginBottom: 8,
   },
   timestamp: {
     fontSize: 12,
-    color: '#666',
+    color: colors.muted,
   },
 });
