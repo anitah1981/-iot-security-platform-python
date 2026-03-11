@@ -5,7 +5,7 @@ unauthenticated requests are redirected to /login.
 """
 from pathlib import Path
 from fastapi import Request, Depends
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse, JSONResponse, HTMLResponse
 
 from routes.auth import get_current_user_for_pages
 
@@ -61,10 +61,36 @@ def register_web_routes(app, web_dir: Path) -> None:
 
     @app.get("/signup")
     def signup_page():
+        """
+        Serve signup HTML from disk on every request (no FileResponse cache issues).
+        Replace any legacy 8-char copy so deployed/old files still show 12-char policy.
+        """
         f = web_dir / "signup.html"
         if not f.exists():
             return JSONResponse(status_code=404, content={"detail": "Page not found"})
-        return FileResponse(str(f), media_type="text/html", headers=dict(_no_cache_html))
+        try:
+            content = f.read_text(encoding="utf-8")
+        except OSError:
+            return FileResponse(str(f), media_type="text/html", headers=dict(_no_cache_html))
+        # Legacy placeholders/hints that must never appear (API requires 12+)
+        content = content.replace("Min. 8 characters", "Min. 12 characters")
+        content = content.replace(
+            "Use at least 8 characters with a mix of letters and numbers",
+            "Use at least 12 characters with uppercase, lowercase, a number, and a special character",
+        )
+        content = content.replace("password.length < 8", "password.length < 12")
+        # Marker so View Source confirms this path is live (remove later if desired)
+        if "signup-served-dynamic" not in content:
+            content = content.replace(
+                "<body>",
+                "<body><!-- signup-served-dynamic v12 -->",
+                1,
+            )
+        return HTMLResponse(
+            content=content,
+            media_type="text/html",
+            headers=dict(_no_cache_html),
+        )
 
     @app.get("/dashboard", dependencies=[Depends(get_current_user_for_pages)])
     def dashboard_page(request: Request):
