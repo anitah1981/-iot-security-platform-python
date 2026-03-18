@@ -63,7 +63,28 @@ async def create_indexes():
     
     # Devices collection
     # NOTE: device documents use camelCase keys (deviceId, ipAddress, lastSeen)
-    await database.devices.create_index("deviceId", unique=True)
+    # deviceId is unique per owner (user or family), not globally - so many users can have "living-room-camera"
+    try:
+        # Backfill owner_id so uniqueness is per user/family (owner_id = family_id or userId or user_id)
+        await database.devices.update_many(
+            {
+                "owner_id": {"$exists": False},
+                "$or": [{"family_id": {"$exists": True}}, {"userId": {"$exists": True}}, {"user_id": {"$exists": True}}]
+            },
+            [{"$set": {"owner_id": {"$ifNull": ["$family_id", {"$ifNull": ["$userId", "$user_id"]}]}}}]
+        )
+        # Drop old global unique index on deviceId if present
+        try:
+            await database.devices.drop_index("deviceId_1")
+        except Exception:
+            pass
+        # Compound unique: (owner_id, deviceId) so each user/family can have their own "living-room-camera"
+        await database.devices.create_index(
+            [("owner_id", 1), ("deviceId", 1)],
+            unique=True
+        )
+    except Exception as e:
+        print(f"[DB] devices owner_id/index: {e}")
     await database.devices.create_index("ipAddress")
     await database.devices.create_index("status")
     await database.devices.create_index("lastSeen")

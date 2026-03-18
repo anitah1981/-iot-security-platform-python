@@ -4,6 +4,7 @@ import secrets
 from fastapi import APIRouter, HTTPException, status, Query, Depends, Request
 from typing import Optional
 from bson import ObjectId
+from bson.errors import InvalidId
 from datetime import datetime
 
 from models import DeviceCreate, DeviceUpdate, DeviceResponse, DeviceListResponse
@@ -41,15 +42,25 @@ def _slug_device_id(name: str) -> str:
     return s[:50]  # cap length
 
 
-async def _ensure_unique_device_id(db, device_id: str, user_id: ObjectId, family_id: Optional[ObjectId]) -> str:
-    """If device_id already exists, append random suffix until unique."""
+def _safe_organization_oid(value) -> Optional[ObjectId]:
+    """Parse organization to ObjectId only if valid 24-char hex; avoids 500 when client sends 'null'/'undefined'."""
+    if not value or not isinstance(value, str):
+        return None
+    s = value.strip()
+    if len(s) != 24 or not all(c in "0123456789abcdefABCDEF" for c in s):
+        return None
+    try:
+        return ObjectId(s)
+    except InvalidId:
+        return None
+
+
+async def _ensure_unique_device_id(db, device_id: str, owner_id: ObjectId) -> str:
+    """If this owner already has this device_id, append random suffix until unique. Each user/family has their own namespace."""
     for _ in range(20):
-        if family_id:
-            exists = await db.devices.find_one({"deviceId": device_id, "family_id": family_id})
-        else:
-            exists = await db.devices.find_one(
-                {"deviceId": device_id, "$or": [{"userId": user_id}, {"user_id": user_id}]}
-            )
+        exists = await db.devices.find_one(
+            {"owner_id": owner_id, "deviceId": device_id, "isDeleted": {"$ne": True}}
+        )
         if not exists:
             return device_id
         device_id = f"{_slug_device_id(device_id)}-{secrets.token_hex(2)}"
@@ -271,28 +282,21 @@ async def create_device(device: DeviceCreate, user: dict = Depends(get_current_u
     if not isinstance(user_id, ObjectId):
         user_id = ObjectId(user_id)
     
+    # Owner namespace: family devices share deviceId per family; solo users per user (so each account can have "living-room-camera")
+    owner_id = family_id if family_id else user_id
+    
     # Auto-generate device_id if not provided (easier add flow)
     device_id = (device.device_id or "").strip()
     if not device_id:
         base_id = _slug_device_id(device.name)
-        device_id = await _ensure_unique_device_id(db, base_id, user_id, family_id)
+        device_id = await _ensure_unique_device_id(db, base_id, owner_id)
     else:
-        device_id = await _ensure_unique_device_id(db, device_id, user_id, family_id)
+        device_id = await _ensure_unique_device_id(db, device_id, owner_id)
     
-    # Check if device_id already exists for this user/family
-    if family_id:
-        filter_existing = {"deviceId": device_id, "family_id": family_id}
-    else:
-        # Check both userId and user_id for compatibility
-        filter_existing = {
-            "deviceId": device_id,
-            "$or": [
-                {"userId": user_id},
-                {"user_id": user_id}
-            ]
-        }
-    
-    existing = await db.devices.find_one(filter_existing)
+    # Check if device_id already exists for this owner (redundant with _ensure_unique but keeps 409 message clear)
+    existing = await db.devices.find_one(
+        {"owner_id": owner_id, "deviceId": device_id, "isDeleted": {"$ne": True}}
+    )
     if existing:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
@@ -305,6 +309,7 @@ async def create_device(device: DeviceCreate, user: dict = Depends(get_current_u
     device_doc = {
         "userId": user_id,  # Creator (use camelCase for consistency)
         "user_id": user_id,  # Also store snake_case for compatibility
+        "owner_id": owner_id,  # Uniqueness namespace: family_id or user_id (deviceId unique per owner)
         "deviceId": device_id,
         "name": device.name,
         "type": device.type,
@@ -316,7 +321,7 @@ async def create_device(device: DeviceCreate, user: dict = Depends(get_current_u
         "alertsEnabled": device.alerts_enabled,
         "signalStrength": None,
         "ipAddressHistory": [device.device_ip] if device.device_ip else [],
-        "organization": ObjectId(device.organization) if device.organization else None,
+        "organization": _safe_organization_oid(device.organization),
         "offlineOnlyWhenMissedHeartbeats": getattr(device, "offline_only_when_missed_heartbeats", False),
         "createdAt": datetime.utcnow(),
         "updatedAt": datetime.utcnow(),

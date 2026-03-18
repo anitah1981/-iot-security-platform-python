@@ -64,7 +64,20 @@ export default function SignupScreen({ navigation }) {
     setLoading(false);
 
     if (!result.success) {
-      Alert.alert('Signup Failed', result.error || 'Could not create account');
+      const msg = result.error || 'Could not create account';
+      const isAlreadyExists = typeof msg === 'string' && /already exists|already registered/i.test(msg);
+      if (isAlreadyExists) {
+        Alert.alert(
+          'Account already exists',
+          'This email is already registered. Sign in instead.',
+          [
+            { text: 'OK' },
+            { text: 'Sign in', onPress: () => navigation.navigate('Login') },
+          ]
+        );
+      } else {
+        Alert.alert('Signup Failed', msg);
+      }
     }
   };
 

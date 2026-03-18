@@ -32,7 +32,8 @@ class PlanLimits:
         """
         plan_name = get_effective_plan(user)
         plan_config = StripeService.get_plan_config(plan_name)
-        
+        if not plan_config:
+            plan_config = StripeService.get_plan_config("free")
         if not plan_config:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
