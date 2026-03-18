@@ -15,6 +15,7 @@ env/
 .vscode/
 .idea/
 *.swp
+.cursor/
 
 # Database
 *.db
