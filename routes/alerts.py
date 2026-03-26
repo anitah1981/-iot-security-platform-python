@@ -1,12 +1,14 @@
 # routes/alerts.py - Alert Management Routes
 from fastapi import APIRouter, HTTPException, status, Query, BackgroundTasks, Depends
-from typing import Optional
+from typing import Optional, List
 from bson import ObjectId
 from datetime import datetime, timedelta
 
 from models import AlertCreate, AlertResponse, AlertListResponse
 from database import get_database
 from routes.auth import get_current_user
+
+from pydantic import BaseModel, Field
 
 router = APIRouter()
 
@@ -360,3 +362,103 @@ async def resolve_alert(alert_id: str):
         )
     
     return {"message": "Alert resolved successfully"}
+
+
+class AlertResolveMultipleRequest(BaseModel):
+    alert_ids: List[str] = Field(..., min_items=1, description="List of alert IDs to resolve")
+
+
+def _get_object_id_list(ids: List[str]) -> List[ObjectId]:
+    out: List[ObjectId] = []
+    for _id in ids:
+        try:
+            out.append(ObjectId(_id))
+        except Exception:
+            continue
+    return out
+
+
+@router.post("/resolve-multiple")
+async def resolve_multiple_alerts(
+    body: AlertResolveMultipleRequest,
+    user: dict = Depends(get_current_user),
+):
+    """
+    Resolve multiple active alerts in one request.
+
+    Ownership check: only resolve alerts that belong to devices owned by the current user.
+    """
+    db = await get_database()
+
+    user_id = user["_id"]
+    if not isinstance(user_id, ObjectId):
+        user_id = ObjectId(user_id)
+
+    user_devices = await db.devices.find({
+        "$or": [{"userId": user_id}, {"user_id": user_id}],
+        "isDeleted": {"$ne": True}
+    }).to_list(length=1000)
+
+    user_device_ids = [ObjectId(d["_id"]) for d in user_devices]
+    if not user_device_ids:
+        return {"message": "No devices found for this account", "resolved_count": 0}
+
+    alert_obj_ids = _get_object_id_list(body.alert_ids)
+    if not alert_obj_ids:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No valid alert ids provided")
+
+    result = await db.alerts.update_many(
+        {
+            "_id": {"$in": alert_obj_ids},
+            "deviceId": {"$in": user_device_ids},
+            "resolved": {"$ne": True},
+        },
+        {
+            "$set": {
+                "resolved": True,
+                "resolvedAt": datetime.utcnow(),
+                "updatedAt": datetime.utcnow(),
+            }
+        },
+    )
+
+    return {"message": "Alerts resolved successfully", "resolved_count": result.modified_count}
+
+
+@router.post("/resolve-all")
+async def resolve_all_alerts(
+    user: dict = Depends(get_current_user),
+):
+    """
+    Resolve all active (unresolved) alerts for devices owned by the current user.
+    """
+    db = await get_database()
+
+    user_id = user["_id"]
+    if not isinstance(user_id, ObjectId):
+        user_id = ObjectId(user_id)
+
+    user_devices = await db.devices.find({
+        "$or": [{"userId": user_id}, {"user_id": user_id}],
+        "isDeleted": {"$ne": True}
+    }).to_list(length=1000)
+
+    user_device_ids = [ObjectId(d["_id"]) for d in user_devices]
+    if not user_device_ids:
+        return {"message": "No devices found for this account", "resolved_count": 0}
+
+    result = await db.alerts.update_many(
+        {
+            "deviceId": {"$in": user_device_ids},
+            "resolved": {"$ne": True},
+        },
+        {
+            "$set": {
+                "resolved": True,
+                "resolvedAt": datetime.utcnow(),
+                "updatedAt": datetime.utcnow(),
+            }
+        },
+    )
+
+    return {"message": "All active alerts resolved successfully", "resolved_count": result.modified_count}

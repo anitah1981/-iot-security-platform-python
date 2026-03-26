@@ -383,11 +383,16 @@
         const who = document.querySelector("#who");
         const sessionMsg = document.querySelector("#sessionmsg");
         const unlockMsg = document.querySelector("#unlockmsg");
+        let me = null;
+        let profileLoadError = null;
 
         try {
-          const me = await api("/api/auth/me");
-          who.textContent = `${me.name} (${me.email})`;
-          
+          me = await Promise.race([
+            api("/api/auth/me"),
+            timeoutPromise(20000, "Profile load timed out")
+          ]);
+          if (who) who.textContent = `${me.name} (${me.email})`;
+
           // Fill account info
           document.querySelector("#userEmail").textContent = me.email;
           document.querySelector("#userName").textContent = me.name;
@@ -398,11 +403,22 @@
           if (adminCard) {
             adminCard.style.display = me.role === "admin" ? "block" : "none";
           }
+        } catch(e) {
+          if (e && e.unauthorized) {
+            clearAuth();
+            window.location.href = "/login";
+            return;
+          }
+          profileLoadError = e;
+          if (who) who.textContent = "Signed in";
+          if (msg) { msg.textContent = "Profile is slow to load. Loading remaining settings…"; msg.className = "msg"; }
+        }
 
-          if(me.role === "admin"){
+        try {
+          if (me && me.role === "admin") {
             await loadMonitoringStatus();
           }
-          
+
           // Load subscription and usage
           await loadSubscription();
           await loadUsage();
@@ -410,15 +426,16 @@
           await loadMfaStatus();
           await loadDeviceAgentKey();
           await loadRouterIpSettings();
-        } catch(e) {
-          if (e && e.unauthorized) {
-            clearAuth();
-            window.location.href = "/login";
-            return;
+          if (profileLoadError && msg) {
+            setTimeout(() => {
+              if (msg.textContent === "Profile is slow to load. Loading remaining settings…") {
+                msg.textContent = "";
+                msg.className = "msg";
+              }
+            }, 4000);
           }
-          const msg = document.querySelector("#settingsmsg");
+        } catch (e) {
           if (msg) { msg.textContent = e?.message || "Something went wrong. Please try again."; msg.className = "msg bad"; }
-          return;
         }
       }
 

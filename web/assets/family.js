@@ -11,6 +11,8 @@ async function loadFamilyPage() {
   const who = document.getElementById('who');
   const nameDisplay = document.getElementById('familyNameDisplay');
 
+  // Profile call should not block family features if it is slow.
+  let profileLoadError = null;
   try {
     currentUser = await Promise.race([
       api('/api/auth/me'),
@@ -19,44 +21,53 @@ async function loadFamilyPage() {
     if (who) {
       who.textContent = `${currentUser.name} (${currentUser.email})`;
     }
-
-    try {
-      currentFamily = await Promise.race([
-        api('/api/family/my-family'),
-        timeout(20000, 'Family load timed out')
-      ]);
-      showHasFamily();
-      await loadFamilyDetails();
-    } catch (error) {
-      const errorMsg = error?.message || String(error || '');
-      if (errorMsg.includes('not part of any family') || errorMsg.includes('404') || errorMsg.includes('not found')) {
-        showNoFamily();
-      } else {
-        console.error('Error loading family:', error);
-        // Show no family state as fallback
-        showNoFamily();
-        const msgEl = document.getElementById('createMsg');
-        if (msgEl) {
-          msgEl.textContent = 'Unable to load family details. You can create a new family below.';
-          msgEl.className = 'msg';
-        }
-      }
-    }
   } catch (error) {
-    console.error('Failed to load family page:', error);
+    profileLoadError = error;
+    // Unauthorized still requires redirect.
     if (error && error.unauthorized) {
       clearAuth();
       const currentPath = window.location.pathname;
       window.location.href = `/login?redirect=${encodeURIComponent(currentPath)}`;
       return;
     }
-    showNoFamily();
-    const msgEl = document.getElementById('createMsg');
-    if (msgEl) {
-      msgEl.textContent = error?.message || 'Failed to load. Please try again.';
-      msgEl.className = 'msg bad';
+    if (who) who.textContent = 'Signed in';
+  }
+
+  try {
+    currentFamily = await Promise.race([
+      api('/api/family/my-family'),
+      timeout(25000, 'Family load timed out')
+    ]);
+    showHasFamily();
+    await loadFamilyDetails();
+    if (profileLoadError) {
+      const msgEl = document.getElementById('createMsg');
+      if (msgEl) {
+        msgEl.textContent = 'Family loaded. Profile info is slow right now.';
+        msgEl.className = 'msg';
+      }
     }
-    if (nameDisplay) nameDisplay.textContent = 'Could not load';
+  } catch (error) {
+    const errorMsg = error?.message || String(error || '');
+    if (errorMsg.includes('not part of any family') || errorMsg.includes('404') || errorMsg.includes('not found')) {
+      showNoFamily();
+      if (profileLoadError) {
+        const msgEl = document.getElementById('createMsg');
+        if (msgEl) {
+          msgEl.textContent = 'Profile is slow to load, but you can still create a family below.';
+          msgEl.className = 'msg';
+        }
+      }
+    } else {
+      console.error('Error loading family:', error);
+      showNoFamily();
+      const msgEl = document.getElementById('createMsg');
+      if (msgEl) {
+        msgEl.textContent = error?.message || 'Unable to load family details. You can create a new family below.';
+        msgEl.className = 'msg bad';
+      }
+      if (nameDisplay) nameDisplay.textContent = 'Could not load';
+    }
   }
 }
 

@@ -24,7 +24,7 @@
         }
       })();
     </script>
-    <script defer src="/assets/app.js?v=16"></script>
+    <script defer src="/assets/app.js?v=17"></script>
     <script defer src="/assets/charts.js?v=7"></script>
     <script defer src="/assets/websocket-client.js?v=7"></script>
   </head>
@@ -287,11 +287,31 @@
                     </button>
                   </div>
                 </div>
+                <!-- Bulk resolve controls -->
+                <div style="display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 10px;">
+                  <div style="display: flex; align-items: center; gap: 10px;">
+                    <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; color: var(--muted);">
+                      <input type="checkbox" id="selectAllAlerts" onchange="setSelectAllAlerts(this.checked)">
+                      <span>Select all (page)</span>
+                    </label>
+                  </div>
+                  <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+                    <button class="btn-sm" onclick="resolveSelectedAlerts()" style="background: var(--primary); color: white;">
+                      ✅ Resolve selected
+                    </button>
+                    <button class="btn-sm" onclick="resolveAllAlerts()" style="background: var(--ok); color: white;">
+                      ✅ Resolve all (active)
+                    </button>
+                  </div>
+                </div>
                 <div id="activeAlertsPaginationTop" class="alerts-pagination" style="margin-bottom: 12px;"></div>
                 <div class="alerts-table-scroll" id="alertsContent">
                   <table class="alerts-table">
                     <thead>
                       <tr>
+                        <th style="width: 48px; text-align: center;">
+                          <input type="checkbox" id="selectAllAlertsTable" onchange="setSelectAllAlerts(this.checked)">
+                        </th>
                         <th style="width: 90px;">Action</th>
                         <th>Severity</th>
                         <th>Type</th>

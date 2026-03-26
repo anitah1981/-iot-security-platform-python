@@ -255,6 +255,7 @@ async function loadDashboard(){
   const msg = qs("#dashmsg");
   const who = qs("#who");
   if (who) who.textContent = "Loading profile…";
+  let profileLoadError = null;
 
   try{
     const me = await Promise.race([
@@ -277,9 +278,8 @@ async function loadDashboard(){
       window.location.href = `/login?redirect=${encodeURIComponent(window.location.pathname)}`;
       return;
     }
-    if (msg) msg.textContent = e?.message || "Failed to load. Please try again.";
-    if (who) who.textContent = "Could not load profile";
-    return;
+    profileLoadError = e;
+    if (who) who.textContent = "Signed in";
   }
 
   if (msg) msg.textContent = "Loading…";
@@ -322,6 +322,16 @@ async function loadDashboard(){
     setTimeout(() => {
       checkDeviceStatus().catch(err => console.log("Device status check:", err.message));
     }, 5000);
+    if (profileLoadError && msg) {
+      msg.className = "msg";
+      msg.textContent = "Dashboard loaded. Profile info is slow right now.";
+      setTimeout(() => {
+        if (msg && msg.textContent === "Dashboard loaded. Profile info is slow right now.") {
+          msg.textContent = "";
+          msg.className = "msg";
+        }
+      }, 4000);
+    }
   }catch(e){
     console.error("Dashboard load error:", e);
     if (msg) {
@@ -644,13 +654,20 @@ function renderAlerts(alerts){
   const unresolvedAlerts = alerts.filter(a => !a.resolved);
   
   if(!unresolvedAlerts.length){
-    tbody.innerHTML = `<tr><td colspan="6" class="hint">No active alerts. All clear! 🎉</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="7" class="hint">No active alerts. All clear! 🎉</td></tr>`;
+    const master = qs("#selectAllAlerts");
+    if(master) master.checked = false;
+    const masterTable = qs("#selectAllAlertsTable");
+    if(masterTable) masterTable.checked = false;
     return;
   }
   
   // Action column first so Resolve is always visible without horizontal scroll
   const html = unresolvedAlerts.map(a => `
     <tr class="alert-row" data-alert-id="${a.id || a._id}">
+      <td style="width: 48px; text-align: center;">
+        <input type="checkbox" class="alertSelect" value="${a.id || a._id}">
+      </td>
       <td class="alert-action"><button class="btn-sm" onclick="resolveAlert('${a.id}')">Resolve</button></td>
       <td><span class="${badgeForSeverity(a.severity)}">${esc(a.severity)}</span></td>
       <td>${esc(a.type)}</td>
@@ -661,6 +678,12 @@ function renderAlerts(alerts){
   `).join("");
   
   tbody.innerHTML = html;
+  
+  // Reset master checkboxes on each render (we only mean "this page").
+  const master = qs("#selectAllAlerts");
+  if(master) master.checked = false;
+  const masterTable = qs("#selectAllAlertsTable");
+  if(masterTable) masterTable.checked = false;
 }
 
 // Render resolved alerts in a separate section
@@ -732,6 +755,115 @@ async function resolveAlert(alertId){
     msg.className = "msg bad";
     msg.textContent = "Failed to resolve alert: " + e.message;
     console.error("Resolve alert error:", e);
+  }
+}
+
+// ---------------------------
+// Bulk resolve active alerts
+// ---------------------------
+function setSelectAllAlerts(checked){
+  const rowBoxes = document.querySelectorAll("#alerts .alertSelect");
+  rowBoxes.forEach(cb => { cb.checked = !!checked; });
+  const masterTable = qs("#selectAllAlertsTable");
+  if(masterTable) masterTable.checked = !!checked;
+  const master = qs("#selectAllAlerts");
+  if(master) master.checked = !!checked;
+}
+
+// Backwards-compat (if any inline handler still calls the old name)
+function toggleSelectAllAlerts(){
+  const master = qs("#selectAllAlerts");
+  const masterTable = qs("#selectAllAlertsTable");
+  const checked = master ? master.checked : (masterTable ? masterTable.checked : false);
+  setSelectAllAlerts(checked);
+}
+
+function getSelectedAlertIdsOnPage(){
+  const boxes = document.querySelectorAll("#alerts .alertSelect:checked");
+  return Array.from(boxes).map(b => b.value).filter(Boolean);
+}
+
+async function resolveSelectedAlerts(){
+  const msg = qs("#dashmsg");
+  const ids = getSelectedAlertIdsOnPage();
+  if(!ids.length){
+    if(msg){
+      msg.className = "msg bad";
+      msg.textContent = "Select one or more alerts to resolve.";
+      setTimeout(() => { msg.textContent = ""; msg.className = "msg"; }, 2500);
+    }
+    return;
+  }
+  
+  try{
+    if(msg){
+      msg.className = "msg";
+      msg.textContent = `Resolving ${ids.length} selected alert${ids.length === 1 ? "" : "s"}…`;
+    }
+    
+    await api("/api/alerts/resolve-multiple", {
+      method: "POST",
+      body: { alert_ids: ids }
+    });
+    
+    // Reload active alerts page and resolved section.
+    await loadActiveAlertsPage(activeAlertsPage);
+    const resolvedData = await api("/api/alerts?limit=100&page=1&resolved=true").catch(() => ({ alerts: [] }));
+    renderResolvedAlerts(resolvedData.alerts || []);
+    
+    const resolvedContent = qs("#resolvedAlertsContent");
+    if(resolvedContent && (!resolvedContent.style.display || resolvedContent.style.display === 'none')) {
+      resolvedContent.style.display = 'block';
+      const toggle = qs("#resolvedToggle");
+      if(toggle) toggle.textContent = '▼';
+    }
+    
+    if(msg){
+      msg.className = "msg ok";
+      msg.textContent = `Resolved ${ids.length} alert${ids.length === 1 ? "" : "s"}!`;
+      setTimeout(() => { msg.textContent = ""; msg.className = "msg"; }, 2200);
+    }
+  }catch(e){
+    if(msg){
+      msg.className = "msg bad";
+      msg.textContent = "Failed to resolve selected alerts: " + e.message;
+    }
+    console.error("resolveSelectedAlerts error:", e);
+  }
+}
+
+async function resolveAllAlerts(){
+  const msg = qs("#dashmsg");
+  try{
+    if(msg){
+      msg.className = "msg";
+      msg.textContent = "Resolving all active alerts…";
+    }
+    
+    await api("/api/alerts/resolve-all", { method: "POST" });
+    
+    await loadActiveAlertsPage(activeAlertsPage);
+    const resolvedData = await api("/api/alerts?limit=100&page=1&resolved=true").catch(() => ({ alerts: [] }));
+    renderResolvedAlerts(resolvedData.alerts || []);
+    
+    const resolvedContent = qs("#resolvedAlertsContent");
+    if(resolvedContent && (!resolvedContent.style.display || resolvedContent.style.display === 'none')) {
+      resolvedContent.style.display = 'block';
+      const toggle = qs("#resolvedToggle");
+      if(toggle) toggle.textContent = '▼';
+    }
+    
+    if(msg){
+      msg.className = "msg ok";
+      msg.textContent = "All active alerts resolved!";
+      setTimeout(() => { msg.textContent = ""; msg.className = "msg"; }, 2200);
+    }
+  }catch(e){
+    if(msg){
+      msg.className = "msg bad";
+      msg.textContent = "Failed to resolve all alerts: " + e.message;
+    }
+    console.error("resolveAllAlerts error:", e);
   }
 }
 
