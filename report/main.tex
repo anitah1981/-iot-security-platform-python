@@ -1,0 +1,85 @@
+% Final-year project report: IoT availability and anomaly monitoring
+% Engine: pdflatex + biber (Harvard-style author-year via biblatex)
+\documentclass[a4paper,12pt,openany]{report}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage[british]{babel}
+\usepackage{microtype}
+\usepackage{geometry}
+\geometry{margin=2.5cm}
+\usepackage{setspace}
+\onehalfspacing
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{longtable}
+\usepackage{array}
+\usepackage{csquotes}
+\usepackage[hidelinks]{hyperref}
+\usepackage[style=authoryear,backend=biber,giveninits=true,uniquename=init,maxcitenames=2,maxbibnames=99,url=true,doi=true]{biblatex}
+\addbibresource{references.bib}
+
+\input{chapters/figure-basenames}
+
+\graphicspath{{figures/}}
+
+% #3 = basename macro from figure-basenames.tex (raw FIGURE_4_1... breaks "_" in text mode).
+\newcommand{\figpdf}[3]{%
+  \begin{figure}[htbp]
+    \centering
+    \edef\fig@base{#3}%
+    \IfFileExists{figures/\fig@base.pdf}{%
+      \includegraphics[width=0.92\textwidth]{figures/\fig@base.pdf}%
+    }{%
+      \begin{minipage}{0.92\textwidth}
+        \centering
+        \fboxrule=0.35pt
+        \fboxsep=12pt
+        \fbox{%
+          \parbox{0.86\textwidth}{%
+            \centering\vspace{2.0cm}
+            \textbf{Figure file missing:} \texttt{figures/\fig@base.pdf}\\[0.6em]
+            \small Export \texttt{docs/report\_figures/\fig@base.svg} to PDF and save as \texttt{report/figures/\fig@base.pdf}.
+            \vspace{2.0cm}%
+          }%
+        }%
+      \end{minipage}%
+    }%
+    \caption{#1}%
+    \label{#2}%
+  \end{figure}%
+}
+
+\title{A Security Monitoring, Availability and Anomaly Detection Platform for Home and Small-to-Medium Business \textsc{Iot} Environments}
+\author{Anita Joy\\[0.5em]\normalsize BSc Final Year Project}
+\date{April 2026}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+\input{chapters/abstract}
+\end{abstract}
+
+\tableofcontents
+\listoffigures
+\listoftables
+
+% Align chapter numbering with the report structure you used in Word (Ch.5 = Introduction).
+\setcounter{chapter}{4}
+
+\include{chapters/ch05-introduction}
+\include{chapters/ch06-background}
+\include{chapters/ch07-literature}
+\include{chapters/ch08-requirements}
+\include{chapters/ch09-design}
+\include{chapters/ch10-implementation}
+\include{chapters/ch11-testing}
+\include{chapters/ch12-reflection}
+\include{chapters/ch13-future}
+\include{chapters/ch14-conclusion}
+
+\include{chapters/ch15-references}
+
+\end{document}

@@ -289,48 +289,65 @@ async def get_current_user_for_pages(request: Request):
         return RedirectResponse(url="/login", status_code=302)
 
 
-async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)):
-    """Dependency to get current authenticated user (API: requires Authorization header)"""
-    token = credentials.credentials
-    
+async def _user_from_access_token_string(token: str) -> dict:
+    """Validate JWT and return user document (shared by header-only and header-or-cookie auth)."""
     try:
         payload = jwt.decode(
             token,
             JWT_SECRET,
             algorithms=[JWT_ALGORITHM],
-            issuer=JWT_ISSUER
+            issuer=JWT_ISSUER,
         )
-        user_id: str = payload.get("sub")
-        
+        user_id: str | None = payload.get("sub")
         if user_id is None:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid authentication credentials"
+                detail="Invalid authentication credentials",
             )
-        
         db = await get_database()
-        from bson import ObjectId
         user = await db.users.find_one({"_id": ObjectId(user_id)})
-        
         if user is None:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="User not found"
+                detail="User not found",
             )
-        
         if not _email_verified(user):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail="Email not verified. Please verify your email then sign in again."
+                detail="Email not verified. Please verify your email then sign in again.",
             )
-
         return user
-        
     except JWTError:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid authentication credentials"
+            detail="Invalid authentication credentials",
         )
+
+
+async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)):
+    """Dependency to get current authenticated user (API: requires Authorization header)"""
+    return await _user_from_access_token_string(credentials.credentials)
+
+
+async def get_current_user_bearer_or_cookie(
+    request: Request,
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(HTTPBearer(auto_error=False)),
+):
+    """
+    Like get_current_user, but also accepts the iot_token cookie (for /docs and /openapi.json
+    in the browser, where Swagger fetches the schema without an Authorization header).
+    """
+    token: Optional[str] = None
+    if credentials and credentials.credentials:
+        token = credentials.credentials.strip()
+    if not token:
+        token = (request.cookies.get("iot_token") or "").strip()
+    if not token:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Not authenticated",
+        )
+    return await _user_from_access_token_string(token)
 
 
 async def require_admin(current_user: dict = Depends(get_current_user)) -> dict:

@@ -12,10 +12,16 @@ export default function AuditLogsScreen() {
   const loadData = async () => {
     try {
       setError(null);
-      const res = await api.get('/api/audit?limit=50');
+      const res = await api.get('/api/audit/logs', { params: { limit: 50 } });
       setLogs(res.data?.logs || []);
     } catch (e) {
-      setError(e.response?.data?.detail || 'Failed to load audit logs');
+      const st = e.response?.status;
+      if (st === 403) {
+        setError('Audit logs are available on the Business plan. Open the web app to upgrade.');
+      } else {
+        const d = e.response?.data?.detail;
+        setError(typeof d === 'string' ? d : 'Failed to load audit logs');
+      }
     } finally {
       setLoading(false);
       setRefreshing(false);

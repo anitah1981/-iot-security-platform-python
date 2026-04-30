@@ -65,7 +65,7 @@ export default function LoginScreen({ navigation }) {
   const handleSetServerUrl = async () => {
     const url = serverUrlInput.trim();
     if (!url) {
-      Alert.alert('Error', 'Enter a server URL (e.g. https://xxx.up.railway.app)');
+      Alert.alert('Error', 'Enter a server URL (e.g. https://www.pro-alert.co.uk)');
       return;
     }
     setSavingUrl(true);
@@ -167,10 +167,10 @@ export default function LoginScreen({ navigation }) {
             </Text>
           </TouchableOpacity>
 
-          <Text style={styles.overrideLabel}>Not working? Enter your Railway URL and tap Use:</Text>
+          <Text style={styles.overrideLabel}>Not working? Enter API base URL and tap Use:</Text>
           <TextInput
             style={[styles.input, styles.serverInput]}
-            placeholder="https://xxx.up.railway.app"
+            placeholder="https://www.pro-alert.co.uk"
             placeholderTextColor={colors.muted}
             value={serverUrlInput}
             onChangeText={setServerUrlInput}

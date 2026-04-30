@@ -15,6 +15,7 @@ from middleware.security import (
     setup_rate_limiting,
 )
 from middleware.csrf import CSRFProtectionMiddleware
+from middleware.maintenance import MaintenanceModeMiddleware
 
 
 def setup_middleware(app: FastAPI) -> None:
@@ -70,3 +71,6 @@ def setup_middleware(app: FastAPI) -> None:
         allow_methods=["*"],
         allow_headers=["*"],
     )
+
+    # Outermost: block public traffic while Railway can still hit /api/health and /api/ready
+    app.add_middleware(MaintenanceModeMiddleware)

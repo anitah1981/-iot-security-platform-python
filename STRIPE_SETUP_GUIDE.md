@@ -123,7 +123,7 @@ STRIPE_WEBHOOK_SECRET=whsec_your_webhook_secret_here
 
 1. In Stripe Dashboard, go to **Developers** → **Webhooks**
 2. Click **Add endpoint**
-3. **Endpoint URL**: `https://yourdomain.com/api/payments/webhook`
+3. **Endpoint URL**: `https://www.pro-alert.co.uk/api/payments/webhook` (or your real `APP_BASE_URL` host, same origin as the app)
 4. **Events to send**:
    - `checkout.session.completed`
    - `customer.subscription.updated`
@@ -212,9 +212,7 @@ STRIPE_PRICE_BUSINESS=price_live_business_price_id
 STRIPE_WEBHOOK_SECRET=whsec_live_webhook_secret
 ```
 
-4. **Update URLs in Code**:
-   - In `routes/payments.py`, update `success_url` and `cancel_url` to your production domain
-   - In `services/stripe_service.py`, ensure all URLs point to production
+4. **Redirects**: Checkout success/cancel and Customer Portal return URLs use **`APP_BASE_URL`** from the environment (see `get_public_app_base_url()` in `core/config.py`). Set `APP_BASE_URL=https://www.yourdomain.com` on Railway with no trailing slash.
 
 ---
 

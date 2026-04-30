@@ -206,16 +206,29 @@ async def get_devices(
         )
 
 @router.get("/{device_id}/status")
-async def get_device_status(device_id: str):
+async def get_device_status(device_id: str, user: dict = Depends(get_current_user)):
     """
     Get live status/details for a single device
     
     Use logical device_id (like 'dev-001')
     """
     db = await get_database()
-    
-    device = await db.devices.find_one({"deviceId": device_id, "isDeleted": {"$ne": True}})
-    
+    user_id = user["_id"]
+    if not isinstance(user_id, ObjectId):
+        user_id = ObjectId(user_id)
+
+    family_id = await _get_user_family_id(user_id, db)
+    if family_id:
+        filter_query = {"deviceId": device_id, "family_id": family_id, "isDeleted": {"$ne": True}}
+    else:
+        filter_query = {
+            "deviceId": device_id,
+            "isDeleted": {"$ne": True},
+            "$or": [{"userId": user_id}, {"user_id": user_id}],
+        }
+
+    device = await db.devices.find_one(filter_query)
+
     if not device:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,

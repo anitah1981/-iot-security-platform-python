@@ -1,0 +1,1 @@
+﻿Literature Review and Research Context127.1IoT Security Research127.2Intrusion Detection and Monitoring in IoT Environments127.3Availability Monitoring and Heartbeat Mechanisms137.4Anomaly Detection Approaches137.5Commercial and Academic Solutions147.6Identified Research Gap157.7Summary158

@@ -6,6 +6,7 @@ import {
   ScrollView,
   ActivityIndicator,
   TouchableOpacity,
+  Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import api from '../config/api';
@@ -46,10 +47,15 @@ export default function AlertDetailScreen({ route }) {
 
     setResolving(true);
     try {
-      await api.put(`/api/alerts/${alertId}/resolve`);
-      await loadAlert(); // Reload to get updated status
+      await api.post(`/api/alerts/${alertId}/resolve`);
+      Alert.alert('Resolved', 'This alert was marked as resolved.');
+      await loadAlert();
     } catch (error) {
-      console.error('Error resolving alert:', error);
+      const msg = error.response?.data?.detail;
+      Alert.alert(
+        'Could not resolve',
+        typeof msg === 'string' ? msg : 'Please try again.'
+      );
     } finally {
       setResolving(false);
     }
@@ -151,6 +157,12 @@ export default function AlertDetailScreen({ route }) {
       )}
     </ScrollView>
   );
+}
+
+function formatDate(value) {
+  if (!value) return '—';
+  const d = new Date(value);
+  return Number.isNaN(d.getTime()) ? '—' : d.toLocaleString();
 }
 
 function InfoRow({ label, value }) {

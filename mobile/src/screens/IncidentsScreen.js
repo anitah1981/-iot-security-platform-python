@@ -15,7 +15,21 @@ export default function IncidentsScreen() {
       const res = await api.get('/api/incidents');
       setIncidents(res.data?.incidents || []);
     } catch (e) {
-      setError(e.response?.data?.detail || 'Failed to load incidents');
+      const st = e.response?.status;
+      const detail = e.response?.data?.detail;
+      const msg =
+        typeof detail === 'string'
+          ? detail
+          : Array.isArray(detail)
+            ? detail.map((x) => x.msg || x).join(', ')
+            : 'Failed to load incidents';
+      if (st === 403) {
+        setError(
+          'Incidents need a Pro or Business plan. Upgrade on the web app, or use Alerts for all users.'
+        );
+      } else {
+        setError(msg);
+      }
     } finally {
       setLoading(false);
       setRefreshing(false);

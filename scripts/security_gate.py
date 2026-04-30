@@ -14,6 +14,12 @@ def main():
     failed = []
     env = os.getenv("APP_ENV", "local").lower()
 
+    # CSRF: stable secret required in production (multi-worker / restarts; avoids per-process random)
+    if env == "production":
+        csrf = (os.getenv("CSRF_SECRET") or "").strip()
+        if len(csrf) < 32:
+            failed.append("CSRF_SECRET must be set (32+ random chars) in production")
+
     # JWT: require set and not a placeholder; length 32+ only in production
     jwt = (os.getenv("JWT_SECRET") or "").strip()
     forbidden = ("change-me-in-production", "changeme", "secret", "your-super-secret-key-change-in-production", "your_secret")

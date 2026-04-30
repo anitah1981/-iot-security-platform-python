@@ -1,0 +1,51 @@
+% Generated from ICA_2.docx — re-run: python scripts/ica2_emit_latex.py
+\chapter{Introduction}
+\label{ch:intro}
+
+\section{Project Context}
+
+Internet of Things (IoT) has become an integral component of modern digital infrastructure, particularly within residential and small to medium business (SMB) environments. Smart cameras, doorbells, thermostats, health devices, and industrial sensors are increasingly deployed to improve efficiency, safety, and convenience. Industry reports indicate sustained growth in the number of connected devices globally, with consumer and SMB deployments accounting for a significant proportion of this expansion (IoT Analytics, 2024).
+
+However, this rapid adoption has not been matched by equivalent advances in user-level security awareness or protective controls. Unlike enterprise environments, which typically deploy dedicated intrusion detection systems (IDS), security information and event management (SIEM) platforms, and trained security personnel, home and SMB users often rely on default device configurations and minimal router-level protections (Hassan et al., 2020). As a result, many IoT devices operate with limited monitoring, poor visibility, and inadequate alerting mechanisms. When devices fail, are tampered with, or are deliberately disrupted, users may remain unaware for extended periods, increasing both security and safety risks.
+
+\section{Problem Statement}
+
+A central problem addressed by this project is that many IoT devices provide little or no meaningful feedback to users when they are compromised, disconnected, or rendered unavailable. Deliberate interference techniques such as Wi-Fi jamming or network level disruption can silently disable devices without triggering alerts, leaving users with a false sense of security (TechHive, 2024). For example, a security camera or smart alarm may appear operational while it has lost network connectivity or is no longer reporting data.
+
+Existing consumer solutions tend to focus on individual devices rather than providing holistic monitoring across an entire IoT environment (ENISA, 2023). Conversely, enterprise grade monitoring and detection systems are typically complex, expensive, and unsuitable for non-expert users. This creates a gap between consumer convenience products and professional security solutions, particularly for SMBs that require greater assurance than typical home users but lack enterprise level resources.
+
+The problem is therefore twofold: first, there is insufficient visibility into the real-time operational status of IoT devices in home and SMB settings; second, there is a lack of affordable and user-friendly tools capable of detecting anomalous behaviour and availability issues across heterogeneous IoT deployments.
+
+\section{Aim and Objectives}
+
+The primary aim of this project is to design and implement a security monitoring application that enhances visibility, availability awareness, and anomaly detection for IoT devices in home and SMB environments.
+
+To achieve this aim, the project pursues the following objectives:
+
+To analyse common security and availability risks affecting IoT devices in home and SMB contexts.
+
+To define functional and non-functional requirements for a lightweight IoT monitoring platform that does not rely on additional hardware.
+
+To design a system architecture capable of registering devices, monitoring their operational status, and detecting anomalous behaviour.
+
+To implement a prototype application incorporating heartbeat monitoring and alerting mechanisms.
+
+To evaluate the effectiveness of the system through structured testing and simulated failure scenarios.
+
+To critically reflect on the limitations of the solution and identify opportunities for further development.
+
+\section{Scope of the Project}
+
+The scope of this project is intentionally focused on monitoring, availability detection, and anomaly awareness rather than deep packet inspection or full network intrusion prevention. The system is designed to support a range of IoT devices typically found in home and SMB environments, regardless of manufacturer, provided that basic connectivity and identification can be established.
+
+The project does not aim to replace enterprise IDS or SIEM platforms, nor does it attempt to perform invasive traffic analysis that may raise ethical or legal concerns. Instead, it focuses on lightweight, behaviour-based indicators such as device presence, heartbeat consistency, and connectivity changes. The solution is implemented as a software-based platform, avoiding the need for specialist hardware or complex network reconfiguration.
+
+\section{Constraints and Assumptions}
+
+Several constraints influence the design and implementation of the project. These include limitations on development time, the requirement to produce a prototype rather than a fully commercialised system, and the need to operate within the technical skills and resources available to an undergraduate project. Additionally, the system assumes that monitored devices are connected via IP-based networks and that users consent to the monitoring of device status information.
+
+Legal and ethical considerations also impose constraints, particularly relating to data protection and user privacy. The project therefore avoids unnecessary personal data and adheres to principles aligned with the General Data Protection Regulation (GDPR).
+
+\section{Structure of the Report}
+
+This report is structured as follows. Chapter 6 presents background research and further elaborates on the problem domain. Chapter 7 reviews relevant literature and existing solutions within the field of IoT security and monitoring. Chapter 8 defines the system requirements and specifications. Chapter 9 describes the system design, while Chapter 10 details the implementation process. Chapter 11 evaluates the system through testing and analysis. Chapter 12 provides a critical reflection on the project and discusses limitations and lessons learned. Chapter 13 outlines potential future developments, and Chapter 14 concludes the report.

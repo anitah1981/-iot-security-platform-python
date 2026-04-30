@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 880 300" font-family="Segoe UI, Arial, sans-serif" font-size="12">
+  <defs>
+    <linearGradient id="bg2" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#fef2f2"/>
+      <stop offset="100%" style="stop-color:#f8fafc"/>
+    </linearGradient>
+    <filter id="sh2" x="-5%" y="-5%" width="110%" height="110%">
+      <feDropShadow dx="0" dy="2" stdDeviation="2" flood-opacity="0.12"/>
+    </filter>
+  </defs>
+  <rect width="880" height="300" fill="url(#bg2)"/>
+
+  <text x="440" y="20" text-anchor="middle" font-size="12" font-weight="600" fill="#0f172a">
+    <tspan x="440" dy="0">Figure 4.2: IoT-specific threat categories relevant to</tspan>
+    <tspan x="440" dy="16">availability and monitoring.</tspan>
+  </text>
+
+  <rect x="20" y="52" width="840" height="210" rx="10" fill="#ffffff" stroke="#64748b" stroke-width="1.5" filter="url(#sh2)"/>
+  <text x="36" y="74" font-weight="700" fill="#7f1d1d" font-size="13">Representative categories discussed in Section 4.2</text>
+
+  <g font-size="11" fill="#451a03">
+    <rect x="36" y="92" width="248" height="48" rx="8" fill="#fee2e2" stroke="#dc2626"/>
+    <text x="160" y="120" text-anchor="middle">Device hijacking / botnet recruitment</text>
+
+    <rect x="316" y="92" width="248" height="48" rx="8" fill="#fee2e2" stroke="#dc2626"/>
+    <text x="440" y="120" text-anchor="middle">DDoS and service abuse</text>
+
+    <rect x="596" y="92" width="248" height="48" rx="8" fill="#fee2e2" stroke="#dc2626"/>
+    <text x="720" y="120" text-anchor="middle">Data exfiltration</text>
+
+    <rect x="176" y="156" width="260" height="48" rx="8" fill="#fee2e2" stroke="#dc2626"/>
+    <text x="306" y="184" text-anchor="middle">Radio / Wi-Fi jamming and disruption</text>
+
+    <rect x="456" y="156" width="248" height="48" rx="8" fill="#fee2e2" stroke="#dc2626"/>
+    <text x="580" y="176" text-anchor="middle">Silent failure</text>
+    <text x="580" y="192" text-anchor="middle" font-size="10">(appears OK, no data or heartbeat)</text>
+  </g>
+
+  <text x="440" y="268" text-anchor="middle" font-size="11" fill="#64748b" font-style="italic">
+    Links to Chapter 4.2: availability loss as a security-relevant event
+  </text>
+</svg>

@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 440" font-family="Segoe UI, Calibri, Arial, sans-serif" font-size="13">
+  <defs>
+    <linearGradient id="g1" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#e8eef5"/><stop offset="1" stop-color="#d4dde8"/></linearGradient>
+    <linearGradient id="g2" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#e6f0f7"/><stop offset="1" stop-color="#c9dce8"/></linearGradient>
+    <marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><polygon points="0,0 8,4 0,8" fill="#334155"/></marker>
+    <marker id="ar2" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><polygon points="0,0 8,4 0,8" fill="#b45309"/></marker>
+  </defs>
+  <rect width="800" height="440" fill="#fafbfc"/>
+  <text x="400" y="28" text-anchor="middle" font-size="15" font-weight="600" fill="#1e293b">Layered system architecture</text>
+
+  <rect x="40" y="55" width="200" height="72" rx="6" fill="url(#g1)" stroke="#475569" stroke-width="1.5"/>
+  <text x="140" y="82" text-anchor="middle" font-weight="600" fill="#0f172a">Client (browser)</text>
+  <text x="140" y="102" text-anchor="middle" fill="#334155" font-size="11">Dashboard and auth UI</text>
+  <text x="140" y="118" text-anchor="middle" fill="#334155" font-size="11">HTTPS to API</text>
+
+  <rect x="300" y="48" width="280" height="178" rx="8" fill="url(#g2)" stroke="#1e3a5f" stroke-width="2"/>
+  <text x="440" y="74" text-anchor="middle" font-weight="700" fill="#0f172a">API and application (FastAPI)</text>
+  <rect x="320" y="88" width="240" height="38" rx="4" fill="#fff" stroke="#64748b"/>
+  <text x="440" y="111" text-anchor="middle" font-size="12">Routers / middleware (auth, CSRF, rate limits)</text>
+  <rect x="320" y="136" width="240" height="38" rx="4" fill="#fff" stroke="#64748b"/>
+  <text x="440" y="159" text-anchor="middle" font-size="12">Services (heartbeat sweep, alerts, notify)</text>
+  <rect x="320" y="184" width="240" height="34" rx="4" fill="#fff" stroke="#64748b"/>
+  <text x="440" y="205" text-anchor="middle" font-size="12">Background tasks and lifecycle</text>
+
+  <rect x="620" y="55" width="150" height="88" rx="6" fill="url(#g1)" stroke="#475569" stroke-width="1.5"/>
+  <text x="695" y="82" text-anchor="middle" font-weight="600" fill="#0f172a">Persistence</text>
+  <text x="695" y="102" text-anchor="middle" fill="#334155" font-size="11">MongoDB</text>
+  <text x="695" y="118" text-anchor="middle" fill="#334155" font-size="11">users, devices, alerts, ...</text>
+
+  <rect x="40" y="295" width="200" height="88" rx="6" fill="#fef3c7" stroke="#b45309" stroke-width="1.5"/>
+  <text x="140" y="322" text-anchor="middle" font-weight="600" fill="#78350f">IoT device / agent</text>
+  <text x="140" y="345" text-anchor="middle" fill="#92400e" font-size="11">POST /api/heartbeat</text>
+  <text x="140" y="365" text-anchor="middle" fill="#92400e" font-size="11">(direct or via agent)</text>
+
+  <path d="M 240 91 L 298 91" stroke="#334155" stroke-width="2" fill="none" marker-end="url(#arrow)"/>
+  <path d="M 582 110 L 618 110" stroke="#334155" stroke-width="2" fill="none" marker-end="url(#arrow)"/>
+  <path d="M 140 295 L 140 260 L 380 260 L 380 236" stroke="#b45309" stroke-width="2" fill="none" marker-end="url(#ar2)"/>
+
+  <rect x="480" y="300" width="290" height="110" rx="6" fill="#f1f5f9" stroke="#64748b" stroke-dasharray="6 4"/>
+  <text x="625" y="328" text-anchor="middle" font-size="11" font-weight="600" fill="#475569">External (optional)</text>
+  <text x="625" y="350" text-anchor="middle" fill="#64748b" font-size="11">Email / SMS / voice providers</text>
+  <text x="625" y="370" text-anchor="middle" fill="#64748b" font-size="11">Stripe / webhooks as configured</text>
+  <path d="M 580 190 L 620 238 L 620 298" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="4 3" fill="none" marker-end="url(#arrow)"/>
+
+  <text x="400" y="425" text-anchor="middle" fill="#64748b" font-size="11">Logical layers; deployment topology may vary.</text>
+</svg>

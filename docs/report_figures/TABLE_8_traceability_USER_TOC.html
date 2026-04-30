@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>§8.6 — Tables 2–4 (sequential numbering; paste into Word)</title>
+  <style>
+    body { font-family: "Segoe UI", Calibri, Arial, sans-serif; margin: 24px; color: #111; font-size: 11pt; max-width: 1050px; }
+    .paste-intro { border-left: 4px solid #1e3a5f; padding: 12px 16px; margin: 0 0 20px 0; background: #f8fafc; max-width: 1000px; line-height: 1.45; }
+    h2 { font-size: 12pt; margin: 28px 0 6px 0; font-weight: 700; }
+    .caption { font-style: italic; color: #334155; margin: 0 0 10px 0; max-width: 1000px; font-size: 10pt; }
+    table { border-collapse: collapse; width: 100%; max-width: 1000px; margin-bottom: 24px; }
+    th, td { border: 1px solid #64748b; padding: 8px 10px; vertical-align: top; text-align: left; }
+    th { background: #1e3a5f; color: #fff; font-weight: 600; }
+    tr:nth-child(even) td { background: #f8fafc; }
+    td:first-child { font-weight: 600; white-space: nowrap; }
+    .note { font-size: 9.5pt; color: #475569; margin-top: 16px; max-width: 1000px; line-height: 1.4; }
+  </style>
+</head>
+<body>
+
+  <p class="paste-intro"><strong>For Word:</strong> Copy the paragraph in the grey box below into §8.6, then copy each table with its caption. Do not copy this instruction block. Tables use <strong>global sequential</strong> numbering: <strong>Table 1</strong> = research gap (Ch.7 §7.6); <strong>Tables 2–4</strong> = traceability below. Subsection numbers (§9.x … §11.x) match your contents.</p>
+
+  <div class="paste-intro">
+    The following tables provide forward traceability from the project objectives in §5.3 through the functional requirements (FR1–FR8) and non-functional requirements (NFR1–NFR7) defined in this chapter, to the system design (Chapter&nbsp;9), implementation (Chapter&nbsp;10), and testing and evaluation (Chapter&nbsp;11). <strong>Table&nbsp;2</strong> maps each objective to the chapter where it is primarily evidenced. <strong>Tables&nbsp;3</strong> and&nbsp;<strong>4</strong> map each requirement to the subsections that address it; subsection numbers match this report’s table of contents. The Obj. column indicates which objectives (O2–O5) each requirement supports: O2 requirements definition, O3 design, O4 implementation, O5 evaluation.
+  </div>
+
+  <h2>Table 2 — Objectives to report chapters</h2>
+  <p class="caption">Table 2: Mapping of project objectives (§5.3) to report chapters.</p>
+  <table>
+    <thead>
+      <tr>
+        <th>Obj.</th>
+        <th>Objective (from §5.3)</th>
+        <th>Primary evidence in report</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td>O1</td><td>Analyse security and availability risks in home/SMB IoT</td><td>Ch.6 (background); Ch.7 (literature; including Table&nbsp;1 / §7.6 research gap)</td></tr>
+      <tr><td>O2</td><td>Define functional and non-functional requirements</td><td>Ch.8 (this chapter; §8.3–§8.4); Tables&nbsp;3–4</td></tr>
+      <tr><td>O3</td><td>Design architecture for registration, monitoring, anomaly detection</td><td>Ch.9 (system design)</td></tr>
+      <tr><td>O4</td><td>Implement prototype (heartbeat, alerting)</td><td>Ch.10 (implementation)</td></tr>
+      <tr><td>O5</td><td>Evaluate via structured testing and scenarios</td><td>Ch.11 (testing and evaluation)</td></tr>
+      <tr><td>O6</td><td>Critically reflect; identify further development</td><td>Ch.12 (reflection); Ch.13 (future work)</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Table 3 — Functional requirements traceability</h2>
+  <p class="caption">Table 3: FR1–FR8 mapped to design (Ch.9), implementation (Ch.10), and testing (Ch.11) subsections.</p>
+  <table>
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>Requirement (summary)</th>
+        <th>Obj.</th>
+        <th>Design (Ch.9)</th>
+        <th>Implementation (Ch.10)</th>
+        <th>Testing (Ch.11)</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td>FR1</td><td>User registration and authentication</td><td>O2–O5</td><td>§9.3–§9.4</td><td>§10.3, §10.9</td><td>§11.5</td></tr>
+      <tr><td>FR2</td><td>IoT device registration</td><td>O2–O5</td><td>§9.4, §9.8</td><td>§10.5</td><td>§11.3.1</td></tr>
+      <tr><td>FR3</td><td>Device heartbeat monitoring</td><td>O2–O5</td><td>§9.5</td><td>§10.6</td><td>§11.3.2</td></tr>
+      <tr><td>FR4</td><td>Availability status (online/offline/degraded)</td><td>O2–O5</td><td>§9.3–§9.5</td><td>§10.5–§10.6</td><td>§11.3.2</td></tr>
+      <tr><td>FR5</td><td>Anomaly detection (behaviour / connectivity)</td><td>O2–O5</td><td>§9.6</td><td>§10.7</td><td>§11.3.3</td></tr>
+      <tr><td>FR6</td><td>Alert generation and multi-channel notification</td><td>O2–O5</td><td>§9.7</td><td>§10.8</td><td>§11.4</td></tr>
+      <tr><td>FR7</td><td>Historical logging and retention</td><td>O2–O5</td><td>§9.8</td><td>§10.4, §10.10</td><td>§11.3, §11.6</td></tr>
+      <tr><td>FR8</td><td>Dashboard visualisation</td><td>O2–O5</td><td>§9.3</td><td>§10.2–§10.3</td><td>§11.3</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Table 4 — Non-functional requirements traceability</h2>
+  <p class="caption">Table 4: NFR1–NFR7 mapped to design (Ch.9), implementation (Ch.10), and testing (Ch.11) subsections.</p>
+  <table>
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>Requirement (summary)</th>
+        <th>Obj.</th>
+        <th>Design (Ch.9)</th>
+        <th>Implementation (Ch.10)</th>
+        <th>Testing (Ch.11)</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td>NFR1</td><td>Security (authentication, transport hardening, abuse resistance)</td><td>O2–O5</td><td>§9.4, §9.9</td><td>§10.9</td><td>§11.5</td></tr>
+      <tr><td>NFR2</td><td>Privacy / data minimisation (GDPR-aligned)</td><td>O2–O5</td><td>§6.5; §9.4, §9.8</td><td>§10.4–§10.5, §10.9</td><td>§11.5</td></tr>
+      <tr><td>NFR3</td><td>Usability for non-experts</td><td>O2–O5</td><td>§9.3</td><td>§10.2–§10.3</td><td>§11.6</td></tr>
+      <tr><td>NFR4</td><td>Scalability</td><td>O2–O5</td><td>§9.2, §9.8</td><td>§10.10</td><td>§11.6</td></tr>
+      <tr><td>NFR5</td><td>Reliability / false-positive control</td><td>O2–O5</td><td>§9.5–§9.6</td><td>§10.6–§10.7</td><td>§11.3.2–§11.3.3</td></tr>
+      <tr><td>NFR6</td><td>Performance (timely heartbeats and alerts)</td><td>O2–O5</td><td>§9.2</td><td>§10.10</td><td>§11.6</td></tr>
+      <tr><td>NFR7</td><td>Maintainability / modularity</td><td>O2–O5</td><td>§9.2, §9.9</td><td>§10.3</td><td>§11.9</td></tr>
+    </tbody>
+  </table>
+
+  <p class="note"><strong>NFR2:</strong> §6.5 (Background — ethical and legal context) is cited alongside Ch.9. <strong>§11.3</strong> in FR7 refers to the functional testing block as a whole (§11.3.1–§11.3.3).</p>
+</body>
+</html>

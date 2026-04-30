@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 820 520" font-family="Consolas, monospace" font-size="10">
+  <rect width="820" height="520" fill="#f8fafc"/>
+  <text x="410" y="22" text-anchor="middle" font-family="Segoe UI, Calibri, Arial, sans-serif" font-size="14" font-weight="600" fill="#1e293b">Backend module map (illustrative)</text>
+  <text x="410" y="40" text-anchor="middle" font-family="Segoe UI, Calibri, Arial, sans-serif" fill="#64748b" font-size="10">IoT-security-app-python; trim for report if needed.</text>
+
+  <rect x="24" y="52" width="772" height="456" rx="6" fill="#fff" stroke="#cbd5e1"/>
+  <text x="36" y="74" fill="#0f172a" font-weight="700">routes/</text>
+  <text x="48" y="92" fill="#334155">auth.py, devices.py, heartbeat.py, alerts.py,</text>
+  <text x="48" y="108" fill="#334155">payments.py, notification_preferences.py, audit.py, incidents.py,</text>
+  <text x="48" y="124" fill="#334155">analytics.py, discovery.py, exports.py, family.py, groups.py, network.py,</text>
+  <text x="48" y="140" fill="#334155">network_settings.py, password_reset.py, device_agent_key.py, agent_security.py</text>
+
+  <text x="36" y="168" fill="#0f172a" font-weight="700">services/</text>
+  <text x="48" y="186" fill="#334155">heartbeat_sweep.py, device_status_monitor.py, notification_service.py,</text>
+  <text x="48" y="202" fill="#334155">security_monitor.py, audit_logger.py, incident_correlator.py,</text>
+  <text x="48" y="218" fill="#334155">stripe_service.py, network_monitor.py, retention_cleanup.py, export_service.py,</text>
+  <text x="48" y="234" fill="#334155">device_agent_key_service.py, websocket_service.py</text>
+
+  <text x="36" y="262" fill="#0f172a" font-weight="700">middleware/</text>
+  <text x="48" y="280" fill="#334155">security.py, csrf.py, plan_limits.py, maintenance.py</text>
+
+  <text x="36" y="308" fill="#0f172a" font-weight="700">core / database / main</text>
+  <text x="48" y="326" fill="#334155">main.py, core/config.py, DB connection and indexes</text>
+
+  <text x="36" y="356" fill="#64748b" font-size="9" font-family="Segoe UI, Calibri, Arial, sans-serif">Supports modularity narrative (NFR7).</text>
+</svg>

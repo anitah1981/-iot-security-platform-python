@@ -32,7 +32,11 @@ def main():
     if not ok:
         print("\n[RELEASE GATE FAILED] Fix the above before deploying.")
         return 1
-    print("\n[RELEASE GATE PASSED] Safe to deploy. Then verify health/ready/startup on the deployed app.")
+    print(
+        "\n[RELEASE GATE PASSED] Safe to deploy. Then run live smoke tests, e.g.\n"
+        "  python scripts/verify_live.py https://your-custom-domain\n"
+        "  (or set LIVE_URL and TEST_EMAIL/TEST_PASSWORD as needed; see scripts/verify_live.py)"
+    )
     return 0
 
 

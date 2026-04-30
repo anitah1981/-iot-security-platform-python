@@ -13,14 +13,29 @@ export default function FamilyScreen() {
   const loadData = async () => {
     try {
       setError(null);
-      const [familyRes, membersRes] = await Promise.all([
-        api.get('/api/family'),
-        api.get('/api/family/members'),
-      ]);
-      setFamily(familyRes.data);
-      setMembers(membersRes.data?.members || []);
+      const familyRes = await api.get('/api/family/my-family');
+      const data = familyRes.data || {};
+      setFamily({
+        name: data.name,
+        id: data.id,
+        total_devices: data.total_devices,
+      });
+      setMembers(data.members || []);
     } catch (e) {
-      setError(e.response?.data?.detail || 'Failed to load family');
+      const msg = e.response?.data?.detail;
+      if (e.response?.status === 404) {
+        setFamily(null);
+        setMembers([]);
+        setError(
+          typeof msg === 'string'
+            ? msg
+            : 'You are not in a family yet. Create or join one from the web app.'
+        );
+      } else {
+        setError(
+          typeof msg === 'string' ? msg : 'Failed to load family'
+        );
+      }
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -71,7 +86,7 @@ export default function FamilyScreen() {
           <Text style={styles.muted}>No family members yet. Invite from the web app.</Text>
         ) : (
           members.map((m) => (
-            <View key={m.id} style={styles.memberCard}>
+            <View key={m.user_id || m.email} style={styles.memberCard}>
               <Text style={styles.memberName}>{m.name || m.email}</Text>
               <Text style={styles.muted}>{m.email}</Text>
               <Text style={styles.role}>{m.role || 'member'}</Text>

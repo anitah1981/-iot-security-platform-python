@@ -1,0 +1,52 @@
+\chapter{Ethics, privacy, and data handling}
+\label{app:ethics}
+
+This appendix summarises material that supports the ethical and legal discussion in Chapter~\ref{ch:bg} (\S~6.5) and the privacy-related non-functional requirements (Table~\ref{tab:ica1_3}, NFR2).
+
+\section{Consent and scope of monitoring}
+The prototype is intended for deployment only where the device owner or authorised administrator has \textbf{explicitly agreed} to monitor device metadata (availability, heartbeats, and related telemetry). It does not target covert monitoring of third parties.
+
+\section{Data minimisation}
+Monitoring is limited to information needed to determine device status and to raise alerts (see NFR2). Payload content from other applications or personal communications is out of scope and is not ingested by the design described in this report.
+
+\section{Retention and security}
+Any production deployment should define retention periods for logs and alerts, secure transport (HTTPS), and access control consistent with Chapter~\ref{ch:impl} (\S~10.9). The academic artefact may use local or cloud databases subject to institutional and GDPR-aligned policies.
+
+\chapter{Configuration and reproducibility}
+\label{app:config}
+
+\section{Build and test commands}
+The application source tree includes automated checks. Typical local steps (from the repository root) are:
+\begin{itemize}
+  \item Install Python dependencies: \texttt{pip install -r requirements.txt}
+  \item Run API tests: \texttt{pytest tests/}
+  \item Build this PDF: open PowerShell in \texttt{report} and run \texttt{build.ps1} (requires MiKTeX with \texttt{pdflatex} and \texttt{biber}).
+\end{itemize}
+
+\section{Environment variables (names only)}
+Table~\ref{tab:envkeys} lists principal environment variables used by the backend (see \texttt{.env.example} in the repository for comments and defaults). Values must be supplied locally or on the host platform; they are \textbf{not} reproduced here.
+
+\begin{table}[htbp]
+  \centering
+  \small
+  \caption{Principal configuration environment variables (names only).}
+  \label{tab:envkeys}
+  \begin{tabular}{p{5.2cm}p{9.5cm}}
+    \toprule
+    \textbf{Variable} & \textbf{Role (summary)} \\
+    \midrule
+    \texttt{MONGO\_URI} & MongoDB connection string. \\
+    \texttt{PORT} & HTTP port for the API service. \\
+    \texttt{JWT\_SECRET} & Signing secret for session tokens. \\
+    \texttt{APP\_BASE\_URL} & Canonical base URL for links and CORS. \\
+    \texttt{APP\_ENV} & Deployment mode (e.g.\ local, production). \\
+    \texttt{CORS\_ORIGINS} & Allowed browser origins. \\
+    \texttt{SENDGRID\_API\_KEY}, \texttt{SMTP\_*}, \texttt{FROM\_EMAIL} & Outbound email for verification and alerts. \\
+    \texttt{TWILIO\_*}, \texttt{SMS\_ENABLED} & Optional SMS, voice, and WhatsApp channels. \\
+    \texttt{STRIPE\_*} & Optional subscription billing (Stripe). \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\section{Figures}
+Diagram sources live under \texttt{docs/report\_figures/} and may be exported to PDF for inclusion under \texttt{report/figures/} using the repository export script where applicable.

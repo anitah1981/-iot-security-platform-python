@@ -7,10 +7,68 @@ from datetime import datetime, timedelta
 from models import AlertCreate, AlertResponse, AlertListResponse
 from database import get_database
 from routes.auth import get_current_user
+from routes.devices import _get_user_family_id
 
 from pydantic import BaseModel, Field
 
 router = APIRouter()
+
+
+async def _device_ids_for_user_alerts(db, user_id: ObjectId) -> list[ObjectId]:
+    """Devices whose alerts this user may see (solo + family), matching device list semantics."""
+    family_id = await _get_user_family_id(user_id, db)
+    if family_id:
+        q = {
+            "$or": [
+                {"userId": user_id},
+                {"user_id": user_id},
+                {"family_id": family_id},
+            ],
+            "isDeleted": {"$ne": True},
+        }
+    else:
+        q = {
+            "$or": [{"userId": user_id}, {"user_id": user_id}],
+            "isDeleted": {"$ne": True},
+        }
+    devs = await db.devices.find(q).to_list(length=1000)
+    return [ObjectId(d["_id"]) for d in devs]
+
+
+async def _alert_document_to_response(db, a: dict) -> AlertResponse:
+    alert_device_id = a.get("deviceId") or a.get("device_id")
+    device_info = None
+    if alert_device_id:
+        try:
+            oid = (
+                alert_device_id
+                if isinstance(alert_device_id, ObjectId)
+                else ObjectId(str(alert_device_id))
+            )
+            dev = await db.devices.find_one({"_id": oid})
+            if dev:
+                device_info = {
+                    "id": str(dev["_id"]),
+                    "logical_id": dev.get("deviceId") or dev.get("device_id"),
+                    "name": dev.get("name"),
+                    "type": dev.get("type"),
+                }
+        except Exception:
+            pass
+    created_at = a.get("createdAt") or a.get("created_at") or datetime.utcnow()
+    resolved_at = a.get("resolvedAt") or a.get("resolved_at")
+    return AlertResponse(
+        id=str(a["_id"]),
+        device_id=str(alert_device_id) if alert_device_id else "",
+        message=a.get("message", ""),
+        severity=a.get("severity", "medium"),
+        type=a.get("type", "system"),
+        context=a.get("context", {}),
+        resolved=a.get("resolved", False),
+        resolved_at=resolved_at,
+        created_at=created_at,
+        device=device_info,
+    )
 
 async def send_alert_notifications(alert_id: str, device_id: str, alert_message: str, alert_severity: str):
     """Background task to send notifications for an alert"""
@@ -198,13 +256,8 @@ async def get_alerts(
     if not isinstance(user_id, ObjectId):
         user_id = ObjectId(user_id)
     
-    # Get user's device IDs (filter alerts to only user's devices)
-    user_devices = await db.devices.find({
-        "$or": [{"userId": user_id}, {"user_id": user_id}],
-        "isDeleted": {"$ne": True}
-    }).to_list(length=1000)
-    
-    user_device_ids = [ObjectId(d["_id"]) for d in user_devices]
+    # Device IDs for this user (includes family-shared devices)
+    user_device_ids = await _device_ids_for_user_alerts(db, user_id)
     
     if not user_device_ids:
         return AlertListResponse(page=page, total=0, alerts=[])
@@ -319,6 +372,34 @@ async def get_alerts(
         alerts=alerts
     )
 
+
+@router.get("/{alert_id}", response_model=AlertResponse)
+async def get_alert_by_id(alert_id: str, user: dict = Depends(get_current_user)):
+    """Single alert for mobile/web detail views; scoped to user's (and family) devices."""
+    db = await get_database()
+    user_id = user["_id"]
+    if not isinstance(user_id, ObjectId):
+        user_id = ObjectId(user_id)
+    try:
+        oid = ObjectId(alert_id)
+    except Exception:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid alert ID")
+    doc = await db.alerts.find_one({"_id": oid})
+    if not doc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Alert not found")
+    raw_dev = doc.get("deviceId") or doc.get("device_id")
+    if not raw_dev:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Alert not found")
+    try:
+        dev_oid = raw_dev if isinstance(raw_dev, ObjectId) else ObjectId(str(raw_dev))
+    except Exception:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Alert not found")
+    allowed = await _device_ids_for_user_alerts(db, user_id)
+    if dev_oid not in allowed:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not allowed to access this alert")
+    return await _alert_document_to_response(db, doc)
+
+
 @router.delete("/cleanup")
 async def cleanup_old_alerts(days: int = Query(..., description="Delete alerts older than this many days")):
     """
@@ -338,29 +419,46 @@ async def cleanup_old_alerts(days: int = Query(..., description="Delete alerts o
     }
 
 @router.post("/{alert_id}/resolve")
-async def resolve_alert(alert_id: str):
+async def resolve_alert(alert_id: str, user: dict = Depends(get_current_user)):
     """
-    Mark an alert as resolved
+    Mark an alert as resolved (only if it belongs to the user's or family's devices).
     """
     db = await get_database()
-    
+    user_id = user["_id"]
+    if not isinstance(user_id, ObjectId):
+        user_id = ObjectId(user_id)
+    try:
+        oid = ObjectId(alert_id)
+    except Exception:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid alert ID")
+
+    allowed = await _device_ids_for_user_alerts(db, user_id)
+    if not allowed:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Alert not found")
+
     result = await db.alerts.update_one(
-        {"_id": ObjectId(alert_id)},
+        {
+            "_id": oid,
+            "$or": [
+                {"deviceId": {"$in": allowed}},
+                {"device_id": {"$in": allowed}},
+            ],
+        },
         {
             "$set": {
                 "resolved": True,
                 "resolvedAt": datetime.utcnow(),
-                "updatedAt": datetime.utcnow()
+                "updatedAt": datetime.utcnow(),
             }
-        }
+        },
     )
-    
+
     if result.matched_count == 0:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Alert not found"
         )
-    
+
     return {"message": "Alert resolved successfully"}
 
 
@@ -394,12 +492,7 @@ async def resolve_multiple_alerts(
     if not isinstance(user_id, ObjectId):
         user_id = ObjectId(user_id)
 
-    user_devices = await db.devices.find({
-        "$or": [{"userId": user_id}, {"user_id": user_id}],
-        "isDeleted": {"$ne": True}
-    }).to_list(length=1000)
-
-    user_device_ids = [ObjectId(d["_id"]) for d in user_devices]
+    user_device_ids = await _device_ids_for_user_alerts(db, user_id)
     if not user_device_ids:
         return {"message": "No devices found for this account", "resolved_count": 0}
 
@@ -410,7 +503,10 @@ async def resolve_multiple_alerts(
     result = await db.alerts.update_many(
         {
             "_id": {"$in": alert_obj_ids},
-            "deviceId": {"$in": user_device_ids},
+            "$or": [
+                {"deviceId": {"$in": user_device_ids}},
+                {"device_id": {"$in": user_device_ids}},
+            ],
             "resolved": {"$ne": True},
         },
         {
@@ -438,18 +534,16 @@ async def resolve_all_alerts(
     if not isinstance(user_id, ObjectId):
         user_id = ObjectId(user_id)
 
-    user_devices = await db.devices.find({
-        "$or": [{"userId": user_id}, {"user_id": user_id}],
-        "isDeleted": {"$ne": True}
-    }).to_list(length=1000)
-
-    user_device_ids = [ObjectId(d["_id"]) for d in user_devices]
+    user_device_ids = await _device_ids_for_user_alerts(db, user_id)
     if not user_device_ids:
         return {"message": "No devices found for this account", "resolved_count": 0}
 
     result = await db.alerts.update_many(
         {
-            "deviceId": {"$in": user_device_ids},
+            "$or": [
+                {"deviceId": {"$in": user_device_ids}},
+                {"device_id": {"$in": user_device_ids}},
+            ],
             "resolved": {"$ne": True},
         },
         {

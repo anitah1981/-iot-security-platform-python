@@ -15,19 +15,25 @@ export default function PricingScreen() {
 
       <View style={styles.planCard}>
         <Text style={styles.planName}>Free</Text>
-        <Text style={styles.planPrice}>£0<span style={styles.planPeriod}>/month</span></Text>
+        <Text style={styles.planPrice}>
+          £0<Text style={styles.planPeriod}>/month</Text>
+        </Text>
         <Text style={styles.planDesc}>Up to 5 devices, email alerts</Text>
       </View>
 
       <View style={[styles.planCard, styles.planPro]}>
         <Text style={styles.planName}>Pro</Text>
-        <Text style={styles.planPrice}>£4.99<span style={styles.planPeriod}>/month</span></Text>
+        <Text style={styles.planPrice}>
+          £4.99<Text style={styles.planPeriod}>/month</Text>
+        </Text>
         <Text style={styles.planDesc}>Up to 25 devices, SMS & WhatsApp</Text>
       </View>
 
       <View style={styles.planCard}>
         <Text style={styles.planName}>Business</Text>
-        <Text style={styles.planPrice}>£9.99<span style={styles.planPeriod}>/month</span></Text>
+        <Text style={styles.planPrice}>
+          £9.99<Text style={styles.planPeriod}>/month</Text>
+        </Text>
         <Text style={styles.planDesc}>Unlimited devices, teams, audit logs</Text>
       </View>
 

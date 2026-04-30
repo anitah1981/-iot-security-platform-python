@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Table 5 — Test scenarios</title>
+  <style>
+    body { font-family: "Segoe UI", Calibri, Arial, sans-serif; margin: 20px; font-size: 10pt; }
+    .caption { font-style: italic; margin-bottom: 12px; color: #334155; }
+    table { border-collapse: collapse; width: 100%; max-width: 900px; }
+    th, td { border: 1px solid #64748b; padding: 8px; text-align: left; vertical-align: top; }
+    th { background: #1e3a5f; color: #fff; }
+    tr:nth-child(even) td { background: #f8fafc; }
+  </style>
+</head>
+<body>
+  <p class="caption">Table 5: Representative test scenarios and outcomes. Place in Chapter 11 after §11.2 or at §11.3.</p>
+  <table>
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>Scenario</th>
+        <th>Steps (summary)</th>
+        <th>Expected</th>
+        <th>Actual</th>
+        <th>Pass / Fail</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td>T1</td><td>Device registration</td><td>Authenticate; create device with valid metadata</td><td>Persisted; listed; owner-scoped</td><td></td><td></td></tr>
+      <tr><td>T2</td><td>Invalid device input</td><td>Missing field or invalid value</td><td>4xx; no bad record</td><td></td><td></td></tr>
+      <tr><td>T3</td><td>Heartbeat online</td><td>Heartbeats within interval</td><td>Online; lastSeen updates</td><td></td><td></td></tr>
+      <tr><td>T4</td><td>Heartbeat → offline</td><td>Stop heartbeats past tolerance</td><td>Offline/degraded; alert</td><td></td><td></td></tr>
+      <tr><td>T5</td><td>Anomaly escalation</td><td>Repeated misses + pattern per rules</td><td>Higher severity vs transient</td><td></td><td></td></tr>
+      <tr><td>T6</td><td>Alert notify</td><td>Trigger alert; channels configured</td><td>Notify or logged fail</td><td></td><td></td></tr>
+      <tr><td>T7</td><td>AuthZ boundary</td><td>Access other user’s device</td><td>Denied</td><td></td><td></td></tr>
+      <tr><td>T8</td><td>Rate limit / abuse</td><td>Rapid failed auth or flood (if on)</td><td>Throttle / 429</td><td></td><td></td></tr>
+    </tbody>
+  </table>
+</body>
+</html>

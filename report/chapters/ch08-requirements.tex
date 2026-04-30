@@ -1,0 +1,144 @@
+% Generated from ICA_2.docx — re-run: python scripts/ica2_emit_latex.py
+\chapter{Requirements Analysis and System Specification}
+\label{ch:req}
+
+\section{Introduction}
+
+This chapter translates the problem context and research findings established in previous chapters into a structured set of system requirements. The purpose of the requirements analysis is to clearly define what the proposed IoT security monitoring application must achieve to meet its stated objectives. By distinguishing between functional and non-functional requirements, the project ensures that both system behaviour and quality attributes are explicitly addressed.
+
+The requirements presented in this chapter are derived from three primary sources: the security-driven problem definition outlined in Chapter 6, the academic and industry research reviewed in Chapter 7, and practical constraints associated with home and small-to-medium business (SMB) environments. Together, these requirements form the foundation for the system design and implementation described in subsequent chapters.
+
+\section{Stakeholders and User Roles}
+
+The primary stakeholders for the system include home users and SMB operators who deploy IoT devices for security, automation, or monitoring purposes. These users are typically non-experts in cybersecurity and require a solution that provides meaningful insight without excessive complexity (NCSC, 2023). Secondary stakeholders include developers and system administrators responsible for maintaining the platform.
+
+User interaction with the system is centred on a single primary role: the registered user who owns and manages IoT devices. This role is responsible for registering devices, configuring monitoring parameters, and responding to alerts. The system design deliberately avoids role complexity to maintain usability and accessibility.
+
+The implemented prototype additionally exposes \emph{optional} scaffolding for richer deployments: organisations, family- or team-oriented sharing, device groups, and subscription plans with usage limits (enforced in middleware). The \textbf{primary user story}---and the one reflected in requirements traceability and in the evaluation in Chapter~11---remains a single registered owner monitoring their own devices; the extended features are documented for transparency but are not the focus of the academic contribution.
+
+\section{Functional Requirements}
+
+Functional requirements define the specific behaviours and capabilities the system must provide. Each requirement is labelled for clarity and traceability and is directly aligned with the project objectives.
+
+\begin{table}[htbp]
+  \centering
+  \small
+  \caption{Table  Functional Requirements}
+  \label{tab:ica2_2}
+\begin{tabular}{p{0.307\textwidth}p{0.307\textwidth}p{0.307\textwidth}}
+\toprule
+Functional Requirement \# & Functional Requirement & Description \\
+\midrule
+FR1 & User Registration and Authentication & The system shall allow users to create an account and authenticate securely in order to access the monitoring platform. Authentication mechanisms must ensure that only authorised users can view device status and alerts. \\
+FR2 & IoT Device Registration & The system shall allow users to register IoT devices by providing identifying information such as device name, type, and network association. Registered devices shall be uniquely identifiable within the system. \\
+FR3 & Device Heartbeat Monitoring & The system shall monitor registered IoT devices through a heartbeat mechanism that verifies periodic communication or status updates. The absence of expected heartbeat signals shall be recorded as a potential availability issue. \\
+FR4 & Availability Status Tracking & The system shall maintain real-time visibility of each device's availability status, including online, offline, or degraded states. Status changes shall be logged for analysis and review. \\
+FR5 & Anomaly Detection & The system shall analyse device behaviour to detect anomalies, such as unexpected disconnections, irregular heartbeat intervals, or sudden changes in connectivity patterns. Detected anomalies shall be flagged for user attention. \\
+FR6 & Alert Generation and Notification & The system shall generate alerts when availability failures or anomalous behaviour are detected. Alerts shall be delivered through the application interface and, where possible, through additional notification channels. \\
+FR7 & Historical Data Logging & The system shall store historical device status and event data to support retrospective analysis, troubleshooting, and evaluation of device reliability. \\
+FR8 & Dashboard Visualisation & The system shall provide a user-facing dashboard that presents device status, alerts, and historical trends in a clear and accessible manner. \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{Non-Functional Requirements}
+
+Non-functional requirements define the quality attributes and constraints under which the system must operate. These requirements are critical to ensuring the system is usable, secure, and appropriate for its intended context.
+
+\begin{table}[htbp]
+  \centering
+  \small
+  \caption{Table  Non-Functional Requirements}
+  \label{tab:ica2_3}
+\begin{tabular}{p{0.307\textwidth}p{0.307\textwidth}p{0.307\textwidth}}
+\toprule
+Non-Functional Requirement \# & Non-Functional Requirement & Description \\
+\midrule
+NFR1 & Security & The system shall protect user accounts and device information through appropriate security controls, including secure authentication and access restrictions. Sensitive data shall be protected against unauthorised access. \\
+NFR2 & Privacy and Data Protection & The system shall adhere to data minimisation principles and avoid the collection of unnecessary personal or payload data. Monitoring shall be limited to metadata required for availability and anomaly detection, in alignment with GDPR principles (ICO, 2024). \\
+NFR3 & Usability & The system shall be intuitive and accessible to non-expert users, with minimal configuration required to achieve effective monitoring. \\
+NFR4 & Scalability & The system shall support an increasing number of registered devices without significant degradation in performance, enabling use across both home and SMB environments. \\
+NFR5 & Reliability & The system shall operate reliably under normal network conditions and tolerate transient connectivity issues without generating excessive false alerts. \\
+NFR6 & Performance & The system shall process heartbeat signals and status updates within reasonable timeframes to ensure timely detection and alerting of availability issues. \\
+NFR7 & Maintainability & The system shall be designed in a modular manner to support future enhancements, bug fixes, and feature expansion. \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{System Constraints and Assumptions}
+
+The system is subject to several constraints that influence design and implementation decisions. As an undergraduate project, development time and resources are limited, necessitating prioritisation of core functionality over advanced features. The system is implemented as a software-based platform and does not rely on additional hardware, which constrains the types of monitoring techniques that can be employed.
+
+It is assumed that monitored devices are connected via IP-based networks and are capable of periodic communication with the monitoring platform, either directly or indirectly. The system also assumes that users have provided informed consent for device monitoring and alerting.
+
+\section{Requirements Traceability}
+
+To ensure coherence between objectives, requirements, and implementation, each functional and non-functional requirement is traceable to the project aims defined in Chapter 5. This traceability supports systematic design and evaluation, demonstrating that the implemented system directly addresses the identified problem.
+
+The following tables provide forward traceability from the project objectives in \S{}5.3 through the functional requirements (FR1--FR8) and non-functional requirements (NFR1--NFR7) defined in this chapter, to the system design (Chapter~9), implementation (Chapter~10), and testing and evaluation (Chapter~11).
+
+\begin{table}[htbp]
+  \centering
+  \small
+  \caption{Table  Mapping of project objectives (\S{}5.3) to report chapters.}
+  \label{tab:ica2_4}
+\begin{tabular}{p{0.307\textwidth}p{0.307\textwidth}p{0.307\textwidth}}
+\toprule
+Obj. & Objective (from \S{}5.3) & Primary evidence in report \\
+\midrule
+O1 & Analyse security and availability risks in home/SMB IoT & Ch.6 (background); Ch.7 (literature; including Table~1 / \S{}7.6 research gap) \\
+O2 & Define functional and non-functional requirements & Ch.8 (this chapter; \S{}8.3--\S{}8.4); Tables~3--4 \\
+O3 & Design architecture for registration, monitoring, anomaly detection & Ch.9 (system design) \\
+O4 & Implement prototype (heartbeat, alerting) & Ch.10 (implementation) \\
+O5 & Evaluate via structured testing and scenarios & Ch.11 (testing and evaluation) \\
+O6 & Critically reflect; identify further development & Ch.12 (reflection); Ch.13 (future work) \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[htbp]
+  \centering
+  \small
+  \caption{Table  FR1--FR8 mapped to design (Ch.9), implementation (Ch.10), and testing (Ch.11) subsections}
+  \label{tab:ica2_5}
+\begin{tabular}{p{0.153\textwidth}p{0.153\textwidth}p{0.153\textwidth}p{0.153\textwidth}p{0.153\textwidth}p{0.153\textwidth}}
+\toprule
+ID & Requirement (summary) & Obj. & Design (Ch.9) & Implementation (Ch.10) & Testing (Ch.11) \\
+\midrule
+FR1 & User registration and authentication & O2--O5 & \S{}9.3--\S{}9.4 & \S{}10.3, \S{}10.9 & \S{}11.5 \\
+FR2 & IoT device registration & O2--O5 & \S{}9.4, \S{}9.8 & \S{}10.5 & \S{}11.3.1 \\
+FR3 & Device heartbeat monitoring & O2--O5 & \S{}9.5 & \S{}10.6 & \S{}11.3.2 \\
+FR4 & Availability status (online/offline/degraded) & O2--O5 & \S{}9.3--\S{}9.5 & \S{}10.5--\S{}10.6 & \S{}11.3.2 \\
+FR5 & Anomaly detection (behaviour / connectivity) & O2--O5 & \S{}9.6 & \S{}10.7 & \S{}11.3.3 \\
+FR6 & Alert generation and multi-channel notification & O2--O5 & \S{}9.7 & \S{}10.8 & \S{}11.4 \\
+FR7 & Historical logging and retention & O2--O5 & \S{}9.8 & \S{}10.4, \S{}10.10 & \S{}11.3, \S{}11.6 \\
+FR8 & Dashboard visualisation & O2--O5 & \S{}9.3 & \S{}10.2--\S{}10.3 & \S{}11.3 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[htbp]
+  \centering
+  \small
+  \caption{Table  NFR1--NFR7 mapped subsections.}
+  \label{tab:ica2_6}
+\begin{tabular}{p{0.153\textwidth}p{0.153\textwidth}p{0.153\textwidth}p{0.153\textwidth}p{0.153\textwidth}p{0.153\textwidth}}
+\toprule
+ID & Requirement (summary) & Obj. & Design (Ch.9) & Implementation (Ch.10) & Testing (Ch.11) \\
+\midrule
+NFR1 & Security (authentication, transport hardening, abuse resistance) & O2--O5 & \S{}9.4, \S{}9.9 & \S{}10.9 & \S{}11.5 \\
+NFR2 & Privacy / data minimisation (GDPR-aligned) & O2--O5 & \S{}6.5; \S{}9.4, \S{}9.8 & \S{}10.4--\S{}10.5, \S{}10.9 & \S{}11.5 \\
+NFR3 & Usability for non-experts & O2--O5 & \S{}9.3 & \S{}10.2--\S{}10.3 & \S{}11.6 \\
+NFR4 & Scalability & O2--O5 & \S{}9.2, \S{}9.8 & \S{}10.10 & \S{}11.6 \\
+NFR5 & Reliability / false-positive control & O2--O5 & \S{}9.5--\S{}9.6 & \S{}10.6--\S{}10.7 & \S{}11.3.2--\S{}11.3.3 \\
+NFR6 & Performance (timely heartbeats and alerts) & O2--O5 & \S{}9.2 & \S{}10.10 & \S{}11.6 \\
+NFR7 & Maintainability / modularity & O2--O5 & \S{}9.2, \S{}9.9 & \S{}10.3 & \S{}11.9 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+NFR2:~\S{}6.5 (Background --- ethical and legal context) is cited alongside Ch.9.~\S{}11.3~in FR7 refers to the functional testing block as a whole (\S{}11.3.1--\S{}11.3.3).
+
+\section{Summary}
+
+This chapter has defined the functional and non-functional requirements for the proposed IoT security monitoring application. By formalising system behaviour and quality attributes, the requirements analysis establishes a clear foundation for the system design presented in the following chapter.

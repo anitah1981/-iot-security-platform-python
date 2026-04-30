@@ -14,13 +14,14 @@ from core.middleware import setup_middleware
 from web.routes import register_web_routes
 from api.router import get_api_router
 
-# Build FastAPI app
+# Build FastAPI app (openapi_url=None so schema is not public; served at /openapi.json with auth)
 fastapi_app = FastAPI(
     title="Pro-Alert",
     version="2.0.0",
     lifespan=lifespan,
     docs_url=None,
     redoc_url=None,
+    openapi_url=None,
 )
 
 # Static assets
@@ -91,11 +92,16 @@ from routes.password_reset import router as password_reset_router
 fastapi_app.include_router(payments_router)
 fastapi_app.include_router(password_reset_router)
 
-# Protected docs (require auth)
-from routes.auth import get_current_user
+# Protected docs and OpenAPI schema (Bearer or session cookie for browser)
+from routes.auth import get_current_user_bearer_or_cookie
+
+@fastapi_app.get("/openapi.json", include_in_schema=False)
+async def protected_openapi(user: dict = Depends(get_current_user_bearer_or_cookie)):
+    return JSONResponse(content=fastapi_app.openapi())
+
 
 @fastapi_app.get("/docs")
-async def get_docs(user: dict = Depends(get_current_user)):
+async def get_docs(user: dict = Depends(get_current_user_bearer_or_cookie)):
     from fastapi.openapi.docs import get_swagger_ui_html
     return get_swagger_ui_html(
         openapi_url=fastapi_app.openapi_url,
@@ -105,7 +111,7 @@ async def get_docs(user: dict = Depends(get_current_user)):
     )
 
 @fastapi_app.get("/redoc")
-async def get_redoc(user: dict = Depends(get_current_user)):
+async def get_redoc(user: dict = Depends(get_current_user_bearer_or_cookie)):
     from fastapi.openapi.docs import get_redoc_html
     return get_redoc_html(
         openapi_url=fastapi_app.openapi_url,

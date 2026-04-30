@@ -13,6 +13,7 @@ python-nmap==0.7.1
 python-socketio==5.16.0
 stripe==11.5.0
 reportlab==4.2.5
+svglib==1.5.1
 slowapi==0.1.9
 pandas==2.2.0
 pyotp==2.9.0

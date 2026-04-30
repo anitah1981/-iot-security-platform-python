@@ -30,6 +30,7 @@ class CSRFProtectionMiddleware(BaseHTTPMiddleware):
     EXEMPT_PATHS = [
         "/api/heartbeat",        # Device agent endpoints
         "/api/webhooks",         # External webhooks
+        "/api/payments/webhook", # Stripe (no browser cookies)
         "/api/health",           # Liveness
         "/api/ready",            # Readiness (DB check)
         "/api/auth/login",       # Login creates cookies

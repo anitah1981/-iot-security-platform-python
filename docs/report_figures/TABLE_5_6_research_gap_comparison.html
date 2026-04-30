@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Table 5.1 — Research gap comparison</title>
+  <style>
+    body { font-family: "Segoe UI", Calibri, Arial, sans-serif; margin: 24px; color: #1e293b; }
+    h1 { font-size: 14pt; font-weight: 600; margin-bottom: 8px; }
+    .caption { font-size: 10pt; font-style: italic; color: #475569; margin-bottom: 16px; max-width: 900px; }
+    table { border-collapse: collapse; width: 100%; max-width: 960px; font-size: 10pt; }
+    th, td { border: 1px solid #94a3b8; padding: 10px 12px; vertical-align: top; text-align: left; }
+    th { background: #1e3a5f; color: #fff; font-weight: 600; }
+    tr:nth-child(even) td { background: #f8fafc; }
+    td:first-child { font-weight: 600; background: #e2e8f0; width: 110px; }
+    @media print { body { margin: 12px; } }
+  </style>
+</head>
+<body>
+  <h1>Table 5.1 (for Section 5.6)</h1>
+  <p class="caption">Table 5.1: Comparison of consumer IoT applications, enterprise SIEM-style monitoring, and the proposed solution across deployment and privacy dimensions.</p>
+  <table>
+    <thead>
+      <tr>
+        <th scope="col">Dimension</th>
+        <th scope="col">Consumer / vendor IoT apps</th>
+        <th scope="col">Enterprise SIEM / IDS</th>
+        <th scope="col">Pro-Alert (this project)</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Cost</td>
+        <td>Typically low incremental cost (bundled with device; may include subscriptions per vendor).</td>
+        <td>High: licences, infrastructure, and skilled staff.</td>
+        <td>Low to moderate: software hosting and optional notification services (e.g. SMS); no enterprise licence model assumed.</td>
+      </tr>
+      <tr>
+        <td>Setup</td>
+        <td>Low: pairing and vendor app install; minimal technical skill.</td>
+        <td>High: integration with logs, agents, network taps, tuning, and ongoing administration.</td>
+        <td>Moderate: user account, device registration, optional lightweight agent on an existing LAN host for heartbeats.</td>
+      </tr>
+      <tr>
+        <td>Visibility</td>
+        <td>Fragmented: one app per vendor; weak cross-device and cross-brand situational awareness.</td>
+        <td>Strong within instrumented corporate estates; unified dashboards and correlation.</td>
+        <td>Consolidated dashboard for registered devices; emphasis on <strong>availability</strong> and <strong>heartbeat-style</strong> status rather than full traffic analytics.</td>
+      </tr>
+      <tr>
+        <td>Hardware</td>
+        <td>None beyond phones, hubs, and the IoT devices themselves.</td>
+        <td>Often additional appliances, agents, collectors, or TAPs.</td>
+        <td><strong>No dedicated monitoring appliance required</strong>; operates as a cloud-hosted (or self-hosted) service with optional agent on commodity hardware.</td>
+      </tr>
+      <tr>
+        <td>Privacy</td>
+        <td>Data flows to multiple vendor clouds; policies vary.</td>
+        <td>Centralised logging and inspection; strong governance needed for proportionality and retention.</td>
+        <td><strong>Metadata-oriented</strong> monitoring (e.g. status, timestamps, connectivity indicators); avoids deep packet inspection and payload capture as a design choice, aligning with minimisation goals.</td>
+      </tr>
+    </tbody>
+  </table>
+  <p style="margin-top: 20px; font-size: 9pt; color: #64748b;">Select the table above and copy into Word if Markdown paste fails.</p>
+</body>
+</html>

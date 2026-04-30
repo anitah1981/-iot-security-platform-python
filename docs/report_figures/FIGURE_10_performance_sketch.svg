@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 580 340" font-family="Segoe UI, Calibri, Arial, sans-serif" font-size="11">
+  <rect width="580" height="340" fill="#fafbfc"/>
+  <text x="290" y="24" text-anchor="middle" font-size="14" font-weight="600">Qualitative performance (illustrative, not measured)</text>
+  <text x="290" y="42" text-anchor="middle" fill="#64748b" font-size="10">Replace with real data if you run load tests.</text>
+
+  <line x1="80" y1="280" x2="500" y2="280" stroke="#334155" stroke-width="1.5"/>
+  <line x1="80" y1="280" x2="80" y2="70" stroke="#334155" stroke-width="1.5"/>
+  <text x="290" y="305" text-anchor="middle" fill="#475569">Simulated device count (low to moderate)</text>
+  <text x="42" y="180" text-anchor="middle" transform="rotate(-90 42 180)" fill="#475569">Response / sweep time (qualitative)</text>
+
+  <polyline points="80,240 180,220 280,200 400,195 500,200" fill="none" stroke="#2563eb" stroke-width="2.5"/>
+  <text x="380" y="130" fill="#2563eb" font-size="11">Flat-ish within prototype scope</text>
+  <text x="290" y="320" text-anchor="middle" fill="#94a3b8" font-size="9">Ch.11 section 11.6; discuss limits of informal observation.</text>
+</svg>

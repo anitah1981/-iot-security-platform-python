@@ -24,10 +24,22 @@ export default function DeviceDetailScreen({ route }) {
 
   const loadDevice = async () => {
     try {
-      const response = await api.get(`/api/devices/${deviceId}`);
-      setDevice(response.data);
+      const response = await api.get(
+        `/api/devices/${encodeURIComponent(deviceId)}/status`
+      );
+      const d = response.data?.device;
+      if (d) {
+        setDevice({
+          ...d,
+          id: d.device_id,
+          groups: d.groups || [],
+        });
+      } else {
+        setDevice(null);
+      }
     } catch (error) {
       console.error('Error loading device:', error);
+      setDevice(null);
     } finally {
       setLoading(false);
     }

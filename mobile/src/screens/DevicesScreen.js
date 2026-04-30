@@ -76,7 +76,15 @@ export default function DevicesScreen({ navigation }) {
     <View style={styles.container}>
       <FlatList
         data={devices}
-        keyExtractor={(item) => item.id}
+        keyExtractor={(item, index) =>
+          String(
+            item.id ||
+              item._id ||
+              item.device_id ||
+              item.deviceId ||
+              `device-${index}`
+          )
+        }
         renderItem={({ item }) => (
           <DeviceCard device={item} navigation={navigation} />
         )}

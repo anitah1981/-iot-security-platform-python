@@ -42,3 +42,25 @@ Use this checklist to explicitly verify and sign off security and behaviour **ag
 ---
 
 Run this after go-live and after any major security or auth change. Keep a copy of the completed checklist (e.g. in your runbook or internal docs).
+
+---
+
+## Release Sign-off Log
+
+Use this template for each release:
+
+```text
+Signed off: YYYY-MM-DD
+URL: https://your-live-url
+Result: security gate pass, release gate pass, live smoke pass, HTTPS redirect confirmed, authentication protected (MFA or token smoke confirmed), manual critical-path checks complete.
+Notes: <optional>
+```
+
+Latest entry:
+
+```text
+Signed off: 2026-03-27
+URL: https://iot-security-platform-python-production.up.railway.app
+Result: security gate pass, release gate pass, live smoke pass, HTTPS redirect confirmed, authentication protected (MFA enforced on test account), manual critical-path checks complete.
+Notes: scripted authenticated token smoke skipped by design due to MFA-enabled test account.
+```

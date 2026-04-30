@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../theme';
+import { navigateToRootStack } from '../utils/navigation';
 
 const severityColors = {
   critical: colors.danger,
@@ -11,6 +12,7 @@ const severityColors = {
 };
 
 export default function AlertCard({ alert, navigation }) {
+  const alertId = alert.id || alert._id;
   const severityColor = severityColors[alert.severity] || colors.muted;
   const severityIcon =
     alert.severity === 'critical'
@@ -37,7 +39,7 @@ export default function AlertCard({ alert, navigation }) {
       </View>
       <Text style={styles.message}>{alert.message || 'No message'}</Text>
       <Text style={styles.timestamp}>
-        {new Date(alert.created_at).toLocaleString()}
+        {new Date(alert.created_at || alert.createdAt).toLocaleString()}
       </Text>
     </TouchableOpacity>
   );

@@ -28,6 +28,8 @@ A comprehensive IoT security monitoring platform with real-time device tracking,
 **Full guide**: `DEPLOY_NOW_STEPS.md` | **Quick reference**: `GET_STARTED_DEPLOY.md`
 
 **Keep local and live in sync:** Work on `main`, pull before work, push when ready; your domain runs what’s on `main`. See `docs/LOCAL_AND_LIVE_SYNC.md`.
+**Go-live + 12-month plan:** `docs/GO_LIVE_AND_SCALE_PLAYBOOK.md`
+**One-pass go-live today:** `docs/TODAY_GO_LIVE_ONE_PASS.md`
 
 ---
 

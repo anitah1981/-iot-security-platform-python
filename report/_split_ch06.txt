@@ -1,0 +1,1 @@
+﻿Background and Problem Definition86.1Growth of IoT and Expanding Attack Surface86.2IoT-Specific Security Threats96.3Limitations of Existing Consumer and SMB Solutions106.4Security-Driven Availability and Anomaly Detection106.5Ethical and Legal Considerations116.6Summary117

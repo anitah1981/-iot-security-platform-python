@@ -75,29 +75,42 @@ export default function DashboardScreen({ navigation }) {
     }
 
     try {
-      const [devicesRes, alertsRes, analyticsRes] = await Promise.all([
-        api.get('/api/devices?limit=5'),
-        api.get('/api/alerts?limit=5&resolved=false'),
-        api.get('/api/analytics/stats'),
+      const [devicesRes, alertsRes, analyticsRes] = await Promise.allSettled([
+        api.get('/api/devices', { params: { page: 1, limit: 5 } }),
+        api.get('/api/alerts', { params: { page: 1, limit: 5, resolved: false } }),
+        api.get('/api/analytics/devices/stats'),
       ]);
 
-      const devicesData = devicesRes.data.devices || [];
-      const alertsData = alertsRes.data.alerts || [];
+      const devicesData =
+        devicesRes.status === 'fulfilled' ? devicesRes.value.data.devices || [] : [];
+      const alertsData =
+        alertsRes.status === 'fulfilled' ? alertsRes.value.data.alerts || [] : [];
 
       setDevices(devicesData);
       setAlerts(alertsData);
-      
-      // Save to offline storage
+
       await saveDevicesOffline(devicesData);
       await saveAlertsOffline(alertsData);
-      
-      if (analyticsRes.data) {
+
+      const totalAlertsCount =
+        alertsRes.status === 'fulfilled' ? alertsRes.value.data.total || 0 : 0;
+      const criticalOnPage = alertsData.filter((a) => a.severity === 'critical').length;
+
+      if (analyticsRes.status === 'fulfilled' && analyticsRes.value.data) {
+        const d = analyticsRes.value.data;
+        const breakdown = d.status_breakdown || {};
         setStats({
-          totalDevices: analyticsRes.data.total_devices || 0,
-          onlineDevices: analyticsRes.data.online_devices || 0,
-          totalAlerts: analyticsRes.data.total_alerts || 0,
-          criticalAlerts: analyticsRes.data.critical_alerts || 0,
+          totalDevices: d.total_devices || 0,
+          onlineDevices: breakdown.online || 0,
+          totalAlerts: totalAlertsCount,
+          criticalAlerts: criticalOnPage,
         });
+      } else if (alertsRes.status === 'fulfilled') {
+        setStats((s) => ({
+          ...s,
+          totalAlerts: totalAlertsCount,
+          criticalAlerts: criticalOnPage,
+        }));
       }
     } catch (error) {
       console.error('Error loading dashboard data:', error);

@@ -39,6 +39,17 @@ def get_app_env() -> str:
     return os.getenv("APP_ENV", "local").lower()
 
 
+def get_public_app_base_url() -> str:
+    """
+    Base URL for browser redirects (Stripe checkout, customer portal, etc.).
+    No trailing slash. Uses APP_BASE_URL; falls back to local dev URL.
+    """
+    raw = (os.getenv("APP_BASE_URL") or "").strip().rstrip("/")
+    if raw:
+        return raw
+    return "http://localhost:8000"
+
+
 def check_production_config() -> None:
     """Fail fast if critical production config is missing. Single startup validator."""
     env = get_app_env()
@@ -71,6 +82,37 @@ def check_production_config() -> None:
         raise SystemExit(1)
 
 
+def _expand_www_apex_variants(hosts: list[str]) -> list[str]:
+    """
+    Allow both www and bare apex when either is listed or derived from APP_BASE_URL,
+    so https://pro-alert.co.uk and https://www.pro-alert.co.uk both pass host checks.
+    Skips Railway and local dev hostnames.
+    """
+    out: list[str] = []
+    seen: set[str] = set()
+    for h in hosts:
+        h = (h or "").strip().lower()
+        if not h or h in seen:
+            continue
+        seen.add(h)
+        out.append(h)
+        if h == "healthcheck.railway.app" or h.endswith(".railway.app"):
+            continue
+        if h in ("localhost", "127.0.0.1"):
+            continue
+        if h.startswith("www."):
+            bare = h[4:]
+            if bare and bare not in seen:
+                seen.add(bare)
+                out.append(bare)
+        else:
+            www_h = "www." + h
+            if www_h not in seen:
+                seen.add(www_h)
+                out.append(www_h)
+    return out
+
+
 def parse_cors_origins(raw: str | None) -> list[str]:
     """
     CORS_ORIGINS: "*" (dev) or comma-separated origins.
@@ -90,9 +132,21 @@ def get_allowed_hosts_for_https() -> list[str] | None:
     app_env = get_app_env()
     if app_env != "production" or os.getenv("FORCE_HTTPS", "true").lower() != "true":
         return None
-    hosts = os.getenv("ALLOWED_HOSTS", "").split(",")
-    hosts = [h.strip() for h in hosts if h.strip()]
-    return hosts if hosts else None
+    raw = os.getenv("ALLOWED_HOSTS", "").split(",")
+    hosts = [h.strip() for h in raw if h.strip()]
+    app_base = os.getenv("APP_BASE_URL", "").strip()
+    if app_base:
+        try:
+            host = urlparse(app_base).hostname
+            if host:
+                h_lower = host.lower()
+                if h_lower not in {x.lower() for x in hosts}:
+                    hosts.append(host)
+        except Exception:
+            pass
+    if not hosts:
+        return None
+    return _expand_www_apex_variants(hosts)
 
 
 def get_trusted_hosts() -> list[str]:
@@ -106,11 +160,13 @@ def get_trusted_hosts() -> list[str]:
     if app_base:
         try:
             host = urlparse(app_base).hostname
-            if host and host not in hosts:
-                hosts.append(host)
+            if host:
+                h_lower = host.lower()
+                if h_lower not in {x.lower() for x in hosts}:
+                    hosts.append(host)
         except Exception:
             pass
-    return hosts
+    return _expand_www_apex_variants(hosts)
 
 
 def get_cors_origins() -> list[str]:

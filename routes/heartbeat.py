@@ -58,6 +58,83 @@ async def _heartbeat_api_key_user(request: Request) -> Optional[dict]:
     return await get_user_by_api_key(raw)
 
 
+def _owner_id_for_heartbeat(family_id: Optional[ObjectId], user_id: ObjectId) -> ObjectId:
+    """Same namespace as device registration: family_id if in a family, else user_id."""
+    return family_id if family_id is not None else user_id
+
+
+async def _find_device_for_heartbeat(
+    db,
+    device_id: str,
+    api_key_user: Optional[dict],
+) -> Optional[Dict[str, Any]]:
+    """
+    Resolve device row in a tenant-safe way. With API key, scope by owner_id (or legacy user/family fields).
+    Without API key, only match devices with no owner (orphan MVP).
+    """
+    if api_key_user:
+        user_id_obj = api_key_user["_id"] if isinstance(api_key_user["_id"], ObjectId) else ObjectId(api_key_user["_id"])
+        family_id_obj: Optional[ObjectId] = api_key_user.get("_family_id")
+        family_oid = family_id_obj
+        owner_id = _owner_id_for_heartbeat(family_oid, user_id_obj)
+
+        doc = await db.devices.find_one(
+            {
+                "deviceId": device_id,
+                "owner_id": owner_id,
+                "isDeleted": {"$ne": True},
+            }
+        )
+        if doc:
+            return doc
+        # Legacy documents before owner_id backfill
+        owner_match: list[dict[str, Any]] = []
+        if family_oid is not None:
+            owner_match.append({"family_id": family_oid})
+        owner_match.extend(
+            [
+                {"userId": user_id_obj},
+                {"user_id": user_id_obj},
+            ]
+        )
+        return await db.devices.find_one(
+            {
+                "deviceId": device_id,
+                "isDeleted": {"$ne": True},
+                "$and": [
+                    {"$or": [{"owner_id": {"$exists": False}}, {"owner_id": None}]},
+                    {"$or": owner_match},
+                ],
+            }
+        )
+
+    return await db.devices.find_one(
+        {
+            "deviceId": device_id,
+            "userId": None,
+            "user_id": None,
+            "family_id": None,
+            "isDeleted": {"$ne": True},
+        }
+    )
+
+
+async def _registered_device_exists_without_api_key(db, device_id: str) -> bool:
+    """True if any owned device uses this logical deviceId (heartbeats then require X-API-Key)."""
+    doc = await db.devices.find_one(
+        {
+            "deviceId": device_id,
+            "isDeleted": {"$ne": True},
+            "$or": [
+                {"userId": {"$exists": True, "$ne": None}},
+                {"user_id": {"$exists": True, "$ne": None}},
+                {"family_id": {"$exists": True, "$ne": None}},
+            ],
+        }
+    )
+    return doc is not None
+
+
 @router.post("/", response_model=HeartbeatResponse)
 async def receive_heartbeat(
     payload: HeartbeatData,
@@ -74,15 +151,23 @@ async def receive_heartbeat(
     db = await get_database()
     now = datetime.utcnow()
 
-    device = await db.devices.find_one({"deviceId": payload.device_id})
+    if not api_key_user and await _registered_device_exists_without_api_key(db, payload.device_id):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="X-API-Key required for this device",
+        )
+
+    device = await _find_device_for_heartbeat(db, payload.device_id, api_key_user)
 
     if device is None:
         # Auto-enroll device – associate with user/family when API key provided
         user_id: Optional[ObjectId] = None
         family_id: Optional[ObjectId] = None
+        owner_id_val: Optional[ObjectId] = None
         if api_key_user:
             user_id = api_key_user["_id"] if isinstance(api_key_user["_id"], ObjectId) else ObjectId(api_key_user["_id"])
             family_id = api_key_user.get("_family_id")
+            owner_id_val = _owner_id_for_heartbeat(family_id, user_id)
 
         # Never store router/gateway IP as device IP (avoids false "IP changed to router" alerts)
         device_ip = payload.ip_address
@@ -109,6 +194,8 @@ async def receive_heartbeat(
             device_doc["user_id"] = user_id
         if family_id is not None:
             device_doc["family_id"] = family_id
+        if owner_id_val is not None:
+            device_doc["owner_id"] = owner_id_val
         await db.devices.insert_one(device_doc)
 
         return HeartbeatResponse(
@@ -214,8 +301,16 @@ async def receive_heartbeat(
     if user_id_obj is not None and (device.get("userId") is None and device.get("user_id") is None):
         update_set["userId"] = user_id_obj
         update_set["user_id"] = user_id_obj
+        update_set["owner_id"] = family_id_obj if family_id_obj is not None else user_id_obj
     if family_id_obj is not None and device.get("family_id") is None:
         update_set["family_id"] = family_id_obj
+        update_set["owner_id"] = family_id_obj
+
+    # Backfill owner_id on legacy documents (matches compound unique index namespace)
+    if device.get("owner_id") is None and "owner_id" not in update_set:
+        inferred = device.get("family_id") or device.get("userId") or device.get("user_id")
+        if inferred is not None:
+            update_set["owner_id"] = inferred
 
     await db.devices.update_one({"_id": device["_id"]}, update_ops)
 

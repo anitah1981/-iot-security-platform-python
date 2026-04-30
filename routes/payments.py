@@ -3,15 +3,31 @@ Payment Routes
 Handles Stripe payment and subscription endpoints
 """
 
+import os
+
 from fastapi import APIRouter, Depends, HTTPException, status, Request
 from pydantic import BaseModel
 from typing import Optional
 from datetime import datetime
+from bson import ObjectId
+from bson.errors import InvalidId
 
 from database import get_database
 from routes.auth import get_current_user
 from services.stripe_service import StripeService
 from middleware.plan_limits import get_effective_plan
+from core.config import get_public_app_base_url
+
+
+def _user_id_to_object_id(value) -> Optional[ObjectId]:
+    if value is None:
+        return None
+    if isinstance(value, ObjectId):
+        return value
+    try:
+        return ObjectId(str(value))
+    except (InvalidId, TypeError):
+        return None
 
 router = APIRouter(prefix="/api/payments", tags=["payments"])
 
@@ -25,6 +41,50 @@ class SubscriptionResponse(BaseModel):
     status: str
     current_period_end: Optional[int] = None
     cancel_at_period_end: bool = False
+
+
+@router.get("/stripe-status")
+async def stripe_configuration_status():
+    """
+    Non-secret Stripe readiness flags for production checks.
+    Does not expose keys, price IDs, or webhook secrets.
+    """
+    sk = (os.getenv("STRIPE_SECRET_KEY") or "").strip()
+    pk = (os.getenv("STRIPE_PUBLISHABLE_KEY") or "").strip()
+    wh = (os.getenv("STRIPE_WEBHOOK_SECRET") or "").strip()
+    price_pro = (os.getenv("STRIPE_PRICE_PRO") or "").strip()
+    price_business = (os.getenv("STRIPE_PRICE_BUSINESS") or "").strip()
+    base = (os.getenv("APP_BASE_URL") or "").strip()
+    live_mode = (os.getenv("STRIPE_LIVE_MODE") or "").lower() == "true"
+
+    if sk.startswith("sk_live_"):
+        mode = "live"
+    elif sk.startswith("sk_test_"):
+        mode = "test"
+    else:
+        mode = "unset"
+
+    key_matches_live_mode = not (live_mode and sk.startswith("sk_test_"))
+
+    base_https = base.lower().startswith("https://")
+    base_not_local = base_https and "localhost" not in base.lower() and "127.0.0.1" not in base
+
+    return {
+        "stripe_secret_key_set": bool(sk),
+        "stripe_publishable_key_set": bool(pk),
+        "stripe_webhook_secret_set": bool(wh),
+        "stripe_price_pro_set": bool(price_pro),
+        "stripe_price_business_set": bool(price_business),
+        "stripe_mode": mode,
+        "stripe_live_mode_env": live_mode,
+        "stripe_key_matches_live_mode_declared": key_matches_live_mode,
+        "app_base_url_set": bool(base),
+        "app_base_url_https": base_https,
+        "app_base_url_suitable_for_redirects": base_not_local,
+        "checkout_ready": bool(sk and price_pro and price_business),
+        "full_subscription_flow_ready": bool(sk and price_pro and price_business and wh),
+        "note": "Customer portal: Stripe Dashboard → Settings → Billing. Webhook path: /api/payments/webhook",
+    }
 
 
 @router.get("/plans")
@@ -64,14 +124,14 @@ async def create_checkout_session(
             detail="You already have an active subscription. Please manage it from your account settings."
         )
     
+    base = get_public_app_base_url()
     try:
-        # Create checkout session
         session = await StripeService.create_checkout_session(
-            user_id=user["_id"],
+            user_id=str(user["_id"]),
             user_email=user["email"],
             plan_name=plan_name,
-            success_url="http://localhost:8000/dashboard?payment=success",
-            cancel_url="http://localhost:8000/pricing?payment=cancelled"
+            success_url=f"{base}/dashboard?payment=success",
+            cancel_url=f"{base}/pricing?payment=cancelled",
         )
         
         return session
@@ -204,7 +264,7 @@ async def create_customer_portal_session(user: dict = Depends(get_current_user))
     try:
         session = await StripeService.create_customer_portal_session(
             customer_id=customer_id,
-            return_url="http://localhost:8000/dashboard"
+            return_url=f"{get_public_app_base_url()}/dashboard",
         )
         
         return session
@@ -248,10 +308,14 @@ async def stripe_webhook(request: Request):
     if event["type"] == "checkout.session.completed":
         session = event["data"]["object"]
         subscription_data = await StripeService.handle_checkout_completed(session)
-        
+        user_oid = _user_id_to_object_id(subscription_data.get("user_id"))
+        if not user_oid:
+            print(f"[WARN] checkout.session.completed: invalid user_id {subscription_data.get('user_id')!r}")
+            return {"status": "ignored", "reason": "invalid user_id"}
+
         # Update user with subscription details
         await db.users.update_one(
-            {"_id": subscription_data["user_id"]},
+            {"_id": user_oid},
             {"$set": {
                 "plan": subscription_data["plan"],
                 "subscription_id": subscription_data["subscription_id"],

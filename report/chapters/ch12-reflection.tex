@@ -1,0 +1,47 @@
+% Generated from ICA_2.docx — re-run: python scripts/ica2_emit_latex.py
+\chapter{Critical Reflection and Discussion}
+\label{ch:reflect}
+
+\section{Introduction}
+
+This chapter provides a critical reflection on the development of the IoT security monitoring application. It evaluates the project from both a technical and personal perspective, considering what was achieved, the challenges encountered, and the effectiveness of the processes used. The discussion also reflects on how design decisions influenced the final artefact and identifies lessons learned throughout the project lifecycle.
+
+\section{Achievement of Project Objectives}
+
+The primary aim of the project was to design and implement a security-driven IoT monitoring application capable of detecting availability loss and anomalous behaviour in home and small-to-medium business (SMB) environments. This aim was largely achieved through the successful implementation of device registration, heartbeat monitoring, anomaly detection, and multi-channel alerting.
+
+The system provides continuous visibility into device availability and responds appropriately to abnormal conditions, aligning with the objectives defined in section 5.3. By focusing on availability as a security concern, the project delivers practical security value without relying on intrusive or resource-intensive monitoring techniques. The modular architecture and configurable design further support the project's original scope and constraints.
+
+\section{Design and Implementation Decisions}
+
+Several key design decisions significantly shaped the final system. The choice to use a heartbeat-based monitoring approach enabled lightweight availability detection while preserving user privacy. This decision avoided deep packet inspection and reduced ethical and legal concerns associated with monitoring network traffic content.
+
+Similarly, the decision to employ heuristic-based anomaly detection rather than machine learning simplified implementation and improved transparency. While this approach limits detection sophistication, it ensures that alert behaviour is understandable to non-expert users and appropriate for the intended deployment context (ENISA, 2023).
+
+The use of FastAPI and an asynchronous database driver supported scalability and responsiveness, particularly for frequent monitoring events. These choices reflect an intentional balance between technical ambition and practical feasibility within the constraints of an undergraduate project.
+
+\section{Challenges Encountered}
+
+The project presented several challenges during development. One significant challenge was managing system complexity while maintaining usability. As features such as alert escalation, notification preferences, and incident handling were added, care was required to prevent the system from becoming overly complex for its target audience---a common pitfall that often leads to security tools being abandoned by non-expert users (Bugcrowd, 2026).
+
+Another challenge involved balancing detection sensitivity with false positives. Availability monitoring and anomaly detection inherently involve threshold-based decisions, and selecting appropriate values required iterative testing and refinement to mitigate the industry-wide challenge of alert fatigue (ResearchGate, 2025). Additionally, reliance on third-party notification services introduced external dependencies that required careful configuration and error handling.
+
+Time constraints also influenced development priorities, requiring a focus on core functionality rather than advanced optimisation or large-scale testing.
+
+\section{Evaluation of Development Process}
+
+The development process followed an incremental and iterative approach, allowing functionality to be implemented and validated progressively. This approach proved effective in managing complexity and identifying issues early in development.
+
+Requirements analysis and design documentation provided a clear reference point throughout implementation, reducing the risk of scope creep and supporting coherent system development. However, more formalised testing earlier in the process could have further improved reliability and reduced rework during later stages.
+
+Overall, the chosen development methodology was appropriate for the project scope and contributed positively to the quality of the final artefact.
+
+\section{Personal Reflection and Skills Development}
+
+From a personal perspective, the project facilitated significant skill development across multiple areas. Technical skills were strengthened through hands-on experience with backend development, asynchronous programming, database design, and security middleware. The project also enhanced understanding of IoT security challenges and the practical trade-offs involved in real-world system design.
+
+Beyond technical skills, the project improved problem-solving, planning, and critical evaluation abilities. Managing a complex system independently required effective time management and decision-making, reinforcing skills relevant to professional software development and cybersecurity roles.
+
+\section{Summary}
+
+This chapter has critically reflected on the project's outcomes, processes, and challenges. The discussion demonstrates that the project achieved its core objectives while operating within defined constraints. Identified limitations and lessons learned provide valuable insight and inform potential future enhancements, which are explored in the following chapter.

@@ -2,15 +2,20 @@ import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../theme';
+import { navigateToRootStack } from '../utils/navigation';
 
 export default function DeviceCard({ device, navigation }) {
   const statusColor = device.status === 'online' ? colors.ok : colors.danger;
   const statusIcon = device.status === 'online' ? 'checkmark-circle' : 'close-circle';
 
+  const logicalId = device.device_id || device.deviceId;
   return (
     <TouchableOpacity
       style={styles.card}
-      onPress={() => navigation.navigate('DeviceDetail', { deviceId: device.id })}
+      onPress={() =>
+        logicalId &&
+        navigateToRootStack(navigation, 'DeviceDetail', { deviceId: String(logicalId) })
+      }
     >
       <View style={styles.header}>
         <View style={styles.deviceInfo}>

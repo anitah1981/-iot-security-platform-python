@@ -1,0 +1,41 @@
+% Generated from ICA_2.docx — re-run: python scripts/ica2_emit_latex.py
+\chapter{Future Work and Enhancements}
+\label{ch:future}
+
+\section{Introduction}
+
+While the implemented system meets its primary objectives, there are numerous opportunities for future development. This chapter outlines potential enhancements that could improve detection accuracy, scalability, and practical applicability, particularly in production or enterprise-adjacent contexts.
+
+\section{Advanced Anomaly Detection Techniques}
+
+One significant area for future work involves enhancing anomaly detection through adaptive or learning-based techniques. Machine learning models could be introduced to learn baseline device behaviour over time and identify more subtle deviations. Such techniques may reduce false positives and improve detection accuracy in dynamic environments (Ahmad \& Shah, 2024).
+
+However, adopting these approaches would require additional data, training infrastructure, and careful consideration of model interpretability and bias, particularly in safety-critical contexts.
+
+\section{Improved Availability and Resilience Detection}
+
+Future enhancements could incorporate additional indicators to improve availability assessment, such as network latency measurements, packet loss estimation, or correlation across multiple devices. Combining these indicators could improve detection of coordinated attacks, including large-scale jamming or network disruption, which are increasingly targeting wireless IoT layers (Future Internet, 2026).
+
+Redundant monitoring mechanisms and failover alert channels could further improve system resilience, ensuring notifications are delivered even when primary communication paths are unavailable.
+
+\section{Scalability and Performance Enhancements}
+
+To support larger deployments, future versions of the system could integrate message queues or event-streaming platforms to decouple heartbeat ingestion from processing. This would improve scalability and enable more sophisticated analysis pipelines.
+
+Additional performance optimisation could include caching frequently accessed data and implementing horizontal scaling across multiple backend instances.
+
+\section{User Experience and Visualisation Improvements}
+
+Enhancements to the user interface could improve usability and situational awareness. Potential improvements include richer data visualisation, historical trend analysis, and interactive incident timelines. Providing clearer explanations of alert causes and recommended actions could further support non-expert users, reducing confusion during security events (NCSC, 2023).
+
+Mobile application support could also be introduced to improve accessibility and responsiveness to critical alerts.
+
+\section{Integration and Commercial Considerations}
+
+Future work could explore integration with existing smart home platforms, routers, or enterprise monitoring tools. Such integrations would enhance interoperability and reduce deployment friction.
+
+From a commercial perspective, tiered service models, enhanced reporting, and compliance-focused features could be developed to support monetisation and adoption within SMB environments, addressing the gap between consumer products and full-scale enterprise solutions (SumatoSoft, 2025).
+
+\section{Summary}
+
+This chapter has outlined potential avenues for future development that build on the existing system. These enhancements address identified limitations and highlight opportunities to extend the platform's functionality, performance, and applicability. Together, they demonstrate that the project provides a strong foundation for continued development beyond its academic scope.

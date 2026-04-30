@@ -11,3 +11,8 @@ def test_docs_requires_auth(client: TestClient):
 def test_redoc_requires_auth(client: TestClient):
     r = client.get("/redoc")
     assert r.status_code in (401, 403, 307), " /redoc should not be public"
+
+
+def test_openapi_json_requires_auth(client: TestClient):
+    r = client.get("/openapi.json")
+    assert r.status_code in (401, 403, 307), "/openapi.json should not be public"

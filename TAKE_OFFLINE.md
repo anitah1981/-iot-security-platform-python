@@ -39,9 +39,19 @@
 
 ---
 
-## Option 3: Add Maintenance Mode (Keep Running but Show Message)
+## Option 3: Maintenance mode (503, keep Railway deployable)
 
-If you want to keep the service running but show a maintenance message, we can add a maintenance mode page. Let me know if you want this option.
+Set in **Railway → Variables**:
+
+```env
+MAINTENANCE_MODE=true
+```
+
+Redeploy (or restart). The public site and API return **503** with JSON `{"detail":"Service temporarily unavailable","maintenance":true}`. **GET `/api/health`** and **GET `/api/ready`** still work so Railway health checks can pass.
+
+Unset `MAINTENANCE_MODE` or set to `false` when you go live again.
+
+**Local:** leave `MAINTENANCE_MODE` unset and run as usual (`APP_ENV=local`, `uvicorn`, etc.).
 
 ---
 
