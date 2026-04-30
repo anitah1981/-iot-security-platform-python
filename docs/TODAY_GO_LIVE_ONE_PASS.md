@@ -2,11 +2,9 @@
 
 Use this when you want to go live in one session.
 
-Current known live URL in this project docs:
+**Railway URL:** Copy the current **public** `https://<something>.up.railway.app` from Railway → your service → **Settings → Networking** (Generate domain if needed). Older hostnames in docs may return `{"message":"Application not found"}` if the service was recreated—always use the URL Railway shows **today**.
 
-- `https://iot-security-platform-python-production.up.railway.app`
-
-If your custom domain is not fully ready yet, go live on Railway URL first, then cut over to domain.
+If your custom domain is not fully ready yet, go live on that Railway URL first, run `verify_live.py` on it, then cut over DNS.
 
 ---
 
@@ -14,8 +12,8 @@ If your custom domain is not fully ready yet, go live on Railway URL first, then
 
 Choose one:
 
-- Option A (fastest): `LIVE_URL=https://iot-security-platform-python-production.up.railway.app`
-- Option B (custom domain ready): `LIVE_URL=https://app.yourdomain.com`
+- Option A (fastest): `LIVE_URL=https://<your-service>.up.railway.app` (from Railway Networking)
+- Option B (custom domain ready): `LIVE_URL=https://app.yourdomain.com` (or `www` only if that hostname’s DNS truly points at Railway—see troubleshooting below)
 
 ---
 
@@ -78,9 +76,22 @@ python scripts/verify_live.py <LIVE_URL>
 Examples:
 
 ```powershell
-python scripts/verify_live.py https://iot-security-platform-python-production.up.railway.app
+python scripts/verify_live.py https://<your-service>.up.railway.app
 python scripts/verify_live.py https://app.yourdomain.com
 ```
+
+### If `verify_live.py` fails (404 on `/api/health`, or `/login` 404)
+
+1. **Confirm traffic hits FastAPI, not a marketing site.**  
+   From a PC, run `nslookup www.yourdomain.com`. If the IPs look like a generic website host (e.g. registrar default **A** records) and **not** what Railway’s custom-domain instructions specify, the browser is still talking to **GoDaddy / another host**, not your Python service. You will see a large HTML homepage but **`/api/health`** and **`/login`** will 404.
+
+2. **Sanity-check the Python service URL.**  
+   Run `verify_live.py` against the **exact** `*.up.railway.app` URL from Railway Networking. If that **passes**, the deploy is fine—only DNS / custom domain routing needs fixing.
+
+3. **Recommended pattern (marketing + app):**  
+   Leave apex/`www` on your marketing site if you want. Add **`app.yourdomain.com`** in Railway, create the **CNAME** (or DNS target) **exactly** as Railway shows, then set `APP_BASE_URL`, `ALLOWED_HOSTS`, and `CORS_ORIGINS` to `https://app.yourdomain.com` (and add that origin to `CORS_ORIGINS` alongside any existing web origins).
+
+4. **Stripe webhooks** must use the same host as `APP_BASE_URL` (e.g. `https://app.yourdomain.com/api/payments/webhook`).
 
 Optional authenticated smoke:
 
