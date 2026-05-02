@@ -1,6 +1,7 @@
 """API route tests: ensure protected routes don't redirect (307) and preserve auth."""
 import pytest
 from fastapi.testclient import TestClient
+from unittest.mock import MagicMock, patch
 
 
 # Routes that must NOT return 307 (redirect) - redirects can strip Authorization header
@@ -32,3 +33,25 @@ def test_health_no_redirect(client: TestClient):
     r = client.get("/api/health", follow_redirects=False)
     assert r.status_code == 200
     assert r.status_code != 307
+
+
+def test_alert_cleanup_requires_auth(client: TestClient, mock_db):
+    """Anonymous callers must not be able to trigger destructive alert cleanup."""
+    mock_db.alerts = MagicMock()
+
+    r = client.delete("/api/alerts/cleanup?days=0")
+
+    assert r.status_code in (401, 403)
+    assert not mock_db.alerts.delete_many.called
+
+
+def test_alert_cleanup_requires_admin(client: TestClient, mock_db):
+    """Authenticated non-admin users must not be able to delete alert history."""
+    mock_db.alerts = MagicMock()
+    user = {"_id": "507f1f77bcf86cd799439011", "role": "consumer", "email_verified": True}
+
+    with patch("routes.auth._user_from_access_token_string", return_value=user):
+        r = client.delete("/api/alerts/cleanup?days=0", headers={"Authorization": "Bearer token"})
+
+    assert r.status_code == 403
+    assert not mock_db.alerts.delete_many.called

@@ -6,7 +6,7 @@ from datetime import datetime, timedelta
 
 from models import AlertCreate, AlertResponse, AlertListResponse
 from database import get_database
-from routes.auth import get_current_user
+from routes.auth import get_current_user, require_admin
 from routes.devices import _get_user_family_id
 
 from pydantic import BaseModel, Field
@@ -401,7 +401,10 @@ async def get_alert_by_id(alert_id: str, user: dict = Depends(get_current_user))
 
 
 @router.delete("/cleanup")
-async def cleanup_old_alerts(days: int = Query(..., description="Delete alerts older than this many days")):
+async def cleanup_old_alerts(
+    days: int = Query(..., description="Delete alerts older than this many days"),
+    admin: dict = Depends(require_admin),
+):
     """
     Delete old alerts for housekeeping
     
