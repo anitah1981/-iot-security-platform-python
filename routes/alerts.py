@@ -401,17 +401,38 @@ async def get_alert_by_id(alert_id: str, user: dict = Depends(get_current_user))
 
 
 @router.delete("/cleanup")
-async def cleanup_old_alerts(days: int = Query(..., description="Delete alerts older than this many days")):
+async def cleanup_old_alerts(
+    days: int = Query(..., ge=1, description="Delete alerts older than this many days"),
+    user: dict = Depends(get_current_user),
+):
     """
     Delete old alerts for housekeeping
     
-    WARNING: This permanently deletes alerts!
+    WARNING: This permanently deletes the current user's matching alerts.
     """
     db = await get_database()
+    user_id = user["_id"]
+    if not isinstance(user_id, ObjectId):
+        user_id = ObjectId(user_id)
+
+    user_device_ids = await _device_ids_for_user_alerts(db, user_id)
+    if not user_device_ids:
+        return {
+            "message": f"Deleted 0 alerts older than {days} days",
+            "deleted_count": 0,
+        }
     
     cutoff = datetime.utcnow() - timedelta(days=days)
     
-    result = await db.alerts.delete_many({"createdAt": {"$lt": cutoff}})
+    result = await db.alerts.delete_many(
+        {
+            "$or": [
+                {"deviceId": {"$in": user_device_ids}},
+                {"device_id": {"$in": user_device_ids}},
+            ],
+            "createdAt": {"$lt": cutoff},
+        }
+    )
     
     return {
         "message": f"Deleted {result.deleted_count} alerts older than {days} days",
