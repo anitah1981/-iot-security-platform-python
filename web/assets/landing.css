@@ -9,7 +9,7 @@
 .top-nav {
   position: sticky;
   top: 0;
-  background: rgba(15, 15, 19, 0.95);
+  background: rgba(255, 255, 255, 0.95);
   backdrop-filter: blur(10px);
   border-bottom: 1px solid var(--border);
   padding: 16px 0;
@@ -57,7 +57,7 @@
   font-weight: 700;
   margin: 0 0 24px;
   line-height: 1.1;
-  background: linear-gradient(135deg, #fff 0%, var(--accent) 100%);
+  background: linear-gradient(135deg, #0f172a 0%, var(--accent) 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -90,7 +90,7 @@
 
 .btn-xl.primary {
   background: linear-gradient(135deg, var(--primary), var(--accent));
-  color: white;
+  color: #ffffff;
   border: none;
 }
 
@@ -100,13 +100,13 @@
 }
 
 .btn-xl.secondary {
-  background: rgba(255, 255, 255, 0.05);
+  background: rgba(0, 0, 0, 0.05);
   color: var(--text);
   border: 1px solid var(--border);
 }
 
 .btn-xl.secondary:hover {
-  background: rgba(255, 255, 255, 0.08);
+  background: rgba(0, 0, 0, 0.08);
 }
 
 .trust-text {
@@ -117,7 +117,7 @@
 /* Alert Demo */
 .alert-demo {
   padding: 60px 0;
-  background: rgba(255, 255, 255, 0.02);
+  background: rgba(0, 0, 0, 0.02);
 }
 
 .demo-grid {
@@ -167,7 +167,7 @@
 }
 
 .alert-box {
-  background: rgba(0, 0, 0, 0.3);
+  background: #0f172afff;
   border: 1px solid var(--border);
   border-radius: 12px;
   padding: 20px;
@@ -215,7 +215,7 @@
 
 .alert-btns button {
   padding: 8px 16px;
-  background: rgba(255, 255, 255, 0.05);
+  background: rgba(0, 0, 0, 0.05);
   border: 1px solid var(--border);
   border-radius: 8px;
   color: var(--text);
@@ -225,7 +225,7 @@
 }
 
 .alert-btns button:hover {
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(0, 0, 0, 0.1);
 }
 
 /* Features */
@@ -268,7 +268,7 @@
 /* Pricing */
 .pricing {
   padding: 80px 0;
-  background: rgba(255, 255, 255, 0.02);
+  background: rgba(0, 0, 0, 0.02);
 }
 
 .pricing h2 {
@@ -309,7 +309,7 @@
   left: 50%;
   transform: translateX(-50%);
   background: linear-gradient(135deg, var(--primary), var(--accent));
-  color: white;
+  color: #ffffff;
   padding: 6px 16px;
   border-radius: 999px;
   font-size: 12px;
@@ -355,7 +355,7 @@
 }
 
 .best-for {
-  background: rgba(255, 255, 255, 0.03);
+  background: rgba(0, 0, 0, 0.03);
   border-radius: 8px;
   padding: 12px;
   margin: 16px 0;
@@ -376,19 +376,19 @@
   text-decoration: none;
   font-weight: 600;
   transition: all 200ms;
-  background: rgba(255, 255, 255, 0.05);
+  background: rgba(0, 0, 0, 0.05);
   color: var(--text);
   border: 1px solid var(--border);
 }
 
 .btn-plan:hover {
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(0, 0, 0, 0.1);
 }
 
 .btn-plan.primary {
   background: linear-gradient(135deg, var(--primary), var(--accent));
   border: none;
-  color: white;
+  color: #ffffff;
 }
 
 .btn-plan.primary:hover {
@@ -557,7 +557,7 @@
   top: -10px;
   right: 10px;
   background: linear-gradient(135deg, var(--primary), var(--accent));
-  color: white;
+  color: #ffffff;
   padding: 4px 12px;
   border-radius: 999px;
   font-size: 11px;

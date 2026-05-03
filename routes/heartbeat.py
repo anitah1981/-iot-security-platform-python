@@ -169,6 +169,27 @@ async def receive_heartbeat(
             family_id = api_key_user.get("_family_id")
             owner_id_val = _owner_id_for_heartbeat(family_id, user_id)
 
+        # Check if the device was deleted previously to avoid DuplicateKeyError
+        deleted_query = {"deviceId": payload.device_id}
+        if owner_id_val:
+            deleted_query["owner_id"] = owner_id_val
+        elif user_id:
+            deleted_query["$or"] = [{"userId": user_id}, {"user_id": user_id}, {"family_id": family_id}]
+            
+        existing_deleted = await db.devices.find_one(deleted_query)
+        if existing_deleted:
+            if existing_deleted.get("isDeleted"):
+                # Device was explicitly deleted by the user. 
+                # Do NOT auto-restore it from a heartbeat. 
+                # We just ignore the heartbeat so the agent doesn't spam errors, but leave it deleted.
+                return HeartbeatResponse(
+                    success=True,
+                    device_id=payload.device_id,
+                    status=payload.status,
+                    message="Heartbeat ignored for deleted device",
+                    last_seen=now,
+                )
+
         # Never store router/gateway IP as device IP (avoids false "IP changed to router" alerts)
         device_ip = payload.ip_address
         if device_ip and (_is_likely_router_ip(device_ip) or await _is_user_router_ip(db, user_id, device_ip)):
@@ -176,8 +197,9 @@ async def receive_heartbeat(
         device_doc: Dict[str, Any] = {
             "deviceId": payload.device_id,
             "name": (payload.metadata or {}).get("name") or payload.device_id,
-            "type": (payload.metadata or {}).get("type", "Unknown"),
-            "ipAddress": device_ip or "0.0.0.0",
+        "type": (payload.metadata or {}).get("type", "Unknown"),
+        "macAddress": payload.mac_address,
+        "ipAddress": device_ip or "0.0.0.0",
             "status": payload.status,
             "lastSeen": now,
             "heartbeatInterval": 30,
@@ -256,6 +278,9 @@ async def receive_heartbeat(
         "updatedAt": now,
     }
 
+    if payload.mac_address is not None:
+        update_set["macAddress"] = payload.mac_address
+
     if payload.signal_strength is not None:
         update_set["signalStrength"] = payload.signal_strength
 
@@ -280,7 +305,9 @@ async def receive_heartbeat(
             db,
             str(device["_id"]),
             new_ip,
-            device.get("ipAddress", "")
+            device.get("ipAddress", ""),
+            payload.mac_address,
+            device.get("macAddress")
         )
 
         if anomaly and device.get("alertsEnabled", True):

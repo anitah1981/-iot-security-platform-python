@@ -163,6 +163,7 @@ async def get_devices(
                 type=d.get("type", ""),
                 router_ip=d.get("routerIp") or d.get("router_ip"),
                 device_ip=d.get("ipAddress", d.get("ip_address", "")),
+                mac_address=d.get("macAddress", d.get("mac_address", "")),
                 ip_address=d.get("ipAddress", d.get("ip_address", "")),  # Backward compatibility
                 status=d.get("status", "offline"),
                 last_seen=d.get("lastSeen") or d.get("last_seen"),
@@ -242,6 +243,7 @@ async def get_device_status(device_id: str, user: dict = Depends(get_current_use
             "type": device.get("type"),
             "router_ip": device.get("routerIp") or device.get("router_ip"),
             "device_ip": device.get("ipAddress"),
+            "mac_address": device.get("macAddress"),
             "ip_address": device.get("ipAddress"),  # Backward compatibility
             "status": device.get("status"),
             "last_seen": device.get("lastSeen"),
@@ -306,15 +308,74 @@ async def create_device(device: DeviceCreate, user: dict = Depends(get_current_u
     else:
         device_id = await _ensure_unique_device_id(db, device_id, owner_id)
     
-    # Check if device_id already exists for this owner (redundant with _ensure_unique but keeps 409 message clear)
+    # Check if device_id already exists for this owner (including deleted ones)
     existing = await db.devices.find_one(
-        {"owner_id": owner_id, "deviceId": device_id, "isDeleted": {"$ne": True}}
+        {"owner_id": owner_id, "deviceId": device_id}
     )
     if existing:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail=f"Device with ID '{device_id}' already exists"
-        )
+        if existing.get("isDeleted"):
+            # Restore deleted device
+            now = datetime.utcnow()
+            update_data = {
+                "isDeleted": False,
+                "deletedAt": None,
+                "name": device.name,
+                "type": device.type,
+                "routerIp": router_ip,
+                "ipAddress": device.device_ip or "0.0.0.0",
+                "heartbeatInterval": device.heartbeat_interval,
+                "alertsEnabled": device.alerts_enabled,
+                "updatedAt": now
+            }
+            if getattr(device, "mac_address", None):
+                update_data["macAddress"] = device.mac_address
+                
+            await db.devices.update_one(
+                {"_id": existing["_id"]},
+                {"$set": update_data}
+            )
+            
+            client_ip = request.client.host if request and request.client else None
+            user_agent = request.headers.get("user-agent") if request else None
+
+            await AuditLogger.log_device_created(
+                db=db,
+                user_id=user_id,
+                user_email=user.get("email", ""),
+                user_name=user.get("name", ""),
+                device_id=device_id,
+                device_name=device.name,
+                ip_address=client_ip,
+                user_agent=user_agent
+            )
+            
+            return DeviceResponse(
+                id=str(existing["_id"]),
+                device_id=device_id,
+                name=device.name,
+                type=device.type,
+                router_ip=router_ip,
+                device_ip=device.device_ip or "0.0.0.0",
+                mac_address=update_data.get("macAddress", existing.get("macAddress")),
+                ip_address=device.device_ip or "0.0.0.0",
+                status=existing.get("status", "offline"),
+                last_seen=existing.get("lastSeen", now),
+                heartbeat_interval=device.heartbeat_interval,
+                alerts_enabled=device.alerts_enabled,
+                offline_only_when_missed_heartbeats=existing.get("offlineOnlyWhenMissedHeartbeats", False),
+                offline_after_seconds=existing.get("offlineAfterSeconds"),
+                signal_strength=existing.get("signalStrength"),
+                ip_address_history=existing.get("ipAddressHistory", []),
+                organization=_safe_organization_oid(existing.get("organization")),
+                groups=[str(g) if hasattr(g, '__str__') else g for g in existing.get("groups", [])],
+                created_at=existing.get("createdAt", now),
+                updated_at=now
+            )
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=f"Device with ID '{device_id}' already exists"
+            )
     
     # REMOVED: IP uniqueness check - allow multiple devices with same router IP
     
@@ -327,6 +388,7 @@ async def create_device(device: DeviceCreate, user: dict = Depends(get_current_u
         "name": device.name,
         "type": device.type,
         "routerIp": router_ip,
+        "macAddress": getattr(device, "mac_address", None),
         "ipAddress": device.device_ip or "0.0.0.0",  # Optional device IP
         "status": "offline",
         "lastSeen": datetime.utcnow(),
@@ -375,6 +437,7 @@ async def create_device(device: DeviceCreate, user: dict = Depends(get_current_u
         type=device.type,
         router_ip=router_ip,
         device_ip=device.device_ip or "0.0.0.0",
+        mac_address=device_doc.get("macAddress"),
         ip_address=device.device_ip or "0.0.0.0",  # Backward compatibility
         status="offline",
         last_seen=device_doc["lastSeen"],
@@ -456,6 +519,9 @@ async def update_device(device_id: str, updates: DeviceUpdate, user: dict = Depe
         # Add to history if changed
         if new_ip != device.get("ipAddress"):
             update_doc["$push"] = {"ipAddressHistory": new_ip}
+    if getattr(updates, "mac_address", None) is not None:
+        update_doc["macAddress"] = updates.mac_address
+        changes["mac_address"] = updates.mac_address
     if updates.status is not None:
         update_doc["status"] = updates.status
         changes["status"] = updates.status
@@ -508,6 +574,7 @@ async def update_device(device_id: str, updates: DeviceUpdate, user: dict = Depe
         type=updated_device["type"],
         router_ip=updated_device.get("routerIp") or updated_device.get("router_ip"),
         device_ip=updated_device.get("ipAddress", ""),
+        mac_address=updated_device.get("macAddress"),
         ip_address=updated_device.get("ipAddress", ""),  # Backward compatibility
         status=updated_device["status"],
         last_seen=updated_device.get("lastSeen"),

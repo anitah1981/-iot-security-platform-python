@@ -25,12 +25,46 @@ class SecurityMonitor:
         "169.254.",  # Link-local (APIPA)
     ]
     
-    async def check_ip_change_anomaly(self, db, device_id: str, new_ip: str, old_ip: str) -> Optional[Dict[str, Any]]:
+    async def check_ip_change_anomaly(
+        self, 
+        db, 
+        device_id: str, 
+        new_ip: str, 
+        old_ip: str,
+        new_mac: Optional[str] = None,
+        old_mac: Optional[str] = None
+    ) -> Optional[Dict[str, Any]]:
         """
-        Detect suspicious IP address changes
+        Detect suspicious IP address or MAC address changes
         
         Returns alert context if suspicious, None otherwise
         """
+        # Check for MAC spoofing / IP Hijacking
+        if old_mac and new_mac and old_mac.lower() != new_mac.lower():
+            # The MAC address changed for the same device ID
+            if old_ip == new_ip:
+                # Same IP, different MAC -> ARP Spoofing / IP Hijacking
+                return {
+                    "alert_type": "mac_spoofing",
+                    "reason": f"Network Interception Detected: Another device is attempting to impersonate your appliance at {new_ip}",
+                    "old_mac": old_mac,
+                    "new_mac": new_mac,
+                    "severity": "critical"
+                }
+            else:
+                # Different IP, different MAC -> Device replaced or spoofed
+                return {
+                    "alert_type": "device_replaced",
+                    "reason": f"Hardware fingerprint changed for this device (MAC changed from {old_mac} to {new_mac})",
+                    "old_mac": old_mac,
+                    "new_mac": new_mac,
+                    "severity": "high"
+                }
+        
+        # If IP changed but MAC is the same, it's a legitimate router DHCP reassignment (Safe)
+        if old_ip != new_ip and old_mac and new_mac and old_mac.lower() == new_mac.lower():
+            # Legitimate IP change, do not alert
+            return None
         # Check for suspicious IPs
         for pattern in self.SUSPICIOUS_IP_PATTERNS:
             if new_ip.startswith(pattern):

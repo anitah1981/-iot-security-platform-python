@@ -1,20 +1,20 @@
 /* Pro-Alert – modern, fast UI */
 :root{
-  --bg: #0a0f1a;
-  --surface: #0f1729;
-  --card: #111d2e;
-  --text: #e8eef6;
-  --muted: #94a3b8;
-  --border: rgba(255,255,255,.08);
+  --bg: #f8fafc;
+  --surface: #ffffff;
+  --card: #ffffff;
+  --text: #0f172a;
+  --muted: #64748b;
+  --border: rgba(0,0,0,.08);
 
-  --primary: #3b82f6;
-  --primary-2: #60a5fa;
-  --accent: #14b8a6;
+  --primary: #2563eb;
+  --primary-2: #1d4ed8;
+  --accent: #0ea5e9;
   --danger: #ef4444;
   --warning: #f59e0b;
-  --ok: #22c55e;
+  --ok: #10b981;
 
-  --shadow: 0 4px 24px rgba(0,0,0,.25);
+  --shadow: 0 4px 24px rgba(0,0,0,.05);
   --shadow-hover: 0 12px 40px rgba(0,0,0,.35);
   --radius: 12px;
   --radius-lg: 16px;
@@ -83,10 +83,10 @@ h3{ font-size: 1.1rem; }
 .sidebar{
   width: 272px;
   min-width: 272px;
-  background: linear-gradient(180deg, rgba(15,28,52,.98) 0%, rgba(11,20,38,.98) 100%);
+  background: #ffffff;
   backdrop-filter: blur(24px);
   -webkit-backdrop-filter: blur(24px);
-  border-right: 1px solid rgba(255,255,255,.08);
+  border-right: 1px solid rgba(0,0,0,.08);
   box-shadow: 4px 0 24px rgba(0,0,0,.2);
   display: flex;
   flex-direction: column;
@@ -99,7 +99,7 @@ h3{ font-size: 1.1rem; }
 
 .sidebar-header{
   padding: 24px 20px;
-  border-bottom: 1px solid rgba(255,255,255,.06);
+  border-bottom: 1px solid rgba(0,0,0,.06);
 }
 
 /* Brand/logo text: always upright (no italics) */
@@ -169,7 +169,7 @@ h3{ font-size: 1.1rem; }
 }
 
 .sidebar-nav-item:hover{
-  background: rgba(255,255,255,.06);
+  background: rgba(0,0,0,.06);
   color: var(--text);
   border-left-color: var(--primary);
 }
@@ -194,7 +194,7 @@ h3{ font-size: 1.1rem; }
 
 .sidebar-footer{
   padding: 20px;
-  border-top: 1px solid rgba(255,255,255,.06);
+  border-top: 1px solid rgba(0,0,0,.06);
 }
 
 .sidebar-footer .btn{
@@ -228,7 +228,7 @@ h3{ font-size: 1.1rem; }
   gap: 16px;
   padding: 14px 18px;
   border: 1px solid var(--border);
-  background: rgba(15,23,42,.85);
+  background: #ffffff;
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   border-radius: var(--radius);
@@ -291,7 +291,7 @@ h3{ font-size: 1.1rem; }
   padding: 10px 18px;
   border-radius: 10px;
   border: 1px solid var(--border);
-  background: rgba(255,255,255,.05);
+  background: rgba(0,0,0,.05);
   color: var(--text);
   font-size: 14px;
   font-weight: 500;
@@ -299,8 +299,8 @@ h3{ font-size: 1.1rem; }
   transition: background var(--transition), border-color var(--transition), transform 0.15s var(--ease);
 }
 .btn:hover{
-  background: rgba(255,255,255,.09);
-  border-color: rgba(255,255,255,.12);
+  background: rgba(0,0,0,.09);
+  border-color: rgba(0,0,0,.05);
 }
 .btn:active{ transform: scale(0.98); }
 .btn.primary{
@@ -341,7 +341,7 @@ h3{ font-size: 1.1rem; }
   position: relative;
   z-index: 1;
   border: 1px solid var(--border);
-  background: rgba(17,29,46,.9);
+  background: #ffffff;
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   border-radius: var(--radius-lg);
@@ -352,7 +352,7 @@ h3{ font-size: 1.1rem; }
 .card:hover{
   transform: translateY(-2px);
   box-shadow: var(--shadow-hover);
-  border-color: rgba(255,255,255,.12);
+  border-color: rgba(0,0,0,.05);
 }
 
 /* Sign-in page: single centered card */
@@ -391,7 +391,7 @@ h3{ font-size: 1.1rem; }
   background:
     radial-gradient(600px 260px at 10% 0%, rgba(59,130,246,.15), transparent 60%),
     radial-gradient(520px 260px at 90% 10%, rgba(20,184,166,.12), transparent 60%),
-    rgba(15,23,42,.7);
+    #ffffff;
   border: 1px solid var(--border);
   box-shadow: var(--shadow);
   transition: box-shadow var(--transition);
@@ -404,7 +404,7 @@ h3{ font-size: 1.1rem; }
   padding: 8px 10px;
   border-radius: 999px;
   border: 1px solid var(--border);
-  background: rgba(255,255,255,.04);
+  background: rgba(0,0,0,.04);
   color: var(--muted);
   font-size: 12px;
 }
@@ -434,7 +434,7 @@ input:focus, select:focus, textarea:focus{
 .msg.ok{ color: #b7ffd1; }
 
 table tbody tr{ transition: background var(--transition); }
-table tbody tr:hover{ background: rgba(255,255,255,.04); }
+table tbody tr:hover{ background: rgba(0,0,0,.04); }
 
 .device-filters{
   display:flex;
@@ -447,8 +447,8 @@ table tbody tr:hover{ background: rgba(255,255,255,.04); }
   padding: 8px 10px;
   border-radius: 8px;
   border: 1px solid rgba(255,255,255,.2);
-  background: rgba(7,12,24,.85);
-  color: #f5f8ff;
+  background: #f1f5f9;
+  color: #0f172a;
 }
 .device-filters input{ min-width: 220px; }
 
@@ -460,8 +460,8 @@ table tbody tr:hover{ background: rgba(255,255,255,.04); }
 }
 
 .device-filters select option{
-  background: #0b1220;
-  color: #f5f8ff;
+  background: #ffffff;
+  color: #0f172a;
 }
 
 table{ 
@@ -473,13 +473,13 @@ table{
 th,td{ 
   text-align:left; 
   padding:14px 12px; 
-  border-bottom: 1px solid rgba(255,255,255,.08); 
+  border-bottom: 1px solid rgba(0,0,0,.08); 
   font-size: 14px; 
 }
 th{ 
   color: var(--muted); 
   font-weight: 600; 
-  background: rgba(255,255,255,.03);
+  background: rgba(0,0,0,.03);
   text-transform: uppercase;
   font-size: 12px;
   letter-spacing: 0.5px;
@@ -488,7 +488,7 @@ tbody tr{
   transition: background 0.15s ease;
 }
 tbody tr:hover{
-  background: rgba(255,255,255,.05);
+  background: rgba(0,0,0,.05);
 }
 /* Active alerts table: horizontal scroll so full table is visible */
 .alerts-table-scroll {
@@ -611,7 +611,7 @@ tbody tr:hover{
   padding: 10px;
   border-radius: 10px;
   border: 1px solid var(--border);
-  background: rgba(255,255,255,.03);
+  background: rgba(0,0,0,.03);
 }
 .detail-label{ font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; }
 .detail-value{ margin-top: 6px; font-size: 13px; }
@@ -654,7 +654,7 @@ tbody tr:hover{
   padding: 10px 12px;
   border-radius: 8px;
   border: 1px solid var(--border);
-  background: rgba(0,0,0,.18);
+  background: rgba(0,0,0,.05);
   color: var(--text);
   margin-bottom: 12px;
 }
@@ -667,7 +667,7 @@ tbody tr:hover{
   display:inline-flex; align-items:center; gap:8px;
   padding: 6px 10px; border-radius: 999px;
   border:1px solid var(--border);
-  background: rgba(255,255,255,.04);
+  background: rgba(0,0,0,.04);
   font-size: 12px;
 }
 .b-ok{ border-color: rgba(34,197,94,.35); }
@@ -682,7 +682,7 @@ tbody tr:hover{
   font-weight: 600;
   padding: 4px 10px;
   border-radius: 12px;
-  background: rgba(255,255,255,.05);
+  background: rgba(0,0,0,.05);
   transition: all 0.3s ease;
 }
 .ws-status.connected{ color: var(--ok); }
@@ -739,7 +739,7 @@ tbody tr:hover{
 }
 .resolved-alert:hover{
   opacity: 0.9;
-  background: rgba(255,255,255,.02);
+  background: rgba(0,0,0,.02);
 }
 
 /* Tabbed Interface */
@@ -767,7 +767,7 @@ tbody tr:hover{
 
 .tab:hover{
   color: var(--text);
-  background: rgba(255,255,255,.03);
+  background: rgba(0,0,0,.03);
 }
 
 .tab.active{

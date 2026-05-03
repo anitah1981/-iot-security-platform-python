@@ -87,7 +87,7 @@ function renderDeviceStatusChart(data) {
         legend: {
           position: 'bottom',
           labels: {
-            color: '#e2e8f0',
+            color: '#0f172a',
             padding: 15,
             font: { size: 12 }
           }
@@ -95,7 +95,7 @@ function renderDeviceStatusChart(data) {
         title: {
           display: true,
           text: 'Device Status Distribution',
-          color: '#e2e8f0',
+          color: '#0f172a',
           font: { size: 16, weight: 'bold' },
           padding: { bottom: 20 }
         }
@@ -141,7 +141,7 @@ function renderDeviceTypeChart(data) {
         legend: {
           position: 'bottom',
           labels: {
-            color: '#e2e8f0',
+            color: '#0f172a',
             padding: 15,
             font: { size: 12 }
           }
@@ -149,7 +149,7 @@ function renderDeviceTypeChart(data) {
         title: {
           display: true,
           text: 'Devices by Type',
-          color: '#e2e8f0',
+          color: '#0f172a',
           font: { size: 16, weight: 'bold' },
           padding: { bottom: 20 }
         }
@@ -203,7 +203,7 @@ function renderAlertTrendsChart(data, days = 30) {
         title: {
           display: true,
           text: `Alert Trends (Last ${days} Days)`,
-          color: '#e2e8f0',
+          color: '#0f172a',
           font: { size: 16, weight: 'bold' },
           padding: { bottom: 20 }
         },
@@ -224,7 +224,7 @@ function renderAlertTrendsChart(data, days = 30) {
             drawBorder: false
           },
           ticks: {
-            color: '#94a3b8',
+            color: '#475569',
             maxRotation: 45,
             minRotation: 45
           }
@@ -236,7 +236,7 @@ function renderAlertTrendsChart(data, days = 30) {
             drawBorder: false
           },
           ticks: {
-            color: '#94a3b8',
+            color: '#475569',
             precision: 0
           }
         }
@@ -290,7 +290,7 @@ function renderAlertSeverityChart(data) {
         title: {
           display: true,
           text: 'Alerts by Severity',
-          color: '#e2e8f0',
+          color: '#0f172a',
           font: { size: 16, weight: 'bold' },
           padding: { bottom: 20 }
         },
@@ -310,7 +310,7 @@ function renderAlertSeverityChart(data) {
             drawBorder: false
           },
           ticks: {
-            color: '#94a3b8'
+            color: '#475569'
           }
         },
         y: {
@@ -320,7 +320,7 @@ function renderAlertSeverityChart(data) {
             drawBorder: false
           },
           ticks: {
-            color: '#94a3b8',
+            color: '#475569',
             precision: 0
           }
         }

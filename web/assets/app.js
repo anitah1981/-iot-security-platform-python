@@ -424,6 +424,9 @@ let pendingDelete = null;
 
 function formatDate(value){
   if(!value) return null;
+  if(typeof value === 'string' && !value.endsWith('Z') && !value.match(/[+-]\d{2}:\d{2}$/)) {
+    value += 'Z';
+  }
   const d = new Date(value);
   return Number.isNaN(d.getTime()) ? null : d;
 }
@@ -1154,6 +1157,7 @@ window.scanNetworkForDevices = async function scanNetworkForDevices(){
       setList(result.devices.map(device => {
         const name = device.hostname || '—';
         const mac = device.mac || '—';
+        const vendor = device.vendor ? ' • Vendor: ' + esc(device.vendor) : '';
         const deviceType = device.device_type || 'Other';
         const typeIcon = {
           'Doorbell': '🔔',
@@ -1172,7 +1176,7 @@ window.scanNetworkForDevices = async function scanNetworkForDevices(){
             <div style="flex: 1; min-width: 0;">
               <div style="font-weight: 500; margin-bottom: 4px;">${esc(device.ip)}${deviceType !== 'Other' ? ' <span style="background: var(--primary); color: white; padding: 2px 6px; border-radius: 4px; font-size: 11px; margin-left: 6px;">' + typeIcon + ' ' + esc(deviceType) + '</span>' : ''}</div>
               <div style="font-size: 12px; color: var(--muted);">
-                Name: ${esc(name)}${mac !== '—' ? ' • MAC: ' + esc(mac) : ''}
+                Name: ${esc(name)}${mac !== '—' ? ' • MAC: ' + esc(mac) : ''}${vendor}
               </div>
             </div>
             <button type="button" class="btn-sm" onclick="addDeviceFromScan('${esc(device.ip)}', '${esc(name === '—' ? '' : name)}', '${esc(deviceType)}')" style="background: var(--ok); color: white; border: none; cursor: pointer; padding: 8px 16px; border-radius: 6px; font-weight: 500; flex-shrink: 0;">

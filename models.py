@@ -86,6 +86,7 @@ class DeviceBase(BaseModel):
     type: str = Field(..., description="Camera, Router, Sensor, etc.")
     router_ip: Optional[str] = Field(None, description="Router/Gateway IP address")
     device_ip: Optional[str] = Field(None, description="Device's actual IP (optional, auto-detected)")
+    mac_address: Optional[str] = Field(None, description="Device MAC address (hardware fingerprint)")
 
 class DeviceCreate(DeviceBase):
     device_id: Optional[str] = Field(None, description="Optional; auto-generated from name if not provided")
@@ -108,6 +109,7 @@ class DeviceUpdate(BaseModel):
     type: Optional[str] = None
     router_ip: Optional[str] = None
     device_ip: Optional[str] = None
+    mac_address: Optional[str] = None
     ip_address: Optional[str] = None
     status: Optional[Literal["online", "offline", "error", "suspected_jamming"]] = None
     signal_strength: Optional[int] = None
@@ -133,6 +135,7 @@ class DeviceResponse(DeviceBase):
     offline_only_when_missed_heartbeats: bool = False
     offline_after_seconds: Optional[int] = None
     signal_strength: Optional[int] = None
+    mac_address: Optional[str] = None
     ip_address_history: Optional[List[str]] = []
     organization: Optional[str] = None
     groups: Optional[List[str]] = []  # List of group IDs this device belongs to
@@ -208,6 +211,7 @@ class OrganizationResponse(OrganizationBase):
 class HeartbeatData(BaseModel):
     device_id: str = Field(..., description="Logical device ID")
     ip_address: Optional[str] = None
+    mac_address: Optional[str] = None
     signal_strength: Optional[int] = Field(None, ge=-100, le=0)
     status: Literal["online", "offline", "error"] = "online"
     metadata: Optional[Dict[str, Any]] = None

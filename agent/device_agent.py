@@ -98,12 +98,34 @@ def is_reachable_any_port(host: str, ports: list, timeout: float = TIMEOUT_SEC) 
     return False
 
 
-def send_heartbeat(base_url: str, api_key: str, device_id: str, status: str, ip_address: str = None, name: str = None, device_type: str = None):
+def get_mac_address(ip: str) -> str:
+    """Get MAC address for a given IP using ARP."""
+    try:
+        import subprocess
+        import re
+        import platform
+        if platform.system().lower() == "windows":
+            output = subprocess.check_output(f"arp -a {ip}", shell=True).decode()
+            match = re.search(r"([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})", output)
+            if match:
+                return match.group(0).replace('-', ':').lower()
+        else:
+            output = subprocess.check_output(f"arp -n {ip}", shell=True).decode()
+            match = re.search(r"([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})", output)
+            if match:
+                return match.group(0).lower()
+    except Exception:
+        pass
+    return None
+
+def send_heartbeat(base_url: str, api_key: str, device_id: str, status: str, ip_address: str = None, name: str = None, device_type: str = None, mac_address: str = None):
     url = f"{base_url}/api/heartbeat"
     headers = {"Content-Type": "application/json", "X-API-Key": api_key}
     body = {"device_id": device_id, "status": status}
     if ip_address:
         body["ip_address"] = ip_address
+    if mac_address:
+        body["mac_address"] = mac_address
     if name or device_type:
         body["metadata"] = {}
         if name:
@@ -148,13 +170,16 @@ def main():
             if not ip:
                 send_heartbeat(base_url, api_key, device_id, "offline", None, name, device_type)
                 continue
+            
+            mac = get_mac_address(ip)
+            
             if skip_check:
                 status = "online"
             else:
                 ports = get_ports_to_check(dev)
                 reachable = is_reachable_any_port(ip, ports, TIMEOUT_SEC)
                 status = "online" if reachable else "offline"
-            ok, err = send_heartbeat(base_url, api_key, device_id, status, ip, name, device_type)
+            ok, err = send_heartbeat(base_url, api_key, device_id, status, ip, name, device_type, mac_address=mac)
             if not ok:
                 print(f"[WARN] {device_id}: {err}")
         if ENABLE_WATCHDOG and (time.time() - last_watchdog) >= WATCHDOG_INTERVAL:

@@ -82,11 +82,56 @@ def get_hostname(ip, timeout=1.0):
         return None
 
 
+def get_mac_address(ip: str) -> str:
+    """Get MAC address for a given IP using ARP."""
+    try:
+        import subprocess
+        import re
+        import platform
+        if platform.system().lower() == "windows":
+            output = subprocess.check_output(f"arp -a {ip}", shell=True).decode()
+            match = re.search(r"([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})", output)
+            if match:
+                return match.group(0).replace('-', ':').lower()
+        else:
+            output = subprocess.check_output(f"arp -n {ip}", shell=True).decode()
+            match = re.search(r"([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})", output)
+            if match:
+                return match.group(0).lower()
+    except Exception:
+        pass
+    return None
+
+def get_mac_vendor(mac: str) -> str:
+    """Fetch the vendor of a MAC address based on a local dictionary mapping for speed."""
+    if not mac: return ""
+    oui = mac.replace(":", "").lower()[:6]
+    vendors = {
+        "74c63b": "Ring", "b0c7de": "Ring", "6cadf8": "Ring", "d86162": "Ring", "c8dfe2": "Ring", "443266": "Ring",
+        "f0f512": "Ring", "ec002b": "Ring", "e8db84": "Ring", "e404f1": "Ring", "d8a49e": "Ring", "d428b2": "Ring",
+        "18b430": "Google/Nest", "64168d": "Google/Nest", "f8f005": "Google/Nest", "0c4de9": "Google/Nest",
+        "f88fca": "Google", "f4f5e8": "Google", "f008d1": "Google", "e4f042": "Google", "e09861": "Google", "d8b04c": "Google",
+        "50c7bf": "TP-Link", "c006c3": "TP-Link", "a0f3c1": "TP-Link", "689e19": "TP-Link", "f4f26d": "TP-Link", "1c3bf5": "TP-Link", "40f520": "TP-Link", "501479": "TP-Link",
+        "f0d2f1": "Amazon", "b8f009": "Amazon", "8871e5": "Amazon", "fc650a": "Amazon", "38f73d": "Amazon", "44650d": "Amazon", "04f1a1": "Amazon",
+        "fca183": "Amazon", "f08173": "Amazon", "f0272d": "Amazon", "e0b52d": "Amazon", "d8cdc4": "Amazon", "d481d7": "Amazon",
+        "90dd5d": "Apple", "acde48": "Apple", "4c57ca": "Apple", "7c6df8": "Apple", "d8a25e": "Apple", "483b38": "Apple",
+        "001cb3": "Apple", "001e52": "Apple", "002312": "Apple", "040cce": "Apple", "14109f": "Apple",
+        "542a1b": "Sonos", "5cafd2": "Sonos", "b8e937": "Sonos", "949f3e": "Sonos",
+        "30469a": "Netgear", "9c3dcf": "Netgear", "a040a0": "Netgear", "e091f5": "Netgear",
+        "001c2b": "Hive", "801f02": "Eufy", "2aead3": "Wyze", "b827eb": "Raspberry Pi", "dc4f22": "Raspberry Pi", "e84e06": "Raspberry Pi",
+        "001788": "Philips", "001e8c": "Philips", "0025df": "Philips", "0090a9": "Philips", "1c5f2b": "Philips", "2816a8": "Philips",
+        "c83a35": "Tenda", "9c4e36": "Tenda", "001132": "Synology", "00089b": "Ikea", "0024e4": "Withings", "0022b0": "D-Link", "c0c9e3": "D-Link",
+        "001a11": "Google", "546009": "Google", "243fb3": "Google", "94ebcd": "Google", "5cce8f": "Dahua", "b04e26": "Ubiquiti", "b0c554": "D-Link"
+    }
+    return vendors.get(oui, "")
+
 def scan_one(ip, ports=(80, 443, 8080, 8000), timeout=1.0):
     for port in ports:
         if check_reachable(ip, port, timeout):
             hostname = get_hostname(ip, timeout)
-            return {"ip": ip, "hostname": hostname, "mac": None}
+            mac = get_mac_address(ip)
+            vendor = get_mac_vendor(mac)
+            return {"ip": ip, "hostname": hostname, "mac": mac, "vendor": vendor}
     return None
 
 
@@ -115,7 +160,8 @@ def main():
                 r = f.result()
                 if r:
                     devices.append(r)
-                    print(f"  Found: {r['ip']}" + (f" ({r['hostname']})" if r.get("hostname") else ""))
+                    vendor_str = f" [{r['vendor']}]" if r.get('vendor') else ""
+                    print(f"  Found: {r['ip']}" + (f" ({r['hostname']})" if r.get("hostname") else "") + vendor_str)
             except Exception as e:
                 pass
 
