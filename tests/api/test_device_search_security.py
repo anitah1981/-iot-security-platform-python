@@ -107,7 +107,7 @@ async def test_device_name_search_preserves_user_scope(monkeypatch):
     )()
     monkeypatch.setattr(devices_route, "get_database", AsyncMock(return_value=fake_db))
 
-    response = await devices_route.get_devices(name="Kitchen", user={"_id": user_id})
+    response = await devices_route.get_devices(name="Kitchen", page=1, limit=10, user={"_id": user_id})
 
     assert response.total == 1
     assert [device.name for device in response.devices] == ["Kitchen Camera"]
