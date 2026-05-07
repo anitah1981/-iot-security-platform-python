@@ -34,7 +34,7 @@
 
 .pricing-card.featured {
   border-color: var(--primary);
-  box-shadow: 0 4px 16px rgba(47, 107, 255, 0.2);
+  box-shadow: 0 4px 16px rgba(102, 171, 215, 0.25);
 }
 
 .pricing-card .badge {
@@ -97,7 +97,7 @@
   color: var(--text);
   font-size: 14px;
   line-height: 1.6;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  border-bottom: 1px solid var(--border);
 }
 
 .features-list li:last-child {
@@ -118,7 +118,7 @@
 }
 
 .btn-plan:hover:not(:disabled) {
-  background: #3d6fff;
+  background: var(--primary-2);
   transform: translateY(-2px);
 }
 
