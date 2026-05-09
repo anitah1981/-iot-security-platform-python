@@ -6,9 +6,6 @@ import pytest
 from bson import ObjectId
 from fastapi.testclient import TestClient
 
-from routes import alerts as alerts_routes
-from routes import devices as devices_routes
-
 
 class _FakeCursor:
     def __init__(self, docs):
@@ -75,6 +72,8 @@ def test_public_signup_rejects_admin_role(client: TestClient) -> None:
 
 @pytest.mark.asyncio
 async def test_device_name_search_preserves_user_scope(monkeypatch) -> None:
+    from routes import devices as devices_routes
+
     user_id = ObjectId()
     db = SimpleNamespace(
         family_members=_FamilyMembers(),
@@ -106,6 +105,8 @@ async def test_device_name_search_preserves_user_scope(monkeypatch) -> None:
 
 @pytest.mark.asyncio
 async def test_alert_cleanup_is_scoped_to_current_user_devices(monkeypatch) -> None:
+    from routes import alerts as alerts_routes
+
     user_id = ObjectId()
     device_id = ObjectId()
     db = SimpleNamespace(
