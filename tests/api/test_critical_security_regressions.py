@@ -82,7 +82,14 @@ async def test_device_name_search_preserves_user_scope(monkeypatch) -> None:
     )
     monkeypatch.setattr(devices_routes, "get_database", AsyncMock(return_value=db))
 
-    await devices_routes.get_devices(name="front.camera", user={"_id": user_id})
+    await devices_routes.get_devices(
+        device_type=None,
+        status=None,
+        name="front.camera",
+        page=1,
+        limit=10,
+        user={"_id": user_id},
+    )
 
     query = db.devices.find_queries[0]
     assert "$and" in query
