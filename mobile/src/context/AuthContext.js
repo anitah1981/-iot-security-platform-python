@@ -64,17 +64,26 @@ export const AuthProvider = ({ children }) => {
       if (mfaCode) body.mfa_code = mfaCode;
       const response = await api.post('/api/auth/login', body);
 
-      const { token, refresh_token, user: userData } = response.data;
+      const { token, refresh_token, user: userData, verification_required, message } = response.data;
 
-      // Store tokens securely
-      await SecureStore.setItemAsync('auth_token', token);
-      if (refresh_token) {
-        await SecureStore.setItemAsync('refresh_token', refresh_token);
+      if (token) {
+        await SecureStore.setItemAsync('auth_token', token);
+        if (refresh_token) {
+          await SecureStore.setItemAsync('refresh_token', refresh_token);
+        } else {
+          await SecureStore.deleteItemAsync('refresh_token');
+        }
+        await SecureStore.setItemAsync('user_data', JSON.stringify(userData));
+        setUser(userData);
+      } else {
+        // Signup requires email verification before login; do not keep a stale session.
+        await SecureStore.deleteItemAsync('auth_token');
+        await SecureStore.deleteItemAsync('refresh_token');
+        await SecureStore.deleteItemAsync('user_data');
+        setUser(null);
       }
-      await SecureStore.setItemAsync('user_data', JSON.stringify(userData));
 
-      setUser(userData);
-      return { success: true };
+      return { success: true, verificationRequired: !!verification_required, message };
     } catch (error) {
       const detail = error.response?.data?.detail;
       const mfaRequired = detail && typeof detail === 'object' && detail.mfa_required;
