@@ -8,8 +8,6 @@ from fastapi.testclient import TestClient
 from pydantic import ValidationError
 
 from models import UserCreate
-from routes import alerts as alerts_routes
-from routes import devices as devices_routes
 
 
 class _FakeCursor:
@@ -41,6 +39,8 @@ def test_public_signup_cannot_request_admin_role():
 
 @pytest.mark.asyncio
 async def test_device_search_keeps_user_scope(monkeypatch):
+    from routes import devices as devices_routes
+
     user_id = ObjectId()
     db = SimpleNamespace(
         family_members=SimpleNamespace(find_one=AsyncMock(return_value=None)),
@@ -86,6 +86,8 @@ def test_alert_cleanup_requires_auth(client: TestClient, mock_db):
 
 @pytest.mark.asyncio
 async def test_alert_cleanup_deletes_only_current_users_alerts(monkeypatch):
+    from routes import alerts as alerts_routes
+
     user_id = ObjectId()
     device_id = ObjectId()
     delete_result = SimpleNamespace(deleted_count=2)
