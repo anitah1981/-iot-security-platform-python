@@ -51,7 +51,14 @@ async def test_device_search_keeps_user_scope(monkeypatch):
     )
     monkeypatch.setattr(devices_routes, "get_database", AsyncMock(return_value=db))
 
-    await devices_routes.get_devices(name="Kitchen (Main)", user={"_id": user_id})
+    await devices_routes.get_devices(
+        device_type=None,
+        status=None,
+        name="Kitchen (Main)",
+        page=1,
+        limit=10,
+        user={"_id": user_id},
+    )
 
     query = db.devices.find.call_args.args[0]
     assert "$or" not in query
