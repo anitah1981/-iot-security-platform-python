@@ -115,10 +115,19 @@ async def get_devices(
         if status:
             filter_query["status"] = status
         if name:
-            filter_query["$or"] = [
-                {"name": {"$regex": name, "$options": "i"}},
-                {"deviceId": {"$regex": name, "$options": "i"}}
-            ]
+            safe_name = re.escape(name)
+            name_filter = {
+                "$or": [
+                    {"name": {"$regex": safe_name, "$options": "i"}},
+                    {"deviceId": {"$regex": safe_name, "$options": "i"}},
+                    {"device_id": {"$regex": safe_name, "$options": "i"}},
+                ]
+            }
+            if "$or" in filter_query:
+                ownership_filter = {"$or": filter_query.pop("$or")}
+                filter_query["$and"] = [ownership_filter, name_filter]
+            else:
+                filter_query["$and"] = [name_filter]
         
         # Calculate skip
         skip = (page - 1) * limit

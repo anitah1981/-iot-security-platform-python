@@ -78,6 +78,12 @@ export default function SignupScreen({ navigation }) {
       } else {
         Alert.alert('Signup Failed', msg);
       }
+    } else {
+      Alert.alert(
+        'Verify your email',
+        result.message || 'Account created. Check your email to verify, then sign in.',
+        [{ text: 'Sign in', onPress: () => navigation.navigate('Login') }]
+      );
     }
   };
 
