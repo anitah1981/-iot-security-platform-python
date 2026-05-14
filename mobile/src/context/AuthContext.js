@@ -64,7 +64,25 @@ export const AuthProvider = ({ children }) => {
       if (mfaCode) body.mfa_code = mfaCode;
       const response = await api.post('/api/auth/login', body);
 
-      const { token, refresh_token, user: userData } = response.data;
+      const {
+        token,
+        refresh_token,
+        user: userData,
+        verification_required: verificationRequired,
+        message,
+      } = response.data;
+
+      if (verificationRequired || !token) {
+        await SecureStore.deleteItemAsync('auth_token');
+        await SecureStore.deleteItemAsync('refresh_token');
+        await SecureStore.deleteItemAsync('user_data');
+        setUser(null);
+        return {
+          success: true,
+          verificationRequired: true,
+          message: message || 'Signup successful. Please verify your email before signing in.',
+        };
+      }
 
       // Store tokens securely
       await SecureStore.setItemAsync('auth_token', token);
