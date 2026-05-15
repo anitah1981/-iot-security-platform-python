@@ -97,28 +97,36 @@ async def get_devices(
         # Build filter - show user's devices OR family devices
         family_id = await _get_user_family_id(user_id, db)
         
-        # Start with user/family filter
+        # Start with user/family visibility, then combine search filters with AND.
+        # MongoDB only allows one top-level "$or"; name search must not replace tenant scope.
         if family_id:
-            filter_query = {"family_id": family_id}
+            visibility_filter = {"family_id": family_id}
         else:
             # Only this user's devices: match either userId or user_id (compatibility)
-            filter_query = {
+            visibility_filter = {
                 "$or": [{"userId": user_id}, {"user_id": user_id}],
             }
 
-        # Exclude soft-deleted devices
-        filter_query["isDeleted"] = {"$ne": True}
+        filter_query = {
+            "$and": [
+                visibility_filter,
+                {"isDeleted": {"$ne": True}},
+            ]
+        }
 
         # Add additional filters directly
         if device_type:
-            filter_query["type"] = device_type
+            filter_query["$and"].append({"type": device_type})
         if status:
-            filter_query["status"] = status
+            filter_query["$and"].append({"status": status})
         if name:
-            filter_query["$or"] = [
-                {"name": {"$regex": name, "$options": "i"}},
-                {"deviceId": {"$regex": name, "$options": "i"}}
-            ]
+            escaped_name = re.escape(name)
+            filter_query["$and"].append({
+                "$or": [
+                    {"name": {"$regex": escaped_name, "$options": "i"}},
+                    {"deviceId": {"$regex": escaped_name, "$options": "i"}}
+                ]
+            })
         
         # Calculate skip
         skip = (page - 1) * limit
