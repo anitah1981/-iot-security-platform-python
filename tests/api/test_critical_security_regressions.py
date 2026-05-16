@@ -5,9 +5,6 @@ from bson import ObjectId
 from fastapi.testclient import TestClient
 
 from models import UserCreate
-from routes import alerts as alerts_routes
-from routes import devices as devices_routes
-from services import websocket_service
 
 
 class _Cursor:
@@ -78,6 +75,8 @@ def test_alert_create_requires_authentication(client: TestClient):
 
 @pytest.mark.asyncio
 async def test_device_name_search_preserves_user_scope(monkeypatch):
+    from routes import devices as devices_routes
+
     user_id = ObjectId()
     devices = _Collection([])
     fake_db = type(
@@ -109,6 +108,8 @@ async def test_device_name_search_preserves_user_scope(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_alert_cleanup_scopes_delete_to_current_users_devices(monkeypatch):
+    from routes import alerts as alerts_routes
+
     user_id = ObjectId()
     device_id = ObjectId()
     alerts = _Collection([])
@@ -142,6 +143,8 @@ async def test_alert_cleanup_scopes_delete_to_current_users_devices(monkeypatch)
 
 @pytest.mark.asyncio
 async def test_websocket_join_room_rejects_other_user_room(monkeypatch):
+    from services import websocket_service
+
     entered_rooms = []
     websocket_service.connected_users.clear()
     websocket_service.connected_users["sid-1"] = {
