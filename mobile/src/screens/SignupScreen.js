@@ -63,7 +63,13 @@ export default function SignupScreen({ navigation }) {
     const result = await signup(name.trim(), email.toLowerCase().trim(), password);
     setLoading(false);
 
-    if (!result.success) {
+    if (result.success) {
+      Alert.alert(
+        'Account created',
+        result.message || 'Check your email to verify your account, then sign in.',
+        [{ text: 'Sign in', onPress: () => navigation.navigate('Login') }]
+      );
+    } else {
       const msg = result.error || 'Could not create account';
       const isAlreadyExists = typeof msg === 'string' && /already exists|already registered/i.test(msg);
       if (isAlreadyExists) {

@@ -94,14 +94,23 @@ async def disconnect(sid):
 
 @sio.event
 async def join_room(sid, data):
-    """Join a room for targeted updates (e.g., specific user's devices)"""
+    """Join only the authenticated user's room."""
     room = data.get('room')
-    if room:
-        sio.enter_room(sid, room)
-        if sid in connected_users:
-            connected_users[sid]['rooms'].append(room)
-        print(f"[ROOM] Client {sid} joined room: {room}")
-        await sio.emit('room_joined', {'room': room}, to=sid)
+    user_info = connected_users.get(sid)
+    if not room or not user_info:
+        return
+
+    allowed_room = f"user_{user_info['user_id']}"
+    if room != allowed_room:
+        print(f"[ROOM DENIED] Client {sid} attempted to join unauthorized room: {room}")
+        await sio.emit('room_join_denied', {'room': room}, to=sid)
+        return
+
+    sio.enter_room(sid, room)
+    if room not in user_info['rooms']:
+        user_info['rooms'].append(room)
+    print(f"[ROOM] Client {sid} joined room: {room}")
+    await sio.emit('room_joined', {'room': room}, to=sid)
 
 
 @sio.event

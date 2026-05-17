@@ -214,7 +214,18 @@ async function loginFlow(){
     msg.textContent = "Signed in. Redirecting…";
     // Check for redirect parameter, default to dashboard
     const urlParams = new URLSearchParams(window.location.search);
-    const redirect = urlParams.get('redirect') || '/dashboard';
+    const requestedRedirect = urlParams.get('redirect');
+    let redirect = '/dashboard';
+    if (requestedRedirect) {
+      try {
+        const target = new URL(requestedRedirect, window.location.origin);
+        if (target.origin === window.location.origin && target.pathname.startsWith('/')) {
+          redirect = `${target.pathname}${target.search}${target.hash}`;
+        }
+      } catch (_) {
+        redirect = '/dashboard';
+      }
+    }
     setTimeout(()=>{ window.location.href = redirect; }, 450);
   }catch(e){
     msg.className = "msg bad";

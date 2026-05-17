@@ -99,15 +99,19 @@ async def get_devices(
         
         # Start with user/family filter
         if family_id:
-            filter_query = {"family_id": family_id}
+            visibility_filter = {"family_id": family_id}
         else:
             # Only this user's devices: match either userId or user_id (compatibility)
-            filter_query = {
+            visibility_filter = {
                 "$or": [{"userId": user_id}, {"user_id": user_id}],
             }
 
-        # Exclude soft-deleted devices
-        filter_query["isDeleted"] = {"$ne": True}
+        filter_query = {
+            "$and": [
+                visibility_filter,
+                {"isDeleted": {"$ne": True}},
+            ]
+        }
 
         # Add additional filters directly
         if device_type:
@@ -115,10 +119,13 @@ async def get_devices(
         if status:
             filter_query["status"] = status
         if name:
-            filter_query["$or"] = [
-                {"name": {"$regex": name, "$options": "i"}},
-                {"deviceId": {"$regex": name, "$options": "i"}}
-            ]
+            safe_name = re.escape(name)
+            filter_query["$and"].append({
+                "$or": [
+                    {"name": {"$regex": safe_name, "$options": "i"}},
+                    {"deviceId": {"$regex": safe_name, "$options": "i"}}
+                ]
+            })
         
         # Calculate skip
         skip = (page - 1) * limit
