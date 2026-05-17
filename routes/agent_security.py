@@ -14,11 +14,41 @@ from services.notification_service import send_alert_notification
 router = APIRouter()
 
 
+DEFAULT_NOTIFICATION_PREFS = {
+    "emailEnabled": True,
+    "smsEnabled": False,
+    "whatsappEnabled": False,
+    "voiceEnabled": False,
+    "emailSeverities": ["low", "medium", "high", "critical"],
+    "smsSeverities": ["high", "critical"],
+    "whatsappSeverities": ["medium", "high", "critical"],
+    "voiceSeverities": ["critical"],
+}
+
+
 async def _agent_api_key_user(request: Request):
     raw = request.headers.get("X-API-Key") or request.headers.get("Authorization", "").replace("Bearer ", "").strip()
     if not raw:
         return None
     return await get_user_by_api_key(raw)
+
+
+async def _send_agent_alert_notification(db, user: dict, device_id, alert_doc: dict, alert_id: str) -> None:
+    """Notify the API-key owner about security findings without failing report ingestion."""
+    try:
+        device = await db.devices.find_one({"_id": device_id})
+        prefs = await db.notification_preferences.find_one({"userId": user["_id"]}) or DEFAULT_NOTIFICATION_PREFS
+        await send_alert_notification(
+            user_email=user.get("email", ""),
+            user_name=user.get("name", "User"),
+            device_name=(device or {}).get("name", "Network Watchdog"),
+            alert_message=alert_doc["message"],
+            alert_severity=alert_doc.get("severity", "high"),
+            notification_prefs=prefs,
+            alert_id=alert_id,
+        )
+    except Exception as exc:
+        print(f"[AGENT SECURITY] Failed to send alert notification: {exc}")
 
 
 @router.post("/security-report")
@@ -88,7 +118,7 @@ async def receive_security_report(
             }
             result = await db.alerts.insert_one(alert_doc)
             alerts_created.append(str(result.inserted_id))
-            await send_alert_notification(str(result.inserted_id), str(device_id), alert_doc["message"], "high")
+            await _send_agent_alert_notification(db, api_key_user, device_id, alert_doc, str(result.inserted_id))
 
     if unknown_ips:
         recent = await db.alerts.find_one(
@@ -115,6 +145,6 @@ async def receive_security_report(
             }
             result = await db.alerts.insert_one(alert_doc)
             alerts_created.append(str(result.inserted_id))
-            await send_alert_notification(str(result.inserted_id), str(device_id), alert_doc["message"], "high")
+            await _send_agent_alert_notification(db, api_key_user, device_id, alert_doc, str(result.inserted_id))
 
     return {"ok": True, "alerts_created": alerts_created}
