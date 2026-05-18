@@ -70,6 +70,28 @@ async def _alert_document_to_response(db, a: dict) -> AlertResponse:
         device=device_info,
     )
 
+
+async def _users_for_device_alert_notifications(db, device: dict) -> list[dict]:
+    """Users who may receive notifications for this device: owner plus family members."""
+    user_ids: list[ObjectId] = []
+    for key in ("userId", "user_id"):
+        value = device.get(key)
+        if value and value not in user_ids:
+            user_ids.append(value if isinstance(value, ObjectId) else ObjectId(str(value)))
+
+    family_id = device.get("family_id")
+    if family_id:
+        memberships = await db.family_members.find({"family_id": family_id}).to_list(length=100)
+        for membership in memberships:
+            member_id = membership.get("user_id")
+            if member_id and member_id not in user_ids:
+                user_ids.append(member_id if isinstance(member_id, ObjectId) else ObjectId(str(member_id)))
+
+    if not user_ids:
+        return []
+    return await db.users.find({"_id": {"$in": user_ids}}).to_list(length=len(user_ids))
+
+
 async def send_alert_notifications(alert_id: str, device_id: str, alert_message: str, alert_severity: str):
     """Background task to send notifications for an alert"""
     try:
@@ -85,9 +107,7 @@ async def send_alert_notifications(alert_id: str, device_id: str, alert_message:
         
         device_name = device.get("name", "Unknown Device")
         
-        # For MVP: Send notifications to all users (since devices aren't user-linked yet)
-        # In production, you'd link devices to users
-        users = await db.users.find().to_list(length=100)
+        users = await _users_for_device_alert_notifications(db, device)
         
         for user in users:
             user_id = str(user["_id"])
@@ -126,7 +146,11 @@ async def send_alert_notifications(alert_id: str, device_id: str, alert_message:
         print(f"Error sending alert notifications: {e}")
 
 @router.post("", response_model=AlertResponse, status_code=status.HTTP_201_CREATED)
-async def create_alert(alert: AlertCreate, background_tasks: BackgroundTasks):
+async def create_alert(
+    alert: AlertCreate,
+    background_tasks: BackgroundTasks,
+    user: dict = Depends(get_current_user),
+):
     """
     Create an alert (manual or auto from monitoring)
     
@@ -137,6 +161,18 @@ async def create_alert(alert: AlertCreate, background_tasks: BackgroundTasks):
     - security: Multiple alerts allowed (every event matters)
     """
     db = await get_database()
+    user_id = user["_id"]
+    if not isinstance(user_id, ObjectId):
+        user_id = ObjectId(user_id)
+
+    try:
+        alert_device_oid = ObjectId(alert.device_id)
+    except Exception:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid device ID")
+
+    allowed_device_ids = await _device_ids_for_user_alerts(db, user_id)
+    if alert_device_oid not in allowed_device_ids:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Device not found or access denied")
     
     # Deduplication logic
     allow_duplicate = True
@@ -162,7 +198,7 @@ async def create_alert(alert: AlertCreate, background_tasks: BackgroundTasks):
     # Note: We check deviceId since new alerts are created with deviceId
     if not allow_duplicate:
         base_query = {
-            "deviceId": ObjectId(alert.device_id),
+            "deviceId": alert_device_oid,
             "message": alert.message,
             "type": alert.type,
             "severity": alert.severity
@@ -201,7 +237,7 @@ async def create_alert(alert: AlertCreate, background_tasks: BackgroundTasks):
     
     # Create new alert
     alert_doc = {
-        "deviceId": ObjectId(alert.device_id),
+        "deviceId": alert_device_oid,
         "message": alert.message,
         "severity": alert.severity,
         "type": alert.type,
@@ -401,17 +437,45 @@ async def get_alert_by_id(alert_id: str, user: dict = Depends(get_current_user))
 
 
 @router.delete("/cleanup")
-async def cleanup_old_alerts(days: int = Query(..., description="Delete alerts older than this many days")):
+async def cleanup_old_alerts(
+    days: int = Query(..., ge=1, description="Delete alerts older than this many days"),
+    user: dict = Depends(get_current_user),
+):
     """
     Delete old alerts for housekeeping
     
     WARNING: This permanently deletes alerts!
     """
     db = await get_database()
-    
+    user_id = user["_id"]
+    if not isinstance(user_id, ObjectId):
+        user_id = ObjectId(user_id)
+
+    user_device_ids = await _device_ids_for_user_alerts(db, user_id)
+    if not user_device_ids:
+        return {
+            "message": f"Deleted 0 alerts older than {days} days",
+            "deleted_count": 0
+        }
+
     cutoff = datetime.utcnow() - timedelta(days=days)
-    
-    result = await db.alerts.delete_many({"createdAt": {"$lt": cutoff}})
+
+    result = await db.alerts.delete_many({
+        "$and": [
+            {
+                "$or": [
+                    {"deviceId": {"$in": user_device_ids}},
+                    {"device_id": {"$in": user_device_ids}},
+                ]
+            },
+            {
+                "$or": [
+                    {"createdAt": {"$lt": cutoff}},
+                    {"created_at": {"$lt": cutoff}},
+                ]
+            },
+        ]
+    })
     
     return {
         "message": f"Deleted {result.deleted_count} alerts older than {days} days",
