@@ -99,7 +99,7 @@ async def test_device_name_search_preserves_owner_scope(monkeypatch):
     )
     monkeypatch.setattr(devices, "get_database", AsyncMock(return_value=db))
 
-    await devices.get_devices(name="Camera.*", user={"_id": user_id})
+    await devices.get_devices(name="Camera.*", page=1, limit=10, user={"_id": user_id})
 
     query = db.devices.find_filters[0]
     assert query["isDeleted"] == {"$ne": True}
