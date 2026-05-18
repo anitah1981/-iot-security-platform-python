@@ -43,6 +43,18 @@ async def receive_security_report(
     now = datetime.utcnow()
     user_id = api_key_user["_id"]
     family_id = api_key_user.get("_family_id")
+    notification_prefs = await db.notification_preferences.find_one({"userId": user_id})
+    if not notification_prefs:
+        notification_prefs = {
+            "emailEnabled": True,
+            "smsEnabled": False,
+            "whatsappEnabled": False,
+            "voiceEnabled": False,
+            "emailSeverities": ["low", "medium", "high", "critical"],
+            "smsSeverities": ["high", "critical"],
+            "whatsappSeverities": ["medium", "high", "critical"],
+            "voiceSeverities": ["critical"],
+        }
 
     device_filter = {"family_id": family_id} if family_id else {"$or": [{"userId": user_id}, {"user_id": user_id}]}
     devices = await db.devices.find(device_filter).limit(1).to_list(length=1)
@@ -88,7 +100,15 @@ async def receive_security_report(
             }
             result = await db.alerts.insert_one(alert_doc)
             alerts_created.append(str(result.inserted_id))
-            await send_alert_notification(str(result.inserted_id), str(device_id), alert_doc["message"], "high")
+            await send_alert_notification(
+                user_email=api_key_user.get("email", ""),
+                user_name=api_key_user.get("name", "User"),
+                device_name="Network Watchdog",
+                alert_message=alert_doc["message"],
+                alert_severity="high",
+                notification_prefs=notification_prefs,
+                alert_id=str(result.inserted_id),
+            )
 
     if unknown_ips:
         recent = await db.alerts.find_one(
@@ -115,6 +135,14 @@ async def receive_security_report(
             }
             result = await db.alerts.insert_one(alert_doc)
             alerts_created.append(str(result.inserted_id))
-            await send_alert_notification(str(result.inserted_id), str(device_id), alert_doc["message"], "high")
+            await send_alert_notification(
+                user_email=api_key_user.get("email", ""),
+                user_name=api_key_user.get("name", "User"),
+                device_name="Network Watchdog",
+                alert_message=alert_doc["message"],
+                alert_severity="high",
+                notification_prefs=notification_prefs,
+                alert_id=str(result.inserted_id),
+            )
 
     return {"ok": True, "alerts_created": alerts_created}
