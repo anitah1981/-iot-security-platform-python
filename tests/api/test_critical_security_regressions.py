@@ -52,7 +52,14 @@ async def test_device_name_search_preserves_user_scope(monkeypatch):
     db.devices.count_documents = AsyncMock(return_value=0)
     monkeypatch.setattr(device_routes, "get_database", AsyncMock(return_value=db))
 
-    await device_routes.get_devices(name="Victim.*", user={"_id": user_id})
+    await device_routes.get_devices(
+        device_type=None,
+        status=None,
+        name="Victim.*",
+        page=1,
+        limit=10,
+        user={"_id": user_id},
+    )
 
     query = db.devices.find.call_args.args[0]
     assert query["isDeleted"] == {"$ne": True}
