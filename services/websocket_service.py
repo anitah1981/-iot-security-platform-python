@@ -65,7 +65,7 @@ async def connect(sid, environ, auth):
 
     # Join per-user room for targeted updates
     user_room = f"user_{user_id}"
-    sio.enter_room(sid, user_room)
+    await sio.enter_room(sid, user_room)
 
     connected_users[sid] = {
         "user_id": user_id,
@@ -95,23 +95,30 @@ async def disconnect(sid):
 @sio.event
 async def join_room(sid, data):
     """Join a room for targeted updates (e.g., specific user's devices)"""
-    room = data.get('room')
-    if room:
-        sio.enter_room(sid, room)
-        if sid in connected_users:
-            connected_users[sid]['rooms'].append(room)
-        print(f"[ROOM] Client {sid} joined room: {room}")
-        await sio.emit('room_joined', {'room': room}, to=sid)
+    room = (data or {}).get('room')
+    user_info = connected_users.get(sid)
+    allowed_room = f"user_{user_info['user_id']}" if user_info else None
+    if not room:
+        return
+    if not user_info or room != allowed_room:
+        print(f"[ROOM DENIED] Client {sid} attempted to join room: {room}")
+        await sio.emit('room_join_denied', {'room': room}, to=sid)
+        return
+
+    await sio.enter_room(sid, room)
+    if room not in connected_users[sid]['rooms']:
+        connected_users[sid]['rooms'].append(room)
+    print(f"[ROOM] Client {sid} joined room: {room}")
+    await sio.emit('room_joined', {'room': room}, to=sid)
 
 
 @sio.event
 async def leave_room(sid, data):
     """Leave a room"""
-    room = data.get('room')
-    if room:
-        sio.leave_room(sid, room)
-        if sid in connected_users and room in connected_users[sid]['rooms']:
-            connected_users[sid]['rooms'].remove(room)
+    room = (data or {}).get('room')
+    if room and sid in connected_users and room in connected_users[sid]['rooms']:
+        await sio.leave_room(sid, room)
+        connected_users[sid]['rooms'].remove(room)
         print(f"[ROOM] Client {sid} left room: {room}")
 
 
