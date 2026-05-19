@@ -9,7 +9,7 @@ from fastapi import APIRouter, Depends, Request
 
 from database import get_database
 from services.device_agent_key_service import get_user_by_api_key
-from services.notification_service import send_alert_notification
+from routes.alerts import send_alert_notifications
 
 router = APIRouter()
 
@@ -57,6 +57,7 @@ async def receive_security_report(
                 "userId": user_id,
                 "user_id": user_id,
                 "family_id": family_id,
+                "owner_id": family_id if family_id else user_id,
                 "status": "online",
                 "createdAt": now,
                 "updatedAt": now,
@@ -88,7 +89,7 @@ async def receive_security_report(
             }
             result = await db.alerts.insert_one(alert_doc)
             alerts_created.append(str(result.inserted_id))
-            await send_alert_notification(str(result.inserted_id), str(device_id), alert_doc["message"], "high")
+            await send_alert_notifications(str(result.inserted_id), str(device_id), alert_doc["message"], "high")
 
     if unknown_ips:
         recent = await db.alerts.find_one(
@@ -115,6 +116,6 @@ async def receive_security_report(
             }
             result = await db.alerts.insert_one(alert_doc)
             alerts_created.append(str(result.inserted_id))
-            await send_alert_notification(str(result.inserted_id), str(device_id), alert_doc["message"], "high")
+            await send_alert_notifications(str(result.inserted_id), str(device_id), alert_doc["message"], "high")
 
     return {"ok": True, "alerts_created": alerts_created}
