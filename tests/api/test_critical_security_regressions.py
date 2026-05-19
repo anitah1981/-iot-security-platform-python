@@ -8,10 +8,6 @@ from fastapi import BackgroundTasks, HTTPException
 from pydantic import ValidationError
 
 from models import AlertCreate, UserCreate
-import routes.agent_security as agent_security_routes
-import routes.alerts as alert_routes
-import routes.devices as device_routes
-import services.websocket_service as websocket_service
 
 
 class FakeCursor:
@@ -45,6 +41,8 @@ def test_public_signup_rejects_admin_role():
 
 @pytest.mark.asyncio
 async def test_device_name_search_preserves_user_scope(monkeypatch):
+    import routes.devices as device_routes
+
     user_id = ObjectId()
     db = MagicMock()
     db.family_members.find_one = AsyncMock(return_value=None)
@@ -73,6 +71,8 @@ async def test_device_name_search_preserves_user_scope(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_alert_create_rejects_cross_tenant_device(monkeypatch):
+    import routes.alerts as alert_routes
+
     user_id = ObjectId()
     owned_device_id = ObjectId()
     other_device_id = ObjectId()
@@ -98,6 +98,8 @@ async def test_alert_create_rejects_cross_tenant_device(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_alert_cleanup_is_scoped_to_current_user_devices(monkeypatch):
+    import routes.alerts as alert_routes
+
     user_id = ObjectId()
     owned_device_id = ObjectId()
     db = MagicMock()
@@ -118,6 +120,8 @@ async def test_alert_cleanup_is_scoped_to_current_user_devices(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_websocket_rejects_joining_another_users_room(monkeypatch):
+    import services.websocket_service as websocket_service
+
     owner_id = str(ObjectId())
     other_id = str(ObjectId())
     websocket_service.connected_users.clear()
@@ -138,6 +142,8 @@ async def test_websocket_rejects_joining_another_users_room(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_agent_security_alerts_notify_with_scoped_helper_and_owner_id(monkeypatch):
+    import routes.agent_security as agent_security_routes
+
     user_id = ObjectId()
     watchdog_id = ObjectId()
     alert_id = ObjectId()
